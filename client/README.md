@@ -1,148 +1,76 @@
-# ScholrBoard - Client
+# ScholrBoard Client
 
-Frontend application for ScholrBoard educational platform built with React, Vite, and Tailwind CSS.
+React frontend for ScholrBoard. This app contains the student, faculty, admin, authentication, profile, portfolio, analytics, placement, upload, and verification interfaces.
 
----
+For full project setup, start with the root `README.md`. Use this file when working specifically inside `client/`.
 
-## 🛠️ Tech Stack
+## Stack
 
-| Technology | Purpose |
-|------------|---------|
-| React 19 | UI Framework |
-| Vite 7 | Build Tool |
-| Tailwind CSS 4 | Styling |
-| React Router 7 | Client-side Routing |
-| Firebase Auth | Authentication |
-| Recharts | Data Visualization |
-| Lucide React | Icon Library |
+- React 19
+- Vite 7
+- Tailwind CSS 4
+- React Router 7
+- Firebase Authentication
+- Recharts
+- Lucide React
+- xlsx, jsPDF, html2canvas
 
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Node.js (v18+)
-- npm or yarn
-
-### Installation
+## Setup
 
 ```bash
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
 ```
 
-### Build for Production
+Vite prints the local development URL after startup.
 
-```bash
-npm run build
-```
+## Environment
 
----
-
-## 📁 Project Structure
-
-```
-src/
-├── assets/           # Static assets (images, fonts)
-├── components/       # Reusable React components
-│   └── auth/         # Authentication components
-├── configs/          # Firebase configuration
-├── contexts/         # React Context providers
-│   ├── AuthContext.jsx
-│   ├── FirebaseAuthContext.jsx
-│   └── ProfileContext.jsx
-├── hooks/            # Custom React hooks
-│   └── useScrollAnimation.js
-├── layouts/          # Role-based layouts
-│   ├── AdminLayout.jsx
-│   ├── FacultyLayout.jsx
-│   └── StudentLayout.jsx
-├── pages/            # Page components
-│   ├── auth/        # Login pages
-│   └── *.jsx        # Feature pages
-├── routes/           # Application routing
-│   └── AppRoutes.jsx
-├── App.css          # Global styles
-├── App.jsx          # Root component
-├── index.css        # Tailwind imports
-└── main.jsx         # Entry point
-```
-
----
-
-## 🔐 Authentication
-
-The client uses Firebase Authentication with JWT tokens:
-
-1. User signs in via Firebase Auth
-2. ID token is stored in context
-3. Token is sent with API requests
-4. Server verifies token and extracts user role
-
----
-
-## 🎨 Design System
-
-### Colors
-
-Configured via Tailwind CSS in `tailwind.config.js`:
-
-- Primary brand colors
-- Semantic colors (success, warning, error)
-- Role-based colors (student, faculty, admin)
-
-### Components
-
-- **Topbar** - Navigation header
-- **ScrollRevealDemo** - Animation showcase
-- **Auth Forms** - Login/Signup components
-
----
-
-## 📝 Available Scripts
-
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start Vite dev server |
-| `npm run build` | Build for production |
-| `npm run lint` | Run ESLint checks |
-| `npm run preview` | Preview production build |
-
----
-
-## 🔧 Environment Variables
-
-Create a `.env` file in the client root:
+Create `client/.env` when the app needs an API URL:
 
 ```env
-VITE_FIREBASE_API_KEY=your_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
+VITE_API_URL=http://localhost:5000/api
 ```
 
----
+The current Firebase client configuration is defined in `src/config/firebase.js`.
 
-## 🏭 Production Build
+## Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the Vite development server |
+| `npm run build` | Build the app for production |
+| `npm run lint` | Run ESLint |
+| `npm run preview` | Preview the production build |
+
+## Source Layout
+
+```text
+src/
+├── assets/        # Static assets
+├── components/    # Shared UI components
+├── config/        # Firebase client config
+├── contexts/      # Auth and profile context providers
+├── hooks/         # Custom React hooks
+├── layouts/       # Student, faculty, and admin layouts
+├── pages/         # Route-level pages
+├── routes/        # App route definitions
+├── App.jsx
+└── main.jsx
+```
+
+## Main Areas
+
+- `pages/auth/` contains role-specific login pages.
+- `layouts/` contains role-specific shell layouts.
+- `contexts/FirebaseAuthContext.jsx` handles Firebase auth and backend sync calls.
+- `routes/AppRoutes.jsx` defines the application routes.
+
+## Production Build
 
 ```bash
-# Create optimized build
 npm run build
-
-# Preview the build
 npm run preview
 ```
 
-Build output is generated in the `dist/` directory.
-
----
-
-## 📄 License
-
-ISC License
+The production build is written to `dist/`.
