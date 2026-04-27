@@ -3,6 +3,13 @@ import './App.css';
 import { ProfileProvider } from './contexts/ProfileContext.jsx';
 import { FirebaseAuthProvider, useFirebaseAuth } from './contexts/FirebaseAuthContext';
 
+const getDashboardPath = (role) => {
+	if (role === 'student') return '/student/dashboard';
+	if (role === 'faculty') return '/faculty';
+	if (role === 'admin') return '/admin';
+	return '/login/student';
+};
+
 const ProtectedRoute = ({ children, allowedRoles }) => {
 	const { user, loading } = useFirebaseAuth();
 	
@@ -20,7 +27,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
 	if (!user.role || !allowedRoles.includes(user.role)) {
 		console.log('Access denied - invalid role:', user.role);
-		return <Navigate to={`/login/${user.role || 'student'}`} replace />;
+		return <Navigate to={getDashboardPath(user.role)} replace />;
 	}
 	
 	console.log('Access granted for role:', user.role);
@@ -60,6 +67,7 @@ export default function App() {
 				<BrowserRouter>
 					<Routes>
 					<Route path="/" element={<LandingPage />} />
+					<Route path="/landing" element={<LandingPage />} />
 					<Route path="/login">
 						<Route index element={<Navigate to="/login/student" replace />} />
 						<Route path="student" element={<StudentLoginPage />} />
