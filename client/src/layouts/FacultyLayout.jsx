@@ -1,27 +1,27 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { ClipboardList, Users, BarChart3, User, LogOut, Home, UserSquare2, GraduationCap } from 'lucide-react';
 import { Topbar } from '../components/Topbar.jsx';
+import { useFirebaseAuth } from '../contexts/FirebaseAuthContext.jsx';
 
 export function FacultyLayout() {
 	const navigate = useNavigate();
-	const logout = () => { 
-		localStorage.removeItem('role'); 
-		localStorage.removeItem('isAuthenticated');
-		localStorage.removeItem('studentProfile');
-		navigate('/login'); 
+	const { logout } = useFirebaseAuth();
+	const handleLogout = async () => { 
+		await logout();
+		navigate('/', { replace: true }); 
 	};
 
 	const navLinkClass = ({ isActive }) =>
 		`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors mb-1 ${
 			isActive 
-				? 'bg-gradient-to-r from-blue-600/20 to-cyan-600/20 text-blue-400 border-l-4 border-blue-400' 
-				: 'text-gray-300 hover:text-white hover:bg-white/10'
+				? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500' 
+				: 'text-slate-600 hover:text-blue-700 hover:bg-blue-50'
 		}`;
 
 	return (
 		<div className="min-h-screen grid md:grid-cols-[280px_1fr]">
 			{/* Sidebar */}
-			<aside className="p-6" style={{background:'var(--bg-medium)', borderRight:'1px solid var(--border-color)'}}>
+			<aside className="p-6" style={{background:'rgba(255,255,255,0.86)', borderRight:'1px solid var(--border-color)'}}>
 				<div className="mb-8">
 					<a href="/" className="text-2xl font-bold" style={{color:'var(--primary-blue)'}}>ScholrBoard</a>
 					<div className="text-sm mt-1" style={{color:'var(--text-secondary)'}}>JECRC University</div>
@@ -52,7 +52,7 @@ export function FacultyLayout() {
 
 				<div className="mt-8 pt-4" style={{borderTop:'1px solid var(--border-color)'}}>
 					<button 
-						onClick={logout}
+						onClick={handleLogout}
 						className="flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 w-full text-left transition-colors"
 					>
 						<LogOut size={20}/> Logout

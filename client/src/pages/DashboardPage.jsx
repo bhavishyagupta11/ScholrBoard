@@ -188,10 +188,10 @@ export function DashboardPage() {
 					].map((suggestion, i) => (
 						<div key={i} className="p-3 rounded-md border-l-4" style={{
 							background: 'var(--bg-medium)',
-							borderLeftColor: suggestion.priority === 'high' ? '#ef4444' : suggestion.priority === 'medium' ? '#f59e0b' : '#10b981'
+							borderLeftColor: suggestion.priority === 'high' ? '#ef4444' : 'var(--primary-blue)'
 						}}>
 							<div className="text-sm">{suggestion.text}</div>
-							<div className="text-xs mt-1" style={{color: suggestion.priority === 'high' ? '#ef4444' : suggestion.priority === 'medium' ? '#f59e0b' : '#10b981'}}>
+							<div className="text-xs mt-1" style={{color: suggestion.priority === 'high' ? '#ef4444' : 'var(--primary-blue)'}}>
 								{suggestion.priority.toUpperCase()} PRIORITY
 							</div>
 						</div>
@@ -222,14 +222,14 @@ export function DashboardPage() {
 							<div key={subj.subject}>
 								<div className="flex justify-between text-xs mb-1">
 									<span style={{color:'var(--text-secondary)'}}>{subj.subject}</span>
-									<span style={{color: subj.attendance >= 90 ? '#10b981' : subj.attendance >= 75 ? '#f59e0b' : '#ef4444'}}>{subj.attendance}%</span>
+									<span style={{color: subj.attendance < 75 ? '#ef4444' : 'var(--primary-blue)'}}>{subj.attendance}%</span>
 								</div>
 								<div className="w-full bg-slate-700 rounded-full h-1.5">
 									<div 
 										className="h-1.5 rounded-full" 
 										style={{
 											width:`${subj.attendance}%`,
-											backgroundColor: subj.attendance >= 90 ? '#10b981' : subj.attendance >= 75 ? '#f59e0b' : '#ef4444'
+											backgroundColor: subj.attendance < 75 ? '#ef4444' : 'var(--primary-blue)'
 										}} 
 									/>
 								</div>

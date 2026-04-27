@@ -118,7 +118,7 @@ export function PortfolioPage() {
 					<div>
 						<div className="subtle">Portfolio Completion</div>
 						<div className="w-full bg-slate-700 rounded-full h-2 mt-2">
-							<div className="bg-gradient-to-r from-brand-blue to-brand-green h-2 rounded-full" style={{width:'85%'}} />
+							<div className="bg-brand-blue h-2 rounded-full" style={{width:'85%'}} />
 						</div>
 					</div>
 					<div>

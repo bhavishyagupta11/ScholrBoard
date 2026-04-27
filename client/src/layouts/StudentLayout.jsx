@@ -1,21 +1,26 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Upload, Table2, UserSquare2, LogOut } from 'lucide-react';
 import { Topbar } from '../components/Topbar.jsx';
+import { useFirebaseAuth } from '../contexts/FirebaseAuthContext.jsx';
 
 export function StudentLayout() {
 	const navigate = useNavigate();
-	const logout = () => { localStorage.removeItem('role'); navigate('/login'); };
+	const { logout } = useFirebaseAuth();
+	const handleLogout = async () => {
+		await logout();
+		navigate('/', { replace: true });
+	};
 
 	const navLinkClass = ({ isActive }) =>
 		`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
 			isActive
-				? 'bg-white/10 text-white'
-				: 'text-gray-300 hover:text-white hover:bg-white/10'
+				? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500'
+				: 'text-slate-600 hover:text-blue-700 hover:bg-blue-50'
 		}`;
 
 	return (
 		<div className="min-h-screen grid md:grid-cols-[240px_1fr]">
-			<aside className="p-4" style={{background:'var(--bg-medium)', borderRight:'1px solid var(--border-color)'}}>
+			<aside className="p-4" style={{background:'rgba(255,255,255,0.86)', borderRight:'1px solid var(--border-color)'}}>
 				<div className="mb-6">
 					<a href="/" className="text-xl font-bold text-brand-blue">ScholrBoard</a>
 					<div className="text-xs" style={{color:'var(--text-secondary)'}}>JECRC University</div>
@@ -23,7 +28,7 @@ export function StudentLayout() {
 				<nav className="flex flex-col gap-1">
 					<a href="/landing" className={navLinkClass({ isActive: false })}>🏠 Homepage</a>
 					<NavLink to="/student/dashboard" className={`${navLinkClass} relative overflow-hidden group`}>
-						<div className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+						<div className="absolute inset-0 bg-blue-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 						<div className="relative z-10 flex items-center gap-3">
 							<LayoutDashboard size={20} className="flex-shrink-0"/>
 							<span>Dashboard</span>
@@ -35,7 +40,7 @@ export function StudentLayout() {
 					<NavLink to="/student/coding" className={navLinkClass}>⚡ Coding</NavLink>
 					<NavLink to="/student/resume" className={navLinkClass}>📄 Resume Import</NavLink>
 				</nav>
-				<button className="btn btn-outline mt-6 w-full" onClick={logout}><LogOut size={16}/> Logout</button>
+				<button className="btn btn-outline mt-6 w-full" onClick={handleLogout}><LogOut size={16}/> Logout</button>
 			</aside>
 			<div className="flex flex-col min-h-screen">
 				<Topbar />
