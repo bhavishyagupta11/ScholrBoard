@@ -105,7 +105,7 @@ export function SignupForm({ role, onToggleForm, additionalFields = [] }) {
       try {
         setIsLoading(true);
         // Register with Firebase and create user in MongoDB
-        await register(formData.email, formData.password, {
+        const registeredUser = await register(formData.email, formData.password, {
           name: formData.name,
           role,
           ...Object.fromEntries(
@@ -114,7 +114,7 @@ export function SignupForm({ role, onToggleForm, additionalFields = [] }) {
         });
 
         // Navigate to appropriate dashboard based on role
-        navigate(`/${role}/dashboard`);
+        navigate(role === 'student' ? '/student/dashboard' : `/${registeredUser.role || role}`, { replace: true });
       } catch (error) {
         setErrors({ submit: error.message });
       } finally {

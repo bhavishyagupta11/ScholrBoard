@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { GraduationCap } from 'lucide-react';
 import { useFirebaseAuth } from '../../contexts/FirebaseAuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -15,6 +15,12 @@ export function BaseLoginForm({ role, additionalFields = [], disableSignup = fal
   });
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (user?.role) {
+      navigate(user.role === 'student' ? '/student/dashboard' : `/${user.role}`, { replace: true });
+    }
+  }, [navigate, user]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -30,20 +36,20 @@ export function BaseLoginForm({ role, additionalFields = [], disableSignup = fal
       console.log('Attempting login...', { email: formData.email, role });
       
       // Login with Firebase
-      await login(formData.email, formData.password);
+      const loggedInUser = await login(formData.email, formData.password);
 
       // At this point, the user data should be synced with the backend
       // and available in the FirebaseAuth context
       
       // Verify user role matches the expected role
-      if (user?.role && user.role !== role) {
+      if (loggedInUser?.role && loggedInUser.role !== role) {
         setError(`This account is not registered as a ${role}. Please use the correct login page.`);
         return;
       }
 
       // Navigate to dashboard
       console.log('Login successful, navigating to dashboard...');
-      navigate(`/${role}/dashboard`);
+      navigate(role === 'student' ? '/student/dashboard' : `/${role}`, { replace: true });
     } catch (err) {
       console.error('Login error:', err);
       setError(err.message || 'Invalid email or password');

@@ -10,6 +10,45 @@ import {
 import { auth } from '../config/firebase';
 
 const FirebaseAuthContext = createContext();
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const AUTH_CACHE_KEY = 'scholrboardUser';
+
+const getCachedUser = (firebaseUid) => {
+  try {
+    const cached = JSON.parse(localStorage.getItem(AUTH_CACHE_KEY) || 'null');
+    if (cached && (!firebaseUid || cached.firebaseUid === firebaseUid)) return cached;
+  } catch (error) {
+    console.warn('Unable to read cached auth user:', error);
+  }
+  return null;
+};
+
+const cacheUser = (userData) => {
+  if (!userData) return;
+  const data = {
+    _id: userData._id,
+    firebaseUid: userData.firebaseUid || userData.uid,
+    name: userData.name || userData.displayName,
+    email: userData.email,
+    role: userData.role,
+    studentId: userData.studentId,
+    facultyId: userData.facultyId,
+    department: userData.department,
+    semester: userData.semester
+  };
+  localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(data));
+  if (data.role) {
+    localStorage.setItem('role', data.role);
+    localStorage.setItem('isAuthenticated', 'true');
+  }
+};
+
+const clearCachedUser = () => {
+  localStorage.removeItem(AUTH_CACHE_KEY);
+  localStorage.removeItem('role');
+  localStorage.removeItem('isAuthenticated');
+  localStorage.removeItem('studentProfile');
+};
 
 export function FirebaseAuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -20,12 +59,17 @@ export function FirebaseAuthProvider({ children }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        const cached = getCachedUser(user.uid);
+        if (cached?.role) {
+          setUser({ ...user, ...cached });
+        }
+
         // Get the Firebase ID token
         const token = await user.getIdToken();
         
         try {
           // Sync with your backend
-          const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/sync`, {
+          const response = await fetch(`${API_URL}/auth/sync`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -35,15 +79,26 @@ export function FirebaseAuthProvider({ children }) {
           
           if (response.ok) {
             const userData = await response.json();
-            setUser({ ...user, ...userData }); // Combine Firebase and MongoDB user data
+            const combinedUser = { ...user, ...userData };
+            cacheUser(combinedUser);
+            setUser(combinedUser); // Combine Firebase and MongoDB user data
           } else {
             console.error('Failed to sync user data with backend');
+            if (!cached?.role) {
+              const legacyRole = localStorage.getItem('role');
+              setUser(legacyRole ? { ...user, role: legacyRole } : user);
+            }
           }
         } catch (error) {
           console.error('Error syncing user data:', error);
+          if (!cached?.role) {
+            const legacyRole = localStorage.getItem('role');
+            setUser(legacyRole ? { ...user, role: legacyRole } : user);
+          }
         }
       } else {
         setUser(null);
+        clearCachedUser();
       }
       setLoading(false);
     });
@@ -83,7 +138,7 @@ export function FirebaseAuthProvider({ children }) {
       };
       console.log('Sending backend request:', requestBody);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/register`, {
+      const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -98,7 +153,11 @@ export function FirebaseAuthProvider({ children }) {
         throw new Error(errorData.message || 'Failed to create user in backend');
       }
 
-      return userCredential.user;
+      const userData = await response.json();
+      const combinedUser = { ...userCredential.user, ...userData };
+      cacheUser(combinedUser);
+      setUser(combinedUser);
+      return combinedUser;
     } catch (error) {
       setError(error.message);
       throw error;
@@ -119,7 +178,7 @@ export function FirebaseAuthProvider({ children }) {
       const token = await userCredential.user.getIdToken(true);
       
       // Sync with backend
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/sync`, {
+      const response = await fetch(`${API_URL}/auth/sync`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -136,12 +195,14 @@ export function FirebaseAuthProvider({ children }) {
       console.log('Backend sync successful:', userData);
       
       // Update local user state with combined data
-      setUser({
+      const combinedUser = {
         ...userCredential.user,
         ...userData
-      });
+      };
+      cacheUser(combinedUser);
+      setUser(combinedUser);
 
-      return userCredential.user;
+      return combinedUser;
     } catch (error) {
       console.error('Login error:', error);
       setError(error.message);
@@ -154,6 +215,7 @@ export function FirebaseAuthProvider({ children }) {
     try {
       setError(null);
       await signOut(auth);
+      clearCachedUser();
     } catch (error) {
       setError(error.message);
       throw error;

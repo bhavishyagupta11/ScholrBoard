@@ -1,10 +1,12 @@
-import { Bell, Search, User2, RefreshCw, X, LogOut } from 'lucide-react';
+import { Bell, Search, User2, X, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
+import { useFirebaseAuth } from '../contexts/FirebaseAuthContext.jsx';
 
 export function Topbar() {
 	const navigate = useNavigate();
-	const role = localStorage.getItem('role');
+	const { user, logout } = useFirebaseAuth();
+	const role = user?.role || localStorage.getItem('role');
 	const profilePath = role === 'student' ? '/student/profile' : '/login';
 	const [open, setOpen] = useState(false);
 	const [q, setQ] = useState('');
@@ -45,17 +47,10 @@ export function Topbar() {
 
 	const notifications = getNotifications();
 
-	const handleLogout = () => {
-		localStorage.removeItem('role');
-		localStorage.removeItem('isAuthenticated');
+	const handleLogout = async () => {
+		await logout();
 		setShowProfileMenu(false);
-		navigate('/');
-	};
-
-	const cycleRole = () => {
-		const next = role === 'student' ? 'faculty' : role === 'faculty' ? 'admin' : 'student';
-		localStorage.setItem('role', next);
-		navigate(next === 'student' ? '/student' : '/verify');
+		navigate('/', { replace: true });
 	};
 
 	useEffect(() => {
@@ -114,16 +109,16 @@ export function Topbar() {
 		return suggestions.filter(s => s.label.toLowerCase().includes(q.toLowerCase()));
 	}, [q, suggestions]);
 	return (
-		<header className="sticky top-0 z-10 border-b border-[var(--border-color)] bg-[rgba(22,27,34,0.6)] backdrop-blur">
+		<header className="sticky top-0 z-10 border-b border-[var(--border-color)] bg-white/80 backdrop-blur">
 			<div className="px-4 py-3 flex items-center gap-4">
 				<div className="hidden md:block text-sm flex items-center h-10" style={{color:'var(--text-secondary)'}}>Logged in as <span className="font-medium capitalize ml-1" style={{color:'var(--color-brand-light)'}}>{role}</span></div>
 				<div className="flex-1 max-w-xl relative">
-					<div className="relative flex items-center bg-gray-800 rounded-lg border border-gray-600">
+					<div className="relative flex items-center bg-white rounded-lg border border-slate-200 shadow-sm">
 						<div className="flex items-center justify-center w-10 h-10">
 							<Search size={18} color="#8B949E" />
 						</div>
 						<input
-							className="flex-1 bg-transparent px-3 py-2 text-sm text-white placeholder-gray-400 focus:outline-none"
+							className="flex-1 bg-transparent px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none"
 							value={q}
 							onChange={e=>{ setQ(e.target.value); setShowSearch(true); }}
 							onFocus={()=>setShowSearch(true)}
@@ -167,12 +162,10 @@ export function Topbar() {
 						</div>
 					)}
 				</div>
-				<button className="btn btn-outline h-12 w-12 flex items-center justify-center" title="Switch role (demo)" onClick={cycleRole}><RefreshCw size={22} color="#E6EDF3" /></button>
-				
 				<div className="relative">
 					<button 
 						className="h-10 w-10 rounded-full grid place-items-center" 
-						style={{backgroundColor:'rgba(88,166,255,0.12)', color:'#58A6FF'}} 
+						style={{backgroundColor:'rgba(37,99,235,0.10)', color:'var(--primary-blue)'}} 
 						title="Profile" 
 						onClick={() => setShowProfileMenu(v => !v)}
 					>
