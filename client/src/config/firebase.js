@@ -3,9 +3,9 @@ import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: "AIzaSyA6aPPV8GyUFS_uQQ9VxywkhjNhUPzDAlE",
-  authDomain: "codevengers-4c036.firebaseapp.com",
-  projectId: "codevengers-4c036",
-  storageBucket: "codevengers-4c036.firebasestorage.app",
+  authDomain: "scholrboard.firebaseapp.com",
+  projectId: "scholrboard",
+  storageBucket: "scholrboard.firebasestorage.app",
   messagingSenderId: "698897660521",
   appId: "1:698897660521:web:e6fa9e8734bf9e60fd40f8",
   measurementId: "G-77153Y5KZ4"

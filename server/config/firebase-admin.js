@@ -15,7 +15,7 @@ try {
     // Initialize Firebase Admin only if it hasn't been initialized
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      projectId: "codevengers-4c036"
+      projectId: serviceAccount.project_id
     });
     console.log('Firebase Admin SDK initialized successfully');
   }
