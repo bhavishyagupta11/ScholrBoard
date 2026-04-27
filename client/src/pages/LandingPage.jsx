@@ -54,7 +54,7 @@ export function LandingPage() {
 			
 			<header className="glass-nav fixed top-4 left-0 right-0 z-50 flex justify-center">
 				<div className="max-w-6xl w-full mx-auto px-6 flex justify-between items-center">
-					<a href="/" className="text-2xl font-bold text-white flex-shrink-0"><span style={{color:'#58A6FF'}}>CODE</span><span style={{color:'#39C5E4'}}>VENGERS</span></a>
+					<a href="/" className="text-2xl font-bold text-white flex-shrink-0"><span style={{color:'#58A6FF'}}>Scholr</span><span style={{color:'#39C5E4'}}>Board</span></a>
 					<div className="hidden md:flex items-center header-pill-container rounded-full px-4 py-2 relative">
 						<nav className="flex items-center text-sm space-x-2">
 							<a href="#features" className="text-gray-300 hover:text-white transition-colors px-3 py-1 rounded-full hover:bg:white/10">Use Cases</a>
@@ -147,7 +147,7 @@ export function LandingPage() {
                 <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent"> Achievement</span>.
             </h1>
 							<p className="text-lg md:text-xl leading-relaxed mb-8 mx-auto max-w-4xl" style={{color:'var(--text-secondary)'}}>
-								Transform scattered data into verified portfolios of success. From Day 1 to graduation, CODEVENGERS is the command center for every student's journey.
+								Transform scattered data into verified portfolios of success. From Day 1 to graduation, ScholrBoard is the command center for every student's journey.
 							</p>
 							<div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
 								<Link 
@@ -201,7 +201,7 @@ export function LandingPage() {
 								<span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent"> Growth</span>
 							</h2>
 							<p className="text-lg mx-auto leading-relaxed" style={{color:'var(--text-secondary)', maxWidth:'48rem'}}>
-								From institutional reporting to student career readiness, CODEVENGERS covers every use case with precision and efficiency.
+								From institutional reporting to student career readiness, ScholrBoard covers every use case with precision and efficiency.
 							</p>
 						</div>
 						<div ref={featuresContainerRef} className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mt-16">
@@ -385,13 +385,13 @@ export function LandingPage() {
 							</div>
 							<h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
 								Get Started with 
-								<span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent"> CODEVENGERS</span>
+								<span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent"> ScholrBoard</span>
 							</h2>
 							<p className="text-lg mx-auto leading-relaxed mb-10" style={{color:'var(--text-secondary)', maxWidth:'48rem'}}>
 								Modernize your institution and empower your students. Schedule a personalized demo today and see the future of education.
 							</p>
 							<div className="flex flex-col sm:flex-row gap-4 justify-center">
-								<a href="mailto:demo@codevengers.com" className="group inline-flex items-center gap-2 px-8 py-4 rounded-lg font-semibold text-white transition-all duration-300 hover:scale-105" style={{background:'linear-gradient(135deg, #2563eb, #1d4ed8)', boxShadow:'0 8px 25px rgba(37, 99, 235, 0.3)'}}>
+								<a href="mailto:demo@scholrboard.com" className="group inline-flex items-center gap-2 px-8 py-4 rounded-lg font-semibold text-white transition-all duration-300 hover:scale-105" style={{background:'linear-gradient(135deg, #2563eb, #1d4ed8)', boxShadow:'0 8px 25px rgba(37, 99, 235, 0.3)'}}>
 									<span>Request a Demo</span>
 									<ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
 								</a>
@@ -413,23 +413,20 @@ export function LandingPage() {
 					<div>
 						<div className="font-semibold text-white mb-2">About Us</div>
 						<p style={{color:'var(--text-secondary)'}}>
-							CODEVENGERS builds modern academic platforms to empower students and institutions.
+							ScholrBoard builds modern academic platforms to empower students and institutions.
 						</p>
 					</div>
 					<div>
-						<div className="font-semibold text-white mb-2">Team Members</div>
+						<div className="font-semibold text-white mb-2">Platform</div>
 						<ul className="space-y-1" style={{color:'var(--text-secondary)'}}>
-							<li>Bhavishya Gupta</li>
-							<li>Vipul Agarwal</li>
-							<li>Kushal Agarwal</li>
-							<li>Snehil Khokhar</li>
-							<li>Puru Gupta</li>
-							<li>Shagun</li>
+							<li>Student Profiles</li>
+							<li>Faculty Verification</li>
+							<li>Institution Analytics</li>
 						</ul>
 					</div>
 					<div>
-						<div className="font-semibold text-white mb-2">Made By</div>
-						<div>CODEVENGERS</div>
+						<div className="font-semibold text-white mb-2">Made For</div>
+						<div>ScholrBoard Institutions</div>
 					</div>
 				</div>
 				<div className="max-w-6xl mx-auto px-6 text-center mt-8" style={{color:'var(--text-secondary)'}}>

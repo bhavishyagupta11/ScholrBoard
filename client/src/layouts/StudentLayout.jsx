@@ -17,7 +17,7 @@ export function StudentLayout() {
 		<div className="min-h-screen grid md:grid-cols-[240px_1fr]">
 			<aside className="p-4" style={{background:'var(--bg-medium)', borderRight:'1px solid var(--border-color)'}}>
 				<div className="mb-6">
-					<a href="/" className="text-xl font-bold text-brand-blue">CODEVENGERS</a>
+					<a href="/" className="text-xl font-bold text-brand-blue">ScholrBoard</a>
 					<div className="text-xs" style={{color:'var(--text-secondary)'}}>JECRC University</div>
 				</div>
 				<nav className="flex flex-col gap-1">

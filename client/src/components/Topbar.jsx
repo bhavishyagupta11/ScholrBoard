@@ -38,7 +38,7 @@ export function Topbar() {
 				];
 			default:
 				return [
-					{ id: 1, t: 'Welcome to CODEVENGERS', time: 'Just now' },
+					{ id: 1, t: 'Welcome to ScholrBoard', time: 'Just now' },
 				];
 		}
 	};

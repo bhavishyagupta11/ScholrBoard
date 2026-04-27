@@ -62,11 +62,11 @@ const ScrollRevealDemo = () => {
       <section className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            CODEVENGERS 
+            ScholrBoard 
             <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent"> Platform Features</span>
           </h2>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-            Discover the comprehensive features that make CODEVENGERS the ultimate student achievement platform.
+            Discover the comprehensive features that make ScholrBoard the ultimate student achievement platform.
           </p>
         </div>
 

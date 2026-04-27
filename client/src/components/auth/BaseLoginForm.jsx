@@ -69,7 +69,7 @@ export function BaseLoginForm({ role, additionalFields = [], disableSignup = fal
           <GraduationCap className="text-brand-blue" />
           <div>
             <div className="text-lg font-semibold text-brand-blue">JECRC University</div>
-            <div className="text-sm" style={{color:'var(--text-secondary)'}}>CODEVENGERS Platform</div>
+            <div className="text-sm" style={{color:'var(--text-secondary)'}}>ScholrBoard Platform</div>
           </div>
         </div>
 

@@ -23,7 +23,7 @@ export function FacultyLayout() {
 			{/* Sidebar */}
 			<aside className="p-6" style={{background:'var(--bg-medium)', borderRight:'1px solid var(--border-color)'}}>
 				<div className="mb-8">
-					<a href="/" className="text-2xl font-bold" style={{color:'var(--primary-blue)'}}>CODEVENGERS</a>
+					<a href="/" className="text-2xl font-bold" style={{color:'var(--primary-blue)'}}>ScholrBoard</a>
 					<div className="text-sm mt-1" style={{color:'var(--text-secondary)'}}>JECRC University</div>
 					<div className="text-xs mt-1" style={{color:'var(--text-secondary)'}}>Faculty Portal</div>
 				</div>
