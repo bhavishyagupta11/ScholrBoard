@@ -21,7 +21,7 @@ export function AdminLayout() {
 	return (
 		<div className="min-h-screen grid md:grid-cols-[280px_1fr]">
 			{/* Sidebar */}
-			<aside className="p-6" style={{background:'rgba(255,255,255,0.86)', borderRight:'1px solid var(--border-color)'}}>
+			<aside className="p-6" style={{background:'var(--surface-glass)', borderRight:'1px solid var(--border-color)'}}>
 				<div className="mb-8">
 					<a href="/" className="text-2xl font-bold" style={{color:'var(--primary-blue)'}}>ScholrBoard</a>
 					<div className="text-sm mt-1" style={{color:'var(--text-secondary)'}}>JECRC University</div>

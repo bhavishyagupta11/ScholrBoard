@@ -20,7 +20,7 @@ export function StudentLayout() {
 
 	return (
 		<div className="min-h-screen grid md:grid-cols-[240px_1fr]">
-			<aside className="p-4" style={{background:'rgba(255,255,255,0.86)', borderRight:'1px solid var(--border-color)'}}>
+			<aside className="p-4" style={{background:'var(--surface-glass)', borderRight:'1px solid var(--border-color)'}}>
 				<div className="mb-6">
 					<a href="/" className="text-xl font-bold text-brand-blue">ScholrBoard</a>
 					<div className="text-xs" style={{color:'var(--text-secondary)'}}>JECRC University</div>
