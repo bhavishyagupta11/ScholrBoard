@@ -8,7 +8,7 @@ const data = [
 	{ name: 'Academic', value: 70 },
 	{ name: 'Activities', value: 30 },
 ];
-const COLORS = ['#1e40af', '#047857'];
+const COLORS = ['var(--primary-blue)', 'var(--primary-orange)'];
 
 export function DashboardPage() {
 	const { profile } = useProfile();
@@ -87,7 +87,7 @@ export function DashboardPage() {
 			<div ref={statsContainerRef} className="grid md:grid-cols-4 gap-4">
 				<div ref={setStatRef(0)} className="card p-4 gpu-accelerated hover:scale-105 transition-transform">
 					<div className="text-sm subtle">GPA</div>
-					<div className="text-3xl font-bold" style={{color:'#58A6FF'}}>{countGpa}</div>
+					<div className="text-3xl font-bold" style={{color:'var(--primary-blue)'}}>{countGpa}</div>
 					<div className="text-xs subtle">Last semester: 8.5</div>
 				</div>
 				<div ref={setStatRef(1)} className="card p-4 gpu-accelerated hover:scale-105 transition-transform">
@@ -102,7 +102,7 @@ export function DashboardPage() {
 				</div>
 				<div ref={setStatRef(3)} className="card p-4 gpu-accelerated hover:scale-105 transition-transform">
 					<div className="text-sm subtle">Coding Problems</div>
-					<div className="text-3xl font-bold" style={{color:'#39C5E4'}}>{Math.round(countCoding)}</div>
+					<div className="text-3xl font-bold" style={{color:'var(--primary-blue)'}}>{Math.round(countCoding)}</div>
 					<div className="text-xs subtle">+17 this week</div>
 				</div>
 			</div>
@@ -242,10 +242,10 @@ export function DashboardPage() {
 					<div className="h-56">
 						<ResponsiveContainer width="100%" height="100%">
 							<BarChart data={contributions}>
-								<CartesianGrid strokeDasharray="3 3" stroke="#283141" />
-								<XAxis dataKey="d" stroke="#8B949E" tick={{fontSize:12}}/>
+								<CartesianGrid strokeDasharray="3 3" stroke="rgba(122, 102, 80, 0.35)" />
+								<XAxis dataKey="d" stroke="var(--text-secondary)" tick={{fontSize:12}}/>
 								<Tooltip />
-								<Bar dataKey="c" fill="#58A6FF" />
+								<Bar dataKey="c" fill="var(--primary-blue)" />
 							</BarChart>
 						</ResponsiveContainer>
 					</div>

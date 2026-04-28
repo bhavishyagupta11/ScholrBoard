@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { ChevronDown, LayoutGrid, BarChart2, ArrowRight, Sparkles, Zap, Target } from 'lucide-react';
+import { ChevronDown, LayoutGrid, BarChart2, ArrowRight, Sparkles, Zap, Target, Sun, Moon } from 'lucide-react';
 import { useScrollAnimation, useStaggeredAnimation } from '../hooks/useScrollAnimation.js';
 import ScrollRevealDemo from '../components/ScrollRevealDemo.jsx';
 import { useFirebaseAuth } from '../contexts/FirebaseAuthContext.jsx';
@@ -9,6 +9,7 @@ export function LandingPage() {
 	const [mobileOpen, setMobileOpen] = useState(false);
 	const [customersOpen, setCustomersOpen] = useState(false);
 	const [scrollProgress, setScrollProgress] = useState(0);
+	const [theme, setTheme] = useState(() => document.documentElement.getAttribute('data-theme') || 'light');
 	const { user, logout } = useFirebaseAuth();
 	
 	const role = user?.role || localStorage.getItem('role');
@@ -25,6 +26,21 @@ export function LandingPage() {
 	const handleLogout = async () => {
 		await logout();
 		window.location.href = '/';
+	};
+
+	useEffect(() => {
+		const savedTheme = localStorage.getItem('theme');
+		const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+		const nextTheme = savedTheme || (prefersDark ? 'dark' : 'light');
+		setTheme(nextTheme);
+		document.documentElement.setAttribute('data-theme', nextTheme);
+	}, []);
+
+	const toggleTheme = () => {
+		const nextTheme = theme === 'dark' ? 'light' : 'dark';
+		setTheme(nextTheme);
+		document.documentElement.setAttribute('data-theme', nextTheme);
+		localStorage.setItem('theme', nextTheme);
 	};
 
 	// Enhanced scroll animation hooks with directions
@@ -93,7 +109,17 @@ export function LandingPage() {
 							<Link to="/login" className="text-slate-600 hover:text-blue-700 transition-colors text-sm font-medium px-3 py-1">Login</Link>
 						)}
 					</div>
-					<div className="hidden md:flex items-center space-x-4 flex-shrink-0" />
+					<div className="hidden md:flex items-center space-x-3 flex-shrink-0">
+						<button
+							onClick={toggleTheme}
+							className="inline-flex items-center gap-2 px-3 py-2 rounded-full border text-sm font-medium transition-colors hover:bg-orange-50"
+							style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
+							aria-label="Toggle dark and light theme"
+						>
+							{theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+							<span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
+						</button>
+					</div>
 					<button className="md:hidden text-slate-800" onClick={()=>setMobileOpen(!mobileOpen)}>☰</button>
 				</div>
 			</header>
@@ -106,6 +132,14 @@ export function LandingPage() {
 						<a href="#" className="block py-3 text-lg text-slate-700 hover:text-blue-700" onClick={()=>setMobileOpen(false)}>Customers</a>
 						<a href="#contact" className="block py-3 text-lg text-slate-700 hover:text-blue-700" onClick={()=>setMobileOpen(false)}>Contact</a>
 						<div className="my-4" style={{borderTop:'1px solid var(--border-color)'}} />
+						<button
+							onClick={toggleTheme}
+							className="inline-flex items-center gap-2 py-3 text-lg"
+							style={{ color: 'var(--text-secondary)' }}
+						>
+							{theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+							<span>{theme === 'dark' ? 'Light theme' : 'Dark theme'}</span>
+						</button>
 						{role ? (
 							<div className="space-y-2">
 								<Link 
@@ -135,7 +169,7 @@ export function LandingPage() {
 			)}
 
 			<main>
-				<section className="relative pt-36 pb-20 overflow-hidden" style={{background:"linear-gradient(180deg, rgba(255,255,255,0.94), rgba(246,249,253,0.82))"}}>
+				<section className="relative pt-36 pb-20 overflow-hidden" style={{background:"linear-gradient(180deg, color-mix(in srgb, var(--bg-medium) 94%, transparent), color-mix(in srgb, var(--bg-dark) 82%, transparent))"}}>
 					<div className="max-w-6xl mx-auto px-6">
 						<div ref={heroRef} className="gpu-accelerated relative" style={{opacity: 1}}>
 							<div className="inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-sm font-medium">
@@ -152,7 +186,7 @@ export function LandingPage() {
 								<Link 
 									to={role ? getDashboardPath() : '/login'} 
 									className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-lg font-bold text-white transition-all duration-300 hover:-translate-y-0.5 text-base" 
-									style={{background:'var(--primary-blue)', boxShadow:'0 12px 24px rgba(37, 99, 235, 0.18)'}}
+									style={{background:'var(--primary-blue)', boxShadow:'0 12px 24px rgba(var(--primary-rgb), 0.26)'}}
 								>
 									<LayoutGrid className="w-5 h-5" />
 									<span>{role ? 'Open Dashboard' : 'Get Started'}</span>
@@ -188,7 +222,7 @@ export function LandingPage() {
 				</section>
 
 				<section id="features" className="py-24 relative">
-					<div className="absolute inset-0" style={{background:'linear-gradient(180deg, transparent, rgba(239,246,255,0.7), transparent)'}}></div>
+					<div className="absolute inset-0" style={{background:'linear-gradient(180deg, transparent, rgba(var(--primary-rgb),0.11), transparent)'}}></div>
 					<div className="max-w-6xl mx-auto px-6 text-center relative">
 						<div ref={featuresRef} className="gpu-accelerated">
 							<div className="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-sm font-medium">
@@ -233,18 +267,8 @@ export function LandingPage() {
 									}}
 									style={{
 										border: '1px solid var(--border-color)',
-										background: 'rgba(255,255,255,0.94)',
+										background: 'var(--surface-card)',
 										transition: 'all 0.25s ease'
-									}}
-									onMouseEnter={(e) => {
-										e.currentTarget.style.borderColor = 'rgba(37, 99, 235, 0.28)';
-										e.currentTarget.style.background = 'linear-gradient(145deg, rgba(255,255,255,0.98), rgba(239, 246, 255, 0.78))';
-										e.currentTarget.style.boxShadow = '0 16px 34px rgba(15, 23, 42, 0.10)';
-									}}
-									onMouseLeave={(e) => {
-										e.currentTarget.style.borderColor = 'var(--border-color)';
-										e.currentTarget.style.background = 'rgba(255,255,255,0.94)';
-										e.currentTarget.style.boxShadow = '0 10px 28px rgba(15, 23, 42, 0.08)';
 									}}
 								>
 									<div className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:scale-105 transition-transform duration-300" style={{background:f.iconBg}}>
@@ -276,7 +300,7 @@ export function LandingPage() {
 				</section>
 
 				<section id="prototype" className="py-16 relative">
-					<div className="absolute inset-0" style={{background:'linear-gradient(180deg, transparent, rgba(239,246,255,0.75), transparent)'}}></div>
+					<div className="absolute inset-0" style={{background:'linear-gradient(180deg, transparent, rgba(var(--primary-rgb),0.12), transparent)'}}></div>
 					<div className="max-w-6xl mx-auto px-6 text-center relative">
 						<div ref={prototypeRef} className="gpu-accelerated">
 							<div className="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-full bg-blue-100 border border-blue-200 text-blue-700 text-sm font-medium">
@@ -360,9 +384,9 @@ export function LandingPage() {
 				</section>
 
 				<section id="contact" className="py-20 relative">
-					<div className="absolute inset-0" style={{background:'linear-gradient(180deg, transparent, rgba(239,246,255,0.75), transparent)'}}></div>
+					<div className="absolute inset-0" style={{background:'linear-gradient(180deg, transparent, rgba(var(--primary-rgb),0.12), transparent)'}}></div>
 					<div className="max-w-6xl mx-auto px-6 text-center relative">
-						<div ref={contactRef} className="p-12 rounded-xl gpu-accelerated" style={{background:'linear-gradient(145deg, rgba(255,255,255,0.98), rgba(239, 246, 255, 0.8))', border:'1px solid var(--border-color)', boxShadow:'0 18px 42px rgba(15, 23, 42, 0.10)'}}>
+						<div ref={contactRef} className="p-12 rounded-xl gpu-accelerated" style={{background:'linear-gradient(145deg, color-mix(in srgb, var(--bg-medium) 98%, transparent), rgba(var(--primary-rgb), 0.14))', border:'1px solid var(--border-color)', boxShadow:'0 18px 42px rgba(var(--primary-rgb), 0.2)'}}>
 							<div className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-sm font-medium">
 								<Sparkles className="w-4 h-4" />
 								<span>Ready to Transform?</span>
@@ -375,7 +399,7 @@ export function LandingPage() {
 								Modernize your institution and empower your students. Schedule a personalized demo today and see the future of education.
 							</p>
 							<div className="flex flex-col sm:flex-row gap-4 justify-center">
-								<a href="mailto:demo@scholrboard.com" className="group inline-flex items-center gap-2 px-8 py-4 rounded-lg font-semibold text-white transition-all duration-300 hover:-translate-y-0.5" style={{background:'var(--primary-blue)', boxShadow:'0 12px 24px rgba(37, 99, 235, 0.18)'}}>
+								<a href="mailto:demo@scholrboard.com" className="group inline-flex items-center gap-2 px-8 py-4 rounded-lg font-semibold text-white transition-all duration-300 hover:-translate-y-0.5" style={{background:'var(--primary-blue)', boxShadow:'0 12px 24px rgba(var(--primary-rgb), 0.26)'}}>
 									<span>Request a Demo</span>
 									<ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
 								</a>
