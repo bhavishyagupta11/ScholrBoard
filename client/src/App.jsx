@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import './App.css';
 import { ProfileProvider } from './contexts/ProfileContext.jsx';
 import { FirebaseAuthProvider, useFirebaseAuth } from './contexts/FirebaseAuthContext';
@@ -61,6 +62,12 @@ import { AdminEvents } from './pages/AdminEvents.jsx';
 import { VerifierPage } from './pages/VerifierPage.jsx';
 
 export default function App() {
+	useEffect(() => {
+		const savedTheme = localStorage.getItem('theme');
+		const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+		document.documentElement.setAttribute('data-theme', savedTheme || (prefersDark ? 'dark' : 'light'));
+	}, []);
+
 	return (
 		<FirebaseAuthProvider>
 			<ProfileProvider>

@@ -109,16 +109,20 @@ export function Topbar() {
 		return suggestions.filter(s => s.label.toLowerCase().includes(q.toLowerCase()));
 	}, [q, suggestions]);
 	return (
-		<header className="sticky top-0 z-10 border-b border-[var(--border-color)] bg-white/80 backdrop-blur">
-			<div className="px-4 py-3 flex items-center gap-4">
-				<div className="hidden md:block text-sm flex items-center h-10" style={{color:'var(--text-secondary)'}}>Logged in as <span className="font-medium capitalize ml-1" style={{color:'var(--color-brand-light)'}}>{role}</span></div>
-				<div className="flex-1 max-w-xl relative">
-					<div className="relative flex items-center bg-white rounded-lg border border-slate-200 shadow-sm">
+		<header className="sticky top-0 z-10 border-b border-[var(--border-color)]" style={{ background: 'var(--surface-glass)' }}>
+			<div className="px-6 h-16 flex items-center gap-5">
+				<div className="hidden md:flex items-center min-w-[170px] text-sm whitespace-nowrap" style={{color:'var(--text-secondary)'}}>
+					Logged in as
+					<span className="font-semibold capitalize ml-2" style={{color:'var(--text-primary)'}}>{role}</span>
+				</div>
+				<div className="flex-1 max-w-2xl relative">
+					<div className="relative flex items-center rounded-lg border shadow-sm" style={{ background: 'var(--surface-card)', borderColor: 'var(--border-color)' }}>
 						<div className="flex items-center justify-center w-10 h-10">
-							<Search size={18} color="#8B949E" />
+							<Search size={18} color="var(--text-secondary)" />
 						</div>
 						<input
-							className="flex-1 bg-transparent px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none"
+							className="topbar-search-input flex-1 bg-transparent px-3 py-2 text-sm focus:outline-none"
+							style={{ color: 'var(--text-primary)' }}
 							value={q}
 							onChange={e=>{ setQ(e.target.value); setShowSearch(true); }}
 							onFocus={()=>setShowSearch(true)}
@@ -142,7 +146,7 @@ export function Topbar() {
 				</div>
 				<div className="relative">
 					<button className="btn btn-outline relative h-12 w-12 flex items-center justify-center" title="Notifications" onClick={()=>setOpen(v=>!v)}>
-						<Bell size={22} color="#E6EDF3" />
+						<Bell size={20} color="var(--text-primary)" />
 						<span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full text-[10px] bg-red-500 text-white grid place-items-center">{notifications.length}</span>
 					</button>
 					{open && (
@@ -165,7 +169,7 @@ export function Topbar() {
 				<div className="relative">
 					<button 
 						className="h-10 w-10 rounded-full grid place-items-center" 
-						style={{backgroundColor:'rgba(37,99,235,0.10)', color:'var(--primary-blue)'}} 
+						style={{backgroundColor:'var(--accent-soft)', color:'var(--primary-blue)', border: '1px solid rgba(var(--primary-rgb), 0.35)'}} 
 						title="Profile" 
 						onClick={() => setShowProfileMenu(v => !v)}
 					>
