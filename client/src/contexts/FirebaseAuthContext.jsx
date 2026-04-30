@@ -153,8 +153,8 @@ export function FirebaseAuthProvider({ children }) {
         throw new Error(errorData.message || 'Failed to create user in backend');
       }
 
-      const userData = await response.json();
-      const combinedUser = { ...userCredential.user, ...userData };
+      const backendUserData = await response.json();
+      const combinedUser = { ...userCredential.user, ...backendUserData };
       cacheUser(combinedUser);
       setUser(combinedUser);
       return combinedUser;
