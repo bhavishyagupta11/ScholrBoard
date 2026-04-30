@@ -1,10 +1,12 @@
 import express from 'express'
 import cors from 'cors'
-import 'dotenv/config'
+import dotenv from 'dotenv'
 import connectDB from './config/db.js';
 import { errorHandler, notFound } from './middleware/error.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
+
+dotenv.config({ path: new URL('.env', import.meta.url) });
 
 const app = express();
 

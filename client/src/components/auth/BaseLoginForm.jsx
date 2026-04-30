@@ -33,8 +33,6 @@ export function BaseLoginForm({ role, additionalFields = [], disableSignup = fal
     
     try {
       setIsLoading(true);
-      console.log('Attempting login...', { email: formData.email, role });
-      
       // Login with Firebase
       const loggedInUser = await login(formData.email, formData.password);
 
@@ -48,10 +46,8 @@ export function BaseLoginForm({ role, additionalFields = [], disableSignup = fal
       }
 
       // Navigate to dashboard
-      console.log('Login successful, navigating to dashboard...');
       navigate(role === 'student' ? '/student/dashboard' : `/${role}`, { replace: true });
     } catch (err) {
-      console.error('Login error:', err);
       setError(err.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);

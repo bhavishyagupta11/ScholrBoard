@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useCallback, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext(undefined);
 
@@ -10,22 +10,14 @@ export function AuthProvider({ children }) {
 	const [user, setUser] = useState(null);
 	const [isLoading, setIsLoading] = useState(true);
 
-	useEffect(() => {
-		try {
-			const token = localStorage.getItem("token");
-			if (token) {
-				// Validate token and fetch user data
-				validateToken(token);
-			} else {
-				setIsLoading(false);
-			}
-		} catch (error) {
-			console.error("Auth initialization error:", error);
-			setIsLoading(false);
-		}
+	const logout = useCallback(() => {
+		setUser(null);
+		setRole(null);
+		setIsAuthenticated(false);
+		localStorage.removeItem("token");
 	}, []);
 
-	const validateToken = async (token) => {
+	const validateToken = useCallback(async (token) => {
 		try {
 			const response = await fetch(`${API_URL}/auth/profile`, {
 				headers: {
@@ -47,7 +39,22 @@ export function AuthProvider({ children }) {
 		} finally {
 			setIsLoading(false);
 		}
-	};
+	}, [logout]);
+
+	useEffect(() => {
+		try {
+			const token = localStorage.getItem("token");
+			if (token) {
+				// Validate token and fetch user data
+				validateToken(token);
+			} else {
+				setIsLoading(false);
+			}
+		} catch (error) {
+			console.error("Auth initialization error:", error);
+			setIsLoading(false);
+		}
+	}, [validateToken]);
 
 	const login = async (email, password, userRole, additionalData = {}) => {
 		try {
@@ -106,13 +113,6 @@ export function AuthProvider({ children }) {
 			console.error("Registration error:", error);
 			throw error;
 		}
-	};
-
-	const logout = () => {
-		setUser(null);
-		setRole(null);
-		setIsAuthenticated(false);
-		localStorage.removeItem("token");
 	};
 
 	return (

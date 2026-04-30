@@ -1,10 +1,6 @@
 import admin from '../config/firebase-admin.js';
 
 const firebaseAuth = async (req, res, next) => {
-  console.log('Verifying token...');
-  console.log('Headers:', req.headers);
-  console.log('Body:', req.body);
-
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     

@@ -18,7 +18,9 @@ const getCachedUser = (firebaseUid) => {
     const cached = JSON.parse(localStorage.getItem(AUTH_CACHE_KEY) || 'null');
     if (cached && (!firebaseUid || cached.firebaseUid === firebaseUid)) return cached;
   } catch (error) {
-    console.warn('Unable to read cached auth user:', error);
+    if (import.meta.env.DEV) {
+      console.warn('Unable to read cached auth user:', error);
+    }
   }
   return null;
 };
@@ -83,14 +85,15 @@ export function FirebaseAuthProvider({ children }) {
             cacheUser(combinedUser);
             setUser(combinedUser); // Combine Firebase and MongoDB user data
           } else {
-            console.error('Failed to sync user data with backend');
             if (!cached?.role) {
               const legacyRole = localStorage.getItem('role');
               setUser(legacyRole ? { ...user, role: legacyRole } : user);
             }
           }
         } catch (error) {
-          console.error('Error syncing user data:', error);
+          if (import.meta.env.DEV) {
+            console.error('Error syncing user data:', error);
+          }
           if (!cached?.role) {
             const legacyRole = localStorage.getItem('role');
             setUser(legacyRole ? { ...user, role: legacyRole } : user);
@@ -110,25 +113,20 @@ export function FirebaseAuthProvider({ children }) {
   const register = async (email, password, userData) => {
     try {
       setError(null);
-      console.log('Starting registration process...', { email, userData });
-      
+
       // Create user in Firebase
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      console.log('Firebase user created:', userCredential.user.uid);
-      
+
       // Update Firebase profile
       await updateProfile(userCredential.user, {
         displayName: userData.name
       });
-      console.log('Firebase profile updated');
 
       // Send email verification
       await sendEmailVerification(userCredential.user);
-      console.log('Verification email sent');
 
       // Get fresh token
       const token = await userCredential.user.getIdToken(true);
-      console.log('Got fresh token');
 
       // Create user in your backend
       const requestBody = {
@@ -136,7 +134,6 @@ export function FirebaseAuthProvider({ children }) {
         firebaseUid: userCredential.user.uid,
         email: userCredential.user.email
       };
-      console.log('Sending backend request:', requestBody);
 
       const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
@@ -149,7 +146,6 @@ export function FirebaseAuthProvider({ children }) {
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Backend registration failed:', errorData);
         throw new Error(errorData.message || 'Failed to create user in backend');
       }
 
@@ -168,11 +164,9 @@ export function FirebaseAuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       setError(null);
-      console.log('Starting login process...', { email });
-      
+
       // Sign in with Firebase
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      console.log('Firebase login successful:', userCredential.user.uid);
 
       // Get fresh ID token
       const token = await userCredential.user.getIdToken(true);
@@ -187,13 +181,11 @@ export function FirebaseAuthProvider({ children }) {
       });
 
       if (!response.ok) {
-        console.error('Failed to sync with backend during login');
         throw new Error('Failed to sync user data');
       }
 
       const userData = await response.json();
-      console.log('Backend sync successful:', userData);
-      
+
       // Update local user state with combined data
       const combinedUser = {
         ...userCredential.user,
@@ -204,7 +196,6 @@ export function FirebaseAuthProvider({ children }) {
 
       return combinedUser;
     } catch (error) {
-      console.error('Login error:', error);
       setError(error.message);
       throw error;
     }

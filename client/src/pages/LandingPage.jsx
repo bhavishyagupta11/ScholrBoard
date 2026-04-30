@@ -262,9 +262,6 @@ export function LandingPage() {
 									key={f.title} 
 									ref={setFeatureRef(index)}
 									className="feature-card surface rounded-xl p-8 cursor-pointer transform transition-all duration-300 hover:-translate-y-1 group gpu-accelerated"
-									onClick={() => {
-										console.log(`Clicked on ${f.title}`);
-									}}
 									style={{
 										border: '1px solid var(--border-color)',
 										background: 'var(--surface-card)',
