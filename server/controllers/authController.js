@@ -1,5 +1,4 @@
 import User from '../models/User.js';
-import admin from '../config/firebase-admin.js';
 
 // Validate role-specific fields
 const validateRoleFields = (role, data) => {
@@ -32,9 +31,6 @@ const validateRoleFields = (role, data) => {
 // @access  Public
 export const registerUser = async (req, res) => {
   try {
-    console.log('Register request body:', req.body);
-    console.log('User from token:', req.user);
-
     const { 
       firebaseUid,
       name, 
@@ -55,19 +51,9 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    // Verify the Firebase token
-    console.log('Token verification:', {
-      userFromToken: req.user,
-      providedUid: firebaseUid,
-      providedEmail: email
-    });
-
     // In development, allow the registration if email matches
     if (process.env.NODE_ENV !== 'production') {
-      if (req.user.email === email) {
-        console.log('Development mode: Allowing registration with matching email');
-      } else {
-        console.log('Development mode: Email mismatch');
+      if (req.user.email !== email) {
         return res.status(401).json({
           message: 'Unauthorized - Email mismatch',
           userFromToken: req.user.email,
@@ -176,7 +162,7 @@ export const syncUserData = async (req, res) => {
 // @access  Private
 export const getUserProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
+    const user = await User.findOne({ firebaseUid: req.user.firebaseUid });
     if (user) {
       res.json({
         _id: user._id,
