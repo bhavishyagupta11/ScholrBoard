@@ -9,45 +9,45 @@
 }
 
 :root {
-  --bg-dark: #fffaf0;
+  --bg-dark: #ffffff;
   --bg-medium: #ffffff;
-  --bg-darker: #fef1d6;
-  --bg-soft: #fff4df;
-  --border-color: #efd8b6;
-  --text-primary: #2f2418;
-  --text-secondary: #7a6650;
+  --bg-darker: #f8fafc;
+  --bg-soft: #f1f5f9;
+  --border-color: #d7dee8;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
   --primary-blue: #f59e0b;
   --primary-cyan: #f59e0b;
   --primary-green: #f59e0b;
   --primary-yellow: #f59e0b;
   --primary-orange: #ea7a10;
   --primary-rgb: 245, 158, 11;
-  --accent-soft: #fff1cf;
-  --accent-soft-hover: #ffead1;
-  --surface-card: rgba(255, 255, 255, 0.92);
-  --surface-glass: rgba(255, 251, 242, 0.9);
-  --shadow-soft: 0 10px 28px rgba(62, 39, 4, 0.08);
-  --shadow-strong: 0 14px 34px rgba(62, 39, 4, 0.11);
+  --accent-soft: #fff4d6;
+  --accent-soft-hover: #ffe8b2;
+  --surface-card: #ffffff;
+  --surface-glass: rgba(255, 255, 255, 0.94);
+  --shadow-soft: 0 10px 28px rgba(15, 23, 42, 0.08);
+  --shadow-strong: 0 14px 34px rgba(15, 23, 42, 0.12);
 }
 
 :root[data-theme="dark"] {
-  --bg-dark: #191109;
-  --bg-medium: #25180e;
-  --bg-darker: #2f1f12;
-  --bg-soft: #3a2616;
-  --border-color: #64452b;
-  --text-primary: #f9e8cf;
-  --text-secondary: #d5b58e;
+  --bg-dark: #000000;
+  --bg-medium: #050505;
+  --bg-darker: #0b0b0b;
+  --bg-soft: #111111;
+  --border-color: #2b2b2b;
+  --text-primary: #ffffff;
+  --text-secondary: #d4d4d4;
   --primary-blue: #ffb423;
   --primary-cyan: #ffb423;
   --primary-green: #ffb423;
   --primary-yellow: #ffb423;
   --primary-orange: #ff922a;
   --primary-rgb: 255, 180, 35;
-  --accent-soft: rgba(255, 180, 35, 0.2);
-  --accent-soft-hover: rgba(255, 180, 35, 0.3);
-  --surface-card: rgba(44, 29, 17, 0.94);
-  --surface-glass: rgba(38, 25, 15, 0.9);
+  --accent-soft: rgba(255, 180, 35, 0.16);
+  --accent-soft-hover: rgba(255, 180, 35, 0.24);
+  --surface-card: #0b0b0b;
+  --surface-glass: rgba(8, 8, 8, 0.96);
   --shadow-soft: 0 10px 28px rgba(0, 0, 0, 0.35);
   --shadow-strong: 0 14px 34px rgba(0, 0, 0, 0.45);
 }
@@ -88,6 +88,10 @@ body {
   background-attachment: fixed;
 }
 
+:root[data-theme="dark"] body {
+  background-image: none;
+}
+
 body::before {
   content: "";
   position: fixed;
@@ -100,6 +104,10 @@ body::before {
   mask-image: linear-gradient(to bottom, black, transparent 70%);
   z-index: -1;
   opacity: 0.75;
+}
+
+:root[data-theme="dark"] body::before {
+  display: none;
 }
 
 #root { position: relative; z-index: 0; }
@@ -471,18 +479,28 @@ html {
 /* Warm theme overrides for commonly used Tailwind classes */
 .text-slate-900,
 .text-slate-800,
-.text-slate-700 {
+.text-slate-700,
+.text-gray-900,
+.text-gray-800,
+.text-gray-700 {
   color: var(--text-primary) !important;
 }
 
 .text-slate-600,
-.text-slate-500 {
+.text-slate-500,
+.text-gray-600,
+.text-gray-500,
+.text-gray-400 {
   color: var(--text-secondary) !important;
 }
 
 .bg-white,
 .bg-white\/80,
-.bg-white\/90 {
+.bg-white\/90,
+.bg-gray-50,
+.bg-gray-100,
+.bg-slate-50,
+.bg-slate-100 {
   background-color: var(--surface-card) !important;
 }
 
@@ -491,7 +509,10 @@ html {
 }
 
 .border-slate-300,
-.border-slate-200 {
+.border-slate-200,
+.border-gray-600,
+.border-gray-300,
+.border-gray-200 {
   border-color: var(--border-color) !important;
 }
 
@@ -500,8 +521,8 @@ html {
   opacity: 0.9;
 }
 
-:root[data-theme="dark"] .card .text-white,
-:root[data-theme="dark"] .surface .text-white {
+:root .card :where(div, p, span, h1, h2, h3, h4, h5, h6).text-white,
+:root .surface :where(div, p, span, h1, h2, h3, h4, h5, h6).text-white {
   color: var(--text-primary) !important;
 }
 
