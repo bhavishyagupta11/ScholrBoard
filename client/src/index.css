@@ -22,6 +22,9 @@
   --primary-yellow: #f59e0b;
   --primary-orange: #ea7a10;
   --primary-rgb: 245, 158, 11;
+  --success-color: #16a34a;
+  --warning-color: #d97706;
+  --danger-color: #dc2626;
   --accent-soft: #fff4d6;
   --accent-soft-hover: #ffe8b2;
   --surface-card: #ffffff;
@@ -44,6 +47,9 @@
   --primary-yellow: #ffb423;
   --primary-orange: #ff922a;
   --primary-rgb: 255, 180, 35;
+  --success-color: #4ade80;
+  --warning-color: #fbbf24;
+  --danger-color: #f87171;
   --accent-soft: rgba(255, 180, 35, 0.16);
   --accent-soft-hover: rgba(255, 180, 35, 0.24);
   --surface-card: #0b0b0b;
@@ -124,8 +130,8 @@ body::after {
 .btn-outline { border: 1px solid var(--border-color); color: var(--text-primary); background-color: transparent; }
 
 .badge { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold; }
-.badge-green { @apply bg-blue-100 text-blue-700 border border-blue-200; }
-.badge-yellow { @apply bg-blue-100 text-blue-700 border border-blue-200; }
+.badge-green { background-color: color-mix(in srgb, var(--success-color) 14%, transparent); color: var(--success-color); border: 1px solid color-mix(in srgb, var(--success-color) 32%, transparent); }
+.badge-yellow { background-color: color-mix(in srgb, var(--warning-color) 14%, transparent); color: var(--warning-color); border: 1px solid color-mix(in srgb, var(--warning-color) 32%, transparent); }
 .badge-red { @apply bg-red-100 text-red-700 border border-red-200; }
 
 .surface { background: var(--surface-glass); border: 1px solid var(--border-color); border-radius: 0.75rem; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
