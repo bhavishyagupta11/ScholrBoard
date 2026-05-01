@@ -234,7 +234,7 @@ export function DashboardPage() {
 							borderLeftColor: suggestion.priority === 'high' ? 'var(--danger-color)' : 'var(--primary-blue)'
 						}}>
 							<div className="text-sm">{suggestion.text}</div>
-							<div className="text-xs mt-1" style={{color: suggestion.priority === 'high' ? '#ef4444' : 'var(--primary-blue)'}}>
+							<div className="text-xs mt-1" style={{color: suggestion.priority === 'high' ? 'var(--danger-color)' : 'var(--primary-blue)'}}>
 								{suggestion.priority.toUpperCase()} PRIORITY
 							</div>
 						</div>
@@ -265,14 +265,14 @@ export function DashboardPage() {
 							<div key={subj.subject}>
 								<div className="flex justify-between text-xs mb-1">
 									<span style={{color:'var(--text-secondary)'}}>{subj.subject}</span>
-									<span style={{color: subj.attendance < 75 ? '#ef4444' : 'var(--primary-blue)'}}>{subj.attendance}%</span>
+									<span style={{color: subj.attendance < 75 ? 'var(--danger-color)' : 'var(--primary-blue)'}}>{subj.attendance}%</span>
 								</div>
 								<div className="w-full bg-slate-700 rounded-full h-1.5">
 									<div 
 										className="h-1.5 rounded-full" 
 										style={{
 											width:`${subj.attendance}%`,
-											backgroundColor: subj.attendance < 75 ? '#ef4444' : 'var(--primary-blue)'
+											backgroundColor: subj.attendance < 75 ? 'var(--danger-color)' : 'var(--primary-blue)'
 										}} 
 									/>
 								</div>
