@@ -1,8 +1,9 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, CartesianGrid } from 'recharts';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useProfile } from '../contexts/ProfileContext.jsx';
-import { useNavigate } from 'react-router-dom';
-import { useScrollAnimation, useStaggeredAnimation, useLegacyScrollAnimation } from '../hooks/useScrollAnimation.js';
+import { Link } from 'react-router-dom';
+import { ArrowRight, BellRing, BriefcaseBusiness, CalendarDays, CheckCircle2, Code2, FileText, GraduationCap, Lightbulb, ShieldCheck, Sparkles, UploadCloud, UsersRound } from 'lucide-react';
+import { useScrollAnimation, useStaggeredAnimation } from '../hooks/useScrollAnimation.js';
 
 const data = [
 	{ name: 'Academic', value: 70 },
@@ -12,7 +13,6 @@ const COLORS = ['var(--primary-blue)', 'var(--primary-orange)'];
 
 export function DashboardPage() {
 	const { profile } = useProfile();
-	const navigate = useNavigate();
 	const [countGpa, setCountGpa] = useState(0);
 	const [countApproved, setCountApproved] = useState(0);
 	const [countPending, setCountPending] = useState(0);
@@ -21,16 +21,27 @@ export function DashboardPage() {
 	// Enhanced scroll animation hooks with directions
 	const headerRef = useScrollAnimation({ direction: 'up', delay: 0.1 });
 	const chartsRef = useScrollAnimation({ direction: 'up', delay: 0.3 });
-	const suggestionsRef = useScrollAnimation({ direction: 'up', delay: 0.4 });
-	const eventsRef = useScrollAnimation({ direction: 'up', delay: 0.5 });
 	
 	// Staggered animations for stats cards
 	const { containerRef: statsContainerRef, setItemRef: setStatRef } = useStaggeredAnimation(4, 0.1);
 	const attendancePct = 92;
-	const contributions = Array.from({ length: 14 }, (_, i) => {
+	const firstName = profile.name?.split(' ')[0] || 'there';
+	const greeting = useMemo(() => {
+		const hour = new Date().getHours();
+		if (hour < 12) return 'Good morning';
+		if (hour < 17) return 'Good afternoon';
+		return 'Good evening';
+	}, []);
+	const contributions = useMemo(() => Array.from({ length: 14 }, (_, i) => {
 		const day = new Date(Date.now() - (13 - i) * 86400000);
-		return { d: day.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), c: Math.floor(Math.random() * 10) };
-	});
+		const seed = (profile.codingStats?.problemsSolved || 250) + i * 7;
+		return { d: day.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), c: (seed % 9) + 1 };
+	}), [profile.codingStats?.problemsSolved]);
+	const nextActions = [
+		{ title: 'Add one proof today', desc: 'Upload certificates, event photos, or links while they are easy to find.', to: '/student/upload', icon: <UploadCloud size={18} /> },
+		{ title: 'Review pending items', desc: 'A quick cleanup now makes faculty approval faster later.', to: '/student/activities', icon: <ShieldCheck size={18} /> },
+		{ title: 'Polish portfolio summary', desc: 'Make your verified work easier for recruiters to scan.', to: '/student/portfolio', icon: <FileText size={18} /> },
+	];
 
 	useEffect(() => {
 		const animate = (setter, target, duration = 800) => {
@@ -64,23 +75,52 @@ export function DashboardPage() {
 
 	return (
 		<div className="space-y-6">
-			<div ref={headerRef} className="flex justify-between items-center gpu-accelerated">
-				<h1 className="headline">Dashboard</h1>
-				<div className="flex gap-2">
-					<button 
-						onClick={() => switchRole('faculty')} 
-						className="btn btn-outline text-xs px-3 py-1 hover:scale-105 transition-transform"
-						title="Switch to Faculty Dashboard"
-					>
-						👨‍🏫 Faculty
-					</button>
-					<button 
-						onClick={() => switchRole('admin')} 
-						className="btn btn-outline text-xs px-3 py-1 hover:scale-105 transition-transform"
-						title="Switch to Admin Dashboard"
-					>
-						👨‍💼 Admin
-					</button>
+			<div ref={headerRef} className="gpu-accelerated rounded-xl border p-5 md:p-6" style={{background:'var(--surface-card)', borderColor:'var(--border-color)', boxShadow:'var(--shadow-soft)'}}>
+				<div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+					<div>
+						<div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold mb-3" style={{background:'var(--accent-soft)', color:'var(--primary-blue)'}}>
+							<Sparkles size={14} />
+							<span>Student workspace</span>
+						</div>
+						<h1 className="headline">{greeting}, {firstName}</h1>
+						<p className="mt-2 max-w-2xl text-sm md:text-base" style={{color:'var(--text-secondary)'}}>
+							Here is what needs attention, what is already verified, and what can make your portfolio stronger this week.
+						</p>
+					</div>
+					<div className="flex flex-wrap gap-2">
+						<button 
+							onClick={() => switchRole('faculty')} 
+							className="btn btn-outline text-xs px-3 py-2"
+							title="Switch to Faculty Dashboard"
+						>
+							<GraduationCap size={15} />
+							Faculty
+						</button>
+						<button 
+							onClick={() => switchRole('admin')} 
+							className="btn btn-outline text-xs px-3 py-2"
+							title="Switch to Admin Dashboard"
+						>
+							<UsersRound size={15} />
+							Admin
+						</button>
+					</div>
+				</div>
+				<div className="grid md:grid-cols-3 gap-3 mt-6">
+					{nextActions.map(action => (
+						<Link key={action.title} to={action.to} className="group rounded-lg border p-4 transition-all hover:-translate-y-0.5" style={{borderColor:'var(--border-color)', background:'var(--bg-medium)'}}>
+							<div className="flex items-start gap-3">
+								<div className="grid h-9 w-9 place-items-center rounded-lg flex-shrink-0" style={{background:'var(--accent-soft)', color:'var(--primary-blue)'}}>{action.icon}</div>
+								<div>
+									<div className="flex items-center gap-2 font-semibold">
+										<span>{action.title}</span>
+										<ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+									</div>
+									<p className="mt-1 text-xs leading-relaxed" style={{color:'var(--text-secondary)'}}>{action.desc}</p>
+								</div>
+							</div>
+						</Link>
+					))}
 				</div>
 			</div>
 
@@ -92,12 +132,12 @@ export function DashboardPage() {
 				</div>
 				<div ref={setStatRef(1)} className="card p-4 gpu-accelerated hover:scale-105 transition-transform">
 					<div className="text-sm subtle">Approved Activities</div>
-					<div className="text-3xl font-bold text-green-400">{Math.round(countApproved)}</div>
+					<div className="text-3xl font-bold" style={{color:'var(--success-color)'}}>{Math.round(countApproved)}</div>
 					<div className="text-xs subtle">+4 in last 30 days</div>
 				</div>
 				<div ref={setStatRef(2)} className="card p-4 gpu-accelerated hover:scale-105 transition-transform">
 					<div className="text-sm subtle">Pending</div>
-					<div className="text-3xl font-bold text-yellow-300">{Math.round(countPending)}</div>
+					<div className="text-3xl font-bold" style={{color:'var(--warning-color)'}}>{Math.round(countPending)}</div>
 					<div className="text-xs subtle">Average review time: 2.3 days</div>
 				</div>
 				<div ref={setStatRef(3)} className="card p-4 gpu-accelerated hover:scale-105 transition-transform">
@@ -166,29 +206,32 @@ export function DashboardPage() {
 
 			<div className="grid md:grid-cols-3 gap-4">
 				{[
-					{ title:'Portfolio', desc:'View and share your verified portfolio', to:'/student/portfolio' },
-					{ title:'Coding Profiles', desc:'See your coding stats across platforms', to:'/student/coding' },
-					{ title:'Resume Import', desc:'Auto-fill details from your resume', to:'/student/resume' },
+					{ title:'Portfolio', desc:'View and share your verified portfolio', to:'/student/portfolio', icon:<FileText size={18} /> },
+					{ title:'Coding Profiles', desc:'See your coding stats across platforms', to:'/student/coding', icon:<Code2 size={18} /> },
+					{ title:'Resume Import', desc:'Auto-fill details from your resume', to:'/student/resume', icon:<UploadCloud size={18} /> },
 				].map(c => (
-					<a key={c.title} href={c.to} className="card p-4 block hover:opacity-90">
+					<Link key={c.title} to={c.to} className="card p-4 flex items-start gap-3 hover:opacity-90">
+						<div className="grid h-9 w-9 place-items-center rounded-lg flex-shrink-0" style={{background:'var(--accent-soft)', color:'var(--primary-blue)'}}>{c.icon}</div>
+						<div>
 						<div className="font-semibold">{c.title}</div>
 						<div className="text-sm subtle">{c.desc}</div>
-					</a>
+						</div>
+					</Link>
 				))}
 			</div>
 
 			<div className="card p-4 fade-in-up" style={{animationDelay:'480ms'}}>
-				<div className="font-medium mb-3">📊 Smart Suggestions</div>
+				<div className="font-medium mb-3 flex items-center gap-2"><Lightbulb size={18} /> Smart Suggestions</div>
 				<div className="space-y-3">
 					{[
-						{ type: 'skill', text: 'Based on your CS profile, consider learning React.js to boost your web development portfolio', priority: 'high' },
-						{ type: 'activity', text: 'You have strong coding skills but low community involvement. Try joining technical clubs', priority: 'medium' },
-						{ type: 'career', text: 'Your profile matches 85% with Software Engineer roles. Update your resume for better matches', priority: 'high' },
-						{ type: 'academic', text: 'Attendance in Software Engineering is 86%. Aim for 90+ to maintain good standing', priority: 'low' }
+						{ text: 'Add one React project note with your role, outcome, and GitHub link so reviewers can understand the work quickly.', priority: 'high' },
+						{ text: 'Your technical record is strong. Add one community or leadership entry to make the profile feel more complete.', priority: 'medium' },
+						{ text: 'Your profile matches software engineering roles well. Refresh your resume summary before sharing it.', priority: 'high' },
+						{ text: 'Software Engineering attendance is at 86%. A steady week can move it closer to your 90% target.', priority: 'low' }
 					].map((suggestion, i) => (
 						<div key={i} className="p-3 rounded-md border-l-4" style={{
 							background: 'var(--bg-medium)',
-							borderLeftColor: suggestion.priority === 'high' ? '#ef4444' : 'var(--primary-blue)'
+							borderLeftColor: suggestion.priority === 'high' ? 'var(--danger-color)' : 'var(--primary-blue)'
 						}}>
 							<div className="text-sm">{suggestion.text}</div>
 							<div className="text-xs mt-1" style={{color: suggestion.priority === 'high' ? '#ef4444' : 'var(--primary-blue)'}}>
@@ -254,7 +297,7 @@ export function DashboardPage() {
 
 			<div className="grid md:grid-cols-2 gap-4">
 				<div className="card p-4 fade-in-up" style={{animationDelay:'540ms'}}>
-					<div className="font-medium mb-3">💼 Placements & Internships</div>
+					<div className="font-medium mb-3 flex items-center gap-2"><BriefcaseBusiness size={18} /> Placements & Internships</div>
 					<div className="space-y-3">
 						{[
 							{ company: 'TCS', role: 'Software Engineer', type: 'Full-time', deadline: '2025-02-15', package: '7.5 LPA' },
@@ -285,7 +328,7 @@ export function DashboardPage() {
 				</div>
 
 				<div className="card p-4 fade-in-up" style={{animationDelay:'600ms'}}>
-					<div className="font-medium mb-3">🎉 Upcoming Events</div>
+					<div className="font-medium mb-3 flex items-center gap-2"><CalendarDays size={18} /> Upcoming Events</div>
 					<div className="space-y-3">
 						{[
 							{ event: 'Tech Fest 2025', date: '2025-02-10', time: '9:00 AM', venue: 'Main Auditorium', faculty: 'Dr. Sharma' },
@@ -298,8 +341,8 @@ export function DashboardPage() {
 								<div className="text-xs" style={{color:'var(--text-secondary)'}}>Venue: {event.venue}</div>
 								<div className="text-xs" style={{color:'var(--text-secondary)'}}>Contact: {event.faculty}</div>
 								<div className="mt-2 flex gap-2">
-									<button className="btn btn-primary text-xs px-3 py-1">Register</button>
-									<button className="btn btn-outline text-xs px-3 py-1">Contact Faculty</button>
+									<button className="btn btn-primary text-xs px-3 py-1"><CheckCircle2 size={13} /> Register</button>
+									<button className="btn btn-outline text-xs px-3 py-1"><BellRing size={13} /> Remind me</button>
 								</div>
 							</div>
 						))}
