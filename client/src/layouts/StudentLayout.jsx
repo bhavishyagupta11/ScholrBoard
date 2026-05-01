@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Upload, Table2, UserSquare2, LogOut } from 'lucide-react';
+import { Code2, FileText, Home, LayoutDashboard, Upload, Table2, UserSquare2, LogOut } from 'lucide-react';
 import { Topbar } from '../components/Topbar.jsx';
 import { useFirebaseAuth } from '../contexts/FirebaseAuthContext.jsx';
 
@@ -26,8 +26,8 @@ export function StudentLayout() {
 					<div className="text-xs" style={{color:'var(--text-secondary)'}}>JECRC University</div>
 				</div>
 				<nav className="flex flex-col gap-1">
-					<a href="/landing" className={navLinkClass({ isActive: false })}>🏠 Homepage</a>
-					<NavLink to="/student/dashboard" className={`${navLinkClass} relative overflow-hidden group`}>
+					<a href="/landing" className={navLinkClass({ isActive: false })}><Home size={18}/> Homepage</a>
+					<NavLink to="/student/dashboard" className={(state) => `${navLinkClass(state)} relative overflow-hidden group`}>
 						<div className="absolute inset-0 bg-blue-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 						<div className="relative z-10 flex items-center gap-3">
 							<LayoutDashboard size={20} className="flex-shrink-0"/>
@@ -37,8 +37,8 @@ export function StudentLayout() {
 					<NavLink to="/student/activities" className={navLinkClass}><Table2 size={18}/> My Activities</NavLink>
 					<NavLink to="/student/upload" className={navLinkClass}><Upload size={18}/> Upload</NavLink>
 					<NavLink to="/student/portfolio" className={navLinkClass}><UserSquare2 size={18}/> Portfolio</NavLink>
-					<NavLink to="/student/coding" className={navLinkClass}>⚡ Coding</NavLink>
-					<NavLink to="/student/resume" className={navLinkClass}>📄 Resume Import</NavLink>
+					<NavLink to="/student/coding" className={navLinkClass}><Code2 size={18}/> Coding</NavLink>
+					<NavLink to="/student/resume" className={navLinkClass}><FileText size={18}/> Resume Import</NavLink>
 				</nav>
 				<button className="btn btn-outline mt-6 w-full" onClick={handleLogout}><LogOut size={16}/> Logout</button>
 			</aside>
