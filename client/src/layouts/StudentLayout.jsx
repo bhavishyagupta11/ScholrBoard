@@ -11,40 +11,43 @@ export function StudentLayout() {
 		navigate('/', { replace: true });
 	};
 
+	const navItems = [
+		{ to: '/student/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+		{ to: '/student/activities', label: 'Activities', icon: Table2 },
+		{ to: '/student/upload', label: 'Upload', icon: Upload },
+		{ to: '/student/portfolio', label: 'Portfolio', icon: UserSquare2 },
+		{ to: '/student/coding', label: 'Coding', icon: Code2 },
+		{ to: '/student/resume', label: 'Resume', icon: FileText },
+	];
+
 	const navLinkClass = ({ isActive }) =>
-		`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+		`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
 			isActive
-				? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500'
+				? 'bg-blue-50 text-blue-700 shadow-sm'
 				: 'text-slate-600 hover:text-blue-700 hover:bg-blue-50'
 		}`;
 
 	return (
-		<div className="min-h-screen grid md:grid-cols-[240px_1fr]">
-			<aside className="p-4" style={{background:'var(--surface-glass)', borderRight:'1px solid var(--border-color)'}}>
-				<div className="mb-6">
-					<a href="/" className="text-xl font-bold text-brand-blue">ScholrBoard</a>
+		<div className="min-h-screen md:grid md:grid-cols-[232px_1fr]">
+			<aside className="sticky top-0 z-20 border-b p-3 md:h-screen md:border-b-0 md:border-r md:p-4" style={{background:'var(--surface-glass)', borderColor:'var(--border-color)'}}>
+				<div className="mb-3 flex items-center justify-between md:mb-6 md:block">
+					<a href="/" className="text-lg font-bold text-brand-blue md:text-xl">ScholrBoard</a>
 					<div className="text-xs" style={{color:'var(--text-secondary)'}}>JECRC University</div>
 				</div>
-				<nav className="flex flex-col gap-1">
-					<a href="/landing" className={navLinkClass({ isActive: false })}><Home size={18}/> Homepage</a>
-					<NavLink to="/student/dashboard" className={(state) => `${navLinkClass(state)} relative overflow-hidden group`}>
-						<div className="absolute inset-0 bg-blue-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-						<div className="relative z-10 flex items-center gap-3">
-							<LayoutDashboard size={20} className="flex-shrink-0"/>
-							<span>Dashboard</span>
-						</div>
-					</NavLink>
-					<NavLink to="/student/activities" className={navLinkClass}><Table2 size={18}/> My Activities</NavLink>
-					<NavLink to="/student/upload" className={navLinkClass}><Upload size={18}/> Upload</NavLink>
-					<NavLink to="/student/portfolio" className={navLinkClass}><UserSquare2 size={18}/> Portfolio</NavLink>
-					<NavLink to="/student/coding" className={navLinkClass}><Code2 size={18}/> Coding</NavLink>
-					<NavLink to="/student/resume" className={navLinkClass}><FileText size={18}/> Resume Import</NavLink>
+				<nav className="flex gap-2 overflow-x-auto pb-1 md:flex-col md:overflow-visible md:pb-0">
+					<a href="/landing" className={`${navLinkClass({ isActive: false })} flex-shrink-0 md:flex-shrink`}><Home size={18}/> <span>Home</span></a>
+					{navItems.map(({ to, label, icon: Icon }) => (
+						<NavLink key={to} to={to} className={(state) => `${navLinkClass(state)} flex-shrink-0 md:flex-shrink`}>
+							<Icon size={18} className="flex-shrink-0"/>
+							<span>{label}</span>
+						</NavLink>
+					))}
 				</nav>
-				<button className="btn btn-outline mt-6 w-full" onClick={handleLogout}><LogOut size={16}/> Logout</button>
+				<button className="btn btn-outline mt-6 hidden w-full md:flex" onClick={handleLogout}><LogOut size={16}/> Logout</button>
 			</aside>
 			<div className="flex flex-col min-h-screen">
 				<Topbar />
-				<main className="p-6 space-y-6 flex-1">
+				<main className="flex-1 space-y-6 p-4 md:p-6">
 					<Outlet />
 				</main>
 			</div>
