@@ -28,8 +28,25 @@ const AdminPlacements = lazy(() => import('./pages/AdminPlacements.jsx').then((m
 const AdminEvents = lazy(() => import('./pages/AdminEvents.jsx').then((module) => ({ default: module.AdminEvents })));
 
 const PageLoader = () => (
-	<div className="min-h-screen grid place-items-center" style={{ background: 'var(--bg-dark)', color: 'var(--text-primary)' }}>
-		Loading...
+	<div className="min-h-screen p-6" style={{ background: 'var(--bg-dark)', color: 'var(--text-primary)' }}>
+		<div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-[220px_1fr]">
+			<div className="hidden rounded-xl border p-4 md:block" style={{ background: 'var(--surface-card)', borderColor: 'var(--border-color)' }}>
+				<div className="skeleton h-8 w-32 mb-8" />
+				<div className="space-y-3">
+					{Array.from({ length: 6 }).map((_, index) => <div key={index} className="skeleton h-10 w-full" />)}
+				</div>
+			</div>
+			<div className="space-y-4">
+				<div className="skeleton h-16 w-full" />
+				<div className="grid gap-4 md:grid-cols-4">
+					{Array.from({ length: 4 }).map((_, index) => <div key={index} className="skeleton h-28 w-full" />)}
+				</div>
+				<div className="grid gap-4 md:grid-cols-2">
+					<div className="skeleton h-72 w-full" />
+					<div className="skeleton h-72 w-full" />
+				</div>
+			</div>
+		</div>
 	</div>
 );
 
