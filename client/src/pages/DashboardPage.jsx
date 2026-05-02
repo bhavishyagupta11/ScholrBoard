@@ -1,15 +1,13 @@
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, CartesianGrid } from 'recharts';
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useProfile } from '../contexts/ProfileContext.jsx';
 import { Link } from 'react-router-dom';
 import { ArrowRight, BellRing, BriefcaseBusiness, CalendarDays, CheckCircle2, Code2, FileText, GraduationCap, Lightbulb, ShieldCheck, Sparkles, UploadCloud, UsersRound } from 'lucide-react';
 import { useScrollAnimation, useStaggeredAnimation } from '../hooks/useScrollAnimation.js';
 
-const data = [
-	{ name: 'Academic', value: 70 },
-	{ name: 'Activities', value: 30 },
-];
-const COLORS = ['var(--primary-blue)', 'var(--primary-orange)'];
+const AcademicActivityChart = lazy(() => import('../components/StudentDashboardCharts.jsx').then((module) => ({ default: module.AcademicActivityChart })));
+const ContributionsChart = lazy(() => import('../components/StudentDashboardCharts.jsx').then((module) => ({ default: module.ContributionsChart })));
+
+const ChartSkeleton = () => <div className="skeleton h-full min-h-48 w-full" />;
 
 export function DashboardPage() {
 	const { profile } = useProfile();
@@ -151,27 +149,9 @@ export function DashboardPage() {
 				<div className="card p-4 hover:scale-105 transition-transform">
 					<div className="font-medium mb-3">Academic vs Activities</div>
 					<div className="h-64">
-						<ResponsiveContainer width="100%" height="100%">
-							<PieChart>
-								<Pie
-									data={data}
-									dataKey="value"
-									nameKey="name"
-									innerRadius={55}
-									outerRadius={90}
-									label={(props) => {
-										const { name, percent } = props;
-										return `${name} ${((percent || 0) * 100).toFixed(0)}%`;
-									}}
-								>
-									{data.map((_, index) => (
-										<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-									))}
-								</Pie>
-								<Tooltip />
-								<Legend />
-							</PieChart>
-						</ResponsiveContainer>
+						<Suspense fallback={<ChartSkeleton />}>
+							<AcademicActivityChart />
+						</Suspense>
 					</div>
 				</div>
 
@@ -283,14 +263,9 @@ export function DashboardPage() {
 				<div className="card p-4 fade-in-up" style={{animationDelay:'420ms'}}>
 					<div className="font-medium mb-3">Daily Contributions (last 14 days)</div>
 					<div className="h-56">
-						<ResponsiveContainer width="100%" height="100%">
-							<BarChart data={contributions}>
-								<CartesianGrid strokeDasharray="3 3" stroke="rgba(122, 102, 80, 0.35)" />
-								<XAxis dataKey="d" stroke="var(--text-secondary)" tick={{fontSize:12}}/>
-								<Tooltip />
-								<Bar dataKey="c" fill="var(--primary-blue)" />
-							</BarChart>
-						</ResponsiveContainer>
+						<Suspense fallback={<ChartSkeleton />}>
+							<ContributionsChart contributions={contributions} />
+						</Suspense>
 					</div>
 				</div>
 			</div>

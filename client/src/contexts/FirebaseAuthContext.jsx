@@ -53,8 +53,8 @@ const clearCachedUser = () => {
 };
 
 export function FirebaseAuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(() => getCachedUser());
+  const [loading, setLoading] = useState(() => !getCachedUser());
   const [error, setError] = useState(null);
 
   // Listen for Firebase auth state changes
@@ -64,6 +64,7 @@ export function FirebaseAuthProvider({ children }) {
         const cached = getCachedUser(user.uid);
         if (cached?.role) {
           setUser({ ...user, ...cached });
+          setLoading(false);
         }
 
         // Get the Firebase ID token
@@ -224,7 +225,7 @@ export function FirebaseAuthProvider({ children }) {
 
   return (
     <FirebaseAuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </FirebaseAuthContext.Provider>
   );
 }
