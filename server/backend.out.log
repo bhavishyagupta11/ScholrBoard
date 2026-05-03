@@ -1,0 +1,9 @@
+
+> server@1.0.0 start
+> node server.js
+
+Firebase Admin SDK initialized successfully
+[dotenv@17.2.2] injecting env (2) from  -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+Database is connected
+MongoDB Connected Successfully
+Server is running on port 5000

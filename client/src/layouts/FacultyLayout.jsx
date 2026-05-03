@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { ClipboardList, Users, BarChart3, User, LogOut, Home, UserSquare2, GraduationCap } from 'lucide-react';
+import { ClipboardList, Users, BarChart3, LogOut, Home, UserSquare2 } from 'lucide-react';
 import { Topbar } from '../components/Topbar.jsx';
 import { useFirebaseAuth } from '../contexts/FirebaseAuthContext.jsx';
 
@@ -14,18 +14,21 @@ export function FacultyLayout() {
 	const navLinkClass = ({ isActive }) =>
 		`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors mb-1 ${
 			isActive 
-				? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500' 
-				: 'text-slate-600 hover:text-blue-700 hover:bg-blue-50'
+				? 'nav-item-active' 
+				: 'nav-item-muted hover:bg-blue-50'
 		}`;
 
 	return (
-		<div className="min-h-screen grid md:grid-cols-[280px_1fr]">
+		<div className="app-shell grid md:grid-cols-[280px_1fr]">
 			{/* Sidebar */}
-			<aside className="p-6" style={{background:'var(--surface-glass)', borderRight:'1px solid var(--border-color)'}}>
-				<div className="mb-8">
-					<a href="/" className="text-2xl font-bold" style={{color:'var(--primary-blue)'}}>ScholrBoard</a>
-					<div className="text-sm mt-1" style={{color:'var(--text-secondary)'}}>JECRC University</div>
-					<div className="text-xs mt-1" style={{color:'var(--text-secondary)'}}>Faculty Portal</div>
+			<aside className="sidebar-panel p-6 md:min-h-screen md:border-r">
+				<div className="mb-8 flex items-center gap-3">
+					<a href="/" className="sidebar-brand-mark">S</a>
+					<div>
+						<a href="/" className="text-2xl font-bold" style={{color:'var(--primary-blue)'}}>ScholrBoard</a>
+						<div className="text-sm mt-1" style={{color:'var(--text-secondary)'}}>JECRC University</div>
+						<div className="text-xs mt-1 font-medium" style={{color:'var(--text-secondary)'}}>Faculty Portal</div>
+					</div>
 				</div>
 
 				<nav className="flex flex-col space-y-2">
