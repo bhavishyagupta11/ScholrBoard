@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { ChevronDown, LayoutGrid, BarChart2, ArrowRight, Sparkles, Zap, Target, Sun, Moon } from 'lucide-react';
+import { ChevronDown, LayoutGrid, BarChart2, ArrowRight, Sparkles, Zap, Target, Sun, Moon, ShieldCheck, GraduationCap, Building2 } from 'lucide-react';
 import { useScrollAnimation, useStaggeredAnimation } from '../hooks/useScrollAnimation.js';
-import ScrollRevealDemo from '../components/ScrollRevealDemo.jsx';
 import { useFirebaseAuth } from '../contexts/FirebaseAuthContext.jsx';
+import heroPreview from '../../publiclanding-hero.png.png';
 
 export function LandingPage() {
 	const [mobileOpen, setMobileOpen] = useState(false);
@@ -74,9 +74,12 @@ export function LandingPage() {
 				style={{ transform: `scaleX(${scrollProgress / 100})` }}
 			/>
 			
-			<header className="glass-nav fixed top-4 left-0 right-0 z-50 flex justify-center">
-				<div className="max-w-6xl w-full mx-auto px-6 flex justify-between items-center">
-					<a href="/" className="text-2xl font-bold flex-shrink-0" style={{color:'var(--primary-blue)'}}>ScholrBoard</a>
+			<header className="glass-nav fixed top-4 left-4 right-4 z-50 flex justify-center rounded-xl">
+				<div className="max-w-6xl w-full mx-auto px-4 md:px-6 py-3 flex justify-between items-center">
+					<a href="/" className="flex items-center gap-3 flex-shrink-0">
+						<span className="sidebar-brand-mark">S</span>
+						<span className="text-xl md:text-2xl font-bold" style={{color:'var(--primary-blue)'}}>ScholrBoard</span>
+					</a>
 					<div className="hidden md:flex items-center header-pill-container rounded-full px-4 py-2 relative gap-4">
 						<nav className="flex items-center text-sm space-x-2">
 							<a href="#features" className="text-slate-600 hover:text-blue-700 transition-colors px-3 py-1 rounded-full hover:bg-blue-50">Use Cases</a>
@@ -169,36 +172,64 @@ export function LandingPage() {
 			)}
 
 			<main>
-				<section className="relative pt-36 pb-20 overflow-hidden" style={{background:"linear-gradient(180deg, color-mix(in srgb, var(--bg-medium) 94%, transparent), color-mix(in srgb, var(--bg-dark) 82%, transparent))"}}>
+				<section className="relative pt-36 pb-16 overflow-hidden" style={{background:"linear-gradient(180deg, color-mix(in srgb, var(--bg-medium) 94%, transparent), color-mix(in srgb, var(--bg-dark) 82%, transparent))"}}>
 					<div className="max-w-6xl mx-auto px-6">
-						<div ref={heroRef} className="gpu-accelerated relative" style={{opacity: 1}}>
-							<div className="inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-sm font-medium">
-								<Sparkles className="w-4 h-4" />
-								<span>Academic progress workspace</span>
+						<div ref={heroRef} className="gpu-accelerated relative grid items-center gap-10 lg:grid-cols-[0.92fr_1.08fr]" style={{opacity: 1}}>
+							<div>
+								<div className="inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-sm font-medium">
+									<ShieldCheck className="w-4 h-4" />
+									<span>Verified academic record system</span>
+								</div>
+								<h1 className="max-w-4xl text-4xl md:text-5xl lg:text-6xl font-black leading-tight text-slate-900 mb-6">
+									Build placement-ready student records without spreadsheet chaos.
+								</h1>
+								<p className="text-lg md:text-xl leading-relaxed mb-8 max-w-3xl" style={{color:'var(--text-secondary)'}}>
+									ScholrBoard brings achievements, faculty approvals, coding profiles, resumes, and accreditation evidence into one clean workflow for colleges.
+								</p>
+								<div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center mb-10">
+									<Link 
+										to={role ? getDashboardPath() : '/login'} 
+										className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-lg font-bold text-white transition-all duration-300 hover:-translate-y-0.5 text-base" 
+										style={{background:'var(--primary-blue)', boxShadow:'0 12px 24px rgba(var(--primary-rgb), 0.26)'}}
+									>
+										<LayoutGrid className="w-5 h-5" />
+										<span>{role ? 'Open Dashboard' : 'Start With Your Role'}</span>
+										<ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+									</Link>
+									{!role && (
+										<a href="#prototype" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-slate-700 border border-slate-300 hover:border-blue-200 hover:bg-blue-50 transition-all duration-300">
+											<span>View Product</span>
+										</a>
+									)}
+								</div>
+								<div className="grid grid-cols-3 gap-3 max-w-xl">
+									{[
+										{ n:'3', label:'Role portals' },
+										{ n:'1-click', label:'Verification' },
+										{ n:'NAAC', label:'Report ready' },
+									].map((stat)=> (
+										<div key={stat.label} className="metric-tile p-4">
+											<div className="text-xl font-black text-blue-700">{stat.n}</div>
+											<div className="text-xs font-semibold" style={{color:'var(--text-secondary)'}}>{stat.label}</div>
+										</div>
+									))}
+								</div>
 							</div>
-							<h1 className="max-w-4xl text-4xl md:text-5xl lg:text-6xl font-black leading-tight text-slate-900 mb-6">
-								Student achievements, coursework, and portfolios in one clear record.
-							</h1>
-							<p className="text-lg md:text-xl leading-relaxed mb-8 max-w-3xl" style={{color:'var(--text-secondary)'}}>
-								ScholrBoard helps students record progress, get faculty verification, and keep a portfolio ready for internships, placements, and higher studies.
-							</p>
-							<div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center mb-14">
-								<Link 
-									to={role ? getDashboardPath() : '/login'} 
-									className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-lg font-bold text-white transition-all duration-300 hover:-translate-y-0.5 text-base" 
-									style={{background:'var(--primary-blue)', boxShadow:'0 12px 24px rgba(var(--primary-rgb), 0.26)'}}
-								>
-									<LayoutGrid className="w-5 h-5" />
-									<span>{role ? 'Open Dashboard' : 'Get Started'}</span>
-									<ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-								</Link>
-								{!role && (
-									<a href="#features" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-slate-700 border border-slate-300 hover:border-blue-200 hover:bg-blue-50 transition-all duration-300">
-										<span>Learn More</span>
-									</a>
-								)}
+							<div className="relative">
+								<div className="rounded-xl border p-2 shadow-2xl" style={{background:'var(--surface-card)', borderColor:'var(--border-color)'}}>
+									<img src={heroPreview} alt="ScholrBoard dashboard preview" className="w-full rounded-lg border object-cover" style={{borderColor:'var(--border-color)'}} />
+								</div>
+								<div className="absolute -bottom-5 left-6 right-6 rounded-lg border p-4 shadow-lg" style={{background:'var(--surface-card)', borderColor:'var(--border-color)'}}>
+									<div className="flex items-center justify-between gap-4">
+										<div>
+											<div className="text-sm font-bold text-slate-900">Verification queue</div>
+											<div className="text-xs" style={{color:'var(--text-secondary)'}}>Faculty approvals flowing into student portfolios</div>
+										</div>
+										<span className="badge badge-green">Live</span>
+									</div>
+								</div>
 							</div>
-							<div ref={valueStepsContainerRef} className="grid md:grid-cols-3 gap-5">
+							<div ref={valueStepsContainerRef} className="grid gap-5 md:grid-cols-3 lg:col-span-2">
 								{[
 									{ t:'Capture', d:'Students easily log every achievement, from coursework to club leadership.', icon: <Zap className="w-5 h-5" /> },
 									{ t:'Verify', d:'Faculty approve entries with a single click, ensuring institutional credibility.', icon: <Target className="w-5 h-5" /> },
@@ -227,14 +258,13 @@ export function LandingPage() {
 						<div ref={featuresRef} className="gpu-accelerated">
 							<div className="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-sm font-medium">
 								<Zap className="w-4 h-4" />
-								<span>Powerful Features</span>
+								<span>Built for academic operations</span>
 							</div>
 							<h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-6">
-								A Unified Platform for 
-								<span className="text-blue-700"> Growth</span>
+								One product for students, faculty, and institutions
 							</h2>
 							<p className="text-lg mx-auto leading-relaxed" style={{color:'var(--text-secondary)', maxWidth:'48rem'}}>
-								From institutional reporting to student career readiness, ScholrBoard covers every use case with precision and efficiency.
+								Every role gets the same source of truth, so student progress can become verified evidence for mentoring, placements, and accreditation.
 							</p>
 						</div>
 						<div ref={featuresContainerRef} className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mt-16">
@@ -242,22 +272,21 @@ export function LandingPage() {
 								{ 
 									title:'Accreditation & Audits', 
 									desc:'Generate comprehensive reports for NAAC, AICTE, and NIRF in minutes, not weeks.', 
-									icon:'📊',
-									iconBg: 'var(--primary-blue)'
+									icon: Building2
 								},
 								{ 
 									title:'Career-Ready Portfolios', 
 									desc:'Empower students with verified, dynamic portfolios that stand out to employers.', 
-									icon:'🎯',
-									iconBg: 'var(--primary-blue)'
+									icon: GraduationCap
 								},
 								{ 
 									title:'Data-Driven Mentoring', 
 									desc:'Provide faculty with a 360° view of student progress for more effective guidance.', 
-									icon:'📈',
-									iconBg: 'var(--primary-blue)'
+									icon: ShieldCheck
 								},
-							].map((f, index)=> (
+							].map((f, index)=> {
+								const Icon = f.icon;
+								return (
 								<div 
 									key={f.title} 
 									ref={setFeatureRef(index)}
@@ -268,29 +297,29 @@ export function LandingPage() {
 										transition: 'all 0.25s ease'
 									}}
 								>
-									<div className="w-16 h-16 rounded-xl flex items-center justify-center text-2xl mb-6 group-hover:scale-105 transition-transform duration-300" style={{background:f.iconBg}}>
-										{f.icon}
+									<div className="w-16 h-16 rounded-xl flex items-center justify-center mb-6 group-hover:scale-105 transition-transform duration-300 text-white" style={{background:'linear-gradient(135deg, var(--primary-blue), var(--primary-cyan))'}}>
+										<Icon className="w-7 h-7" />
 									</div>
 									<div className="text-slate-900 font-semibold text-xl mb-3 group-hover:text-blue-700 transition-colors">{f.title}</div>
 									<div className="text-sm leading-relaxed mb-4" style={{color:'var(--text-secondary)'}}>{f.desc}</div>
 									<div className="mt-6 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
 										<div className="flex items-center gap-2 text-xs font-medium" style={{color:'var(--primary-blue)'}}>
-											<span>Click to explore</span>
+											<span>Operational workflow</span>
 											<ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
 										</div>
 									</div>
 								</div>
-							))}
+							)})}
 						</div>
 					</div>
 				</section>
 
 				<section className="py-16">
 					<div className="max-w-6xl mx-auto px-6 text-center reveal">
-						<h3 className="text-sm font-semibold uppercase tracking-widest" style={{color:'var(--text-secondary)'}}>TRUSTED BY LEADING EDUCATIONAL INSTITUTIONS</h3>
-						<div className="flex justify-center items-center gap-12 mt-8 opacity-40 grayscale">
-							{['University A','College B','Institute C','Edu Group D'].map((n)=> (
-								<div key={n} className="text-sm surface px-4 py-2">{n}</div>
+						<h3 className="text-sm font-semibold uppercase tracking-widest" style={{color:'var(--text-secondary)'}}>Designed for measurable institutional outcomes</h3>
+						<div className="grid gap-4 mt-8 md:grid-cols-4">
+							{['Verified evidence', 'Mentor visibility', 'Placement portfolios', 'Accreditation reports'].map((n)=> (
+								<div key={n} className="metric-tile px-4 py-4 text-sm font-semibold" style={{color:'var(--text-primary)'}}>{n}</div>
 							))}
 						</div>
 					</div>
@@ -406,11 +435,6 @@ export function LandingPage() {
 							</div>
 						</div>
 					</div>
-				</section>
-
-				{/* Scroll Reveal Demo Section */}
-				<section className="py-20">
-					<ScrollRevealDemo />
 				</section>
 			</main>
 			<footer className="py-10 mt-12 border-t" style={{borderColor:'var(--border-color)'}}>
