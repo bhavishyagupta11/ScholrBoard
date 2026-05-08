@@ -70,13 +70,19 @@ Copy `server/firebase-service-account.template.json` to `server/firebase-service
 
 ### Client
 
-Create `client/.env` if the frontend needs to call a local or deployed API:
+Copy `client/.env.example` to `client/.env` and fill in your Firebase web app values:
 
 ```env
 VITE_API_URL=http://localhost:5000/api
+VITE_FIREBASE_API_KEY=replace_with_firebase_web_api_key
+VITE_FIREBASE_AUTH_DOMAIN=replace_with_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=replace_with_project_id
+VITE_FIREBASE_STORAGE_BUCKET=replace_with_project.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=replace_with_sender_id
+VITE_FIREBASE_APP_ID=replace_with_firebase_app_id
 ```
 
-The current Firebase client configuration lives in `client/src/config/firebase.js`.
+Firebase client configuration is loaded from Vite environment variables in `client/src/config/firebase.js`. Do not commit real `.env` files.
 
 ## Available Scripts
 
@@ -112,7 +118,7 @@ The current Firebase client configuration lives in `client/src/config/firebase.j
 - Do not commit `.env` files.
 - Do not commit `server/firebase-service-account.json`.
 - Use a strong `JWT_SECRET` outside local development.
-- Restrict Firebase and database credentials by environment.
+- Restrict Firebase API keys by HTTP referrer and enable only the APIs the app needs.
 - Rotate service account keys and secrets if they are ever exposed.
 
 ## Documentation Policy

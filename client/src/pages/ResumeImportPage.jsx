@@ -3,12 +3,18 @@ import { useState } from 'react';
 export function ResumeImportPage() {
 	const [text, setText] = useState('');
 	const [fileName, setFileName] = useState('');
+	const [isLoading, setIsLoading] = useState(false);
 
 	const onFile = async (file) => {
 		if (!file) return;
 		setFileName(file.name);
-		const content = await file.text();
-		setText(content.slice(0, 5000));
+		setIsLoading(true);
+		try {
+			const content = await file.text();
+			setText(content.slice(0, 5000));
+		} finally {
+			setIsLoading(false);
+		}
 	};
 
 	const quickAdd = () => alert('Parsed resume fields mapped to profile and activities (mock).');
@@ -20,8 +26,14 @@ export function ResumeImportPage() {
 				<div className="flex items-center gap-3">
 					<input type="file" accept=".txt,.md,.pdf,.doc,.docx" onChange={e=>onFile(e.target.files?.[0] ?? null)} />
 					{fileName && <div className="text-sm subtle">{fileName}</div>}
-					<button className="btn btn-primary" onClick={quickAdd}>Auto-fill Profile & Activities</button>
+					<button className="btn btn-primary" onClick={quickAdd} disabled={isLoading || !text}>Auto-fill Profile & Activities</button>
 				</div>
+				{isLoading && (
+					<div className="mt-4 flex items-center gap-3 text-sm font-medium" style={{color:'var(--primary-blue)'}}>
+						<span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" />
+						Loading resume...
+					</div>
+				)}
 				{text && (
 					<div className="mt-4">
 						<div className="text-sm subtle mb-1">Preview (first 5,000 chars)</div>

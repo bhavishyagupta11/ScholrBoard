@@ -26,13 +26,19 @@ Vite prints the local development URL after startup.
 
 ## Environment
 
-Create `client/.env` when the app needs an API URL:
+Copy `.env.example` to `.env` and fill in your Firebase web app values:
 
 ```env
 VITE_API_URL=http://localhost:5000/api
+VITE_FIREBASE_API_KEY=replace_with_firebase_web_api_key
+VITE_FIREBASE_AUTH_DOMAIN=replace_with_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=replace_with_project_id
+VITE_FIREBASE_STORAGE_BUCKET=replace_with_project.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=replace_with_sender_id
+VITE_FIREBASE_APP_ID=replace_with_firebase_app_id
 ```
 
-The current Firebase client configuration is defined in `src/config/firebase.js`.
+Firebase client configuration is loaded from Vite environment variables in `src/config/firebase.js`. Do not commit real `.env` files.
 
 ## Scripts
 

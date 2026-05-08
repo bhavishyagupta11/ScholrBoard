@@ -1,3 +1,18 @@
 desktop.ini
 .DS_Store
 Thumbs.db
+
+# Dependencies and build output
+node_modules/
+dist/
+build/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+firebase-service-account.json
+
+# Logs
+*.log
+npm-debug.log*

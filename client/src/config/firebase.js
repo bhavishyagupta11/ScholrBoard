@@ -1,19 +1,32 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 
+const requiredEnvVars = [
+  'VITE_FIREBASE_API_KEY',
+  'VITE_FIREBASE_AUTH_DOMAIN',
+  'VITE_FIREBASE_PROJECT_ID',
+  'VITE_FIREBASE_STORAGE_BUCKET',
+  'VITE_FIREBASE_MESSAGING_SENDER_ID',
+  'VITE_FIREBASE_APP_ID',
+];
+
+const missingEnvVars = requiredEnvVars.filter((key) => !import.meta.env[key]);
+
+if (missingEnvVars.length > 0) {
+  throw new Error(`Missing Firebase environment variables: ${missingEnvVars.join(', ')}`);
+}
+
 const firebaseConfig = {
-  apiKey: "AIzaSyAlu7UoeJ8FBd84sDRfFhCt4iv223i9ah8",
-  authDomain: "scholrboard.firebaseapp.com",
-  projectId: "scholrboard",
-  storageBucket: "scholrboard.firebasestorage.app",
-  messagingSenderId: "785005963380",
-  appId: "1:785005963380:web:6d4d9785f3a2ab2f820921"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Get Auth instance
 export const auth = getAuth(app);
 
 export default app;
