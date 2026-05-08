@@ -16,10 +16,10 @@ export const verifyFirebaseToken = async (req, res, next) => {
     };
     next();
   } catch (error) {
-    console.error('Token verification error:', error);
+    console.error('Token verification error:', error.code || error.name || 'Firebase token verification failed');
     res.status(401).json({ 
       message: 'Invalid token',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Token verification failed'
+      error: process.env.NODE_ENV === 'development' ? 'Firebase token verification failed' : 'Token verification failed'
     });
   }
 };

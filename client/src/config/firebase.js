@@ -2,13 +2,12 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA6aPPV8GyUFS_uQQ9VxywkhjNhUPzDAlE",
+  apiKey: "AIzaSyAlu7UoeJ8FBd84sDRfFhCt4iv223i9ah8",
   authDomain: "scholrboard.firebaseapp.com",
   projectId: "scholrboard",
   storageBucket: "scholrboard.firebasestorage.app",
-  messagingSenderId: "698897660521",
-  appId: "1:698897660521:web:e6fa9e8734bf9e60fd40f8",
-  measurementId: "G-77153Y5KZ4"
+  messagingSenderId: "785005963380",
+  appId: "1:785005963380:web:6d4d9785f3a2ab2f820921"
 };
 
 // Initialize Firebase

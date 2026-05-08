@@ -30,9 +30,22 @@ const decodeTokenPayload = (token) => {
 const assertTokenMatchesFirebaseProject = (token) => {
   const payload = decodeTokenPayload(token);
   if (payload?.aud && payload.aud !== EXPECTED_FIREBASE_PROJECT_ID) {
-    throw new Error(
-      `Firebase token is for "${payload.aud}", but this app expects "${EXPECTED_FIREBASE_PROJECT_ID}". Sign out, refresh the page, and try again.`
-    );
+    throw new Error('Your old Firebase session was cleared. Please submit again.');
+  }
+};
+
+const getRequestErrorMessage = (error) => {
+  if (error instanceof TypeError && error.message === 'Failed to fetch') {
+    return 'Backend is not reachable. Start the server and check MongoDB Atlas network access.';
+  }
+
+  return error.message;
+};
+
+const clearStaleFirebaseSession = async () => {
+  clearCachedUser();
+  if (auth.currentUser) {
+    await signOut(auth);
   }
 };
 
@@ -119,7 +132,10 @@ export function FirebaseAuthProvider({ children }) {
           if (import.meta.env.DEV) {
             console.error('Error syncing user data:', error);
           }
-          if (!cached?.role) {
+          if (error.message === 'Your old Firebase session was cleared. Please submit again.') {
+            await clearStaleFirebaseSession();
+            setUser(null);
+          } else if (!cached?.role) {
             const legacyRole = localStorage.getItem('role');
             setUser(legacyRole ? { ...user, role: legacyRole } : user);
           }
@@ -152,7 +168,12 @@ export function FirebaseAuthProvider({ children }) {
 
       // Get fresh token
       const token = await userCredential.user.getIdToken(true);
-      assertTokenMatchesFirebaseProject(token);
+      try {
+        assertTokenMatchesFirebaseProject(token);
+      } catch (error) {
+        await clearStaleFirebaseSession();
+        throw error;
+      }
 
       // Create user in your backend
       const requestBody = {
@@ -181,8 +202,9 @@ export function FirebaseAuthProvider({ children }) {
       setUser(combinedUser);
       return combinedUser;
     } catch (error) {
-      setError(error.message);
-      throw error;
+      const message = getRequestErrorMessage(error);
+      setError(message);
+      throw new Error(message);
     }
   };
 
@@ -196,7 +218,12 @@ export function FirebaseAuthProvider({ children }) {
 
       // Get fresh ID token
       const token = await userCredential.user.getIdToken(true);
-      assertTokenMatchesFirebaseProject(token);
+      try {
+        assertTokenMatchesFirebaseProject(token);
+      } catch (error) {
+        await clearStaleFirebaseSession();
+        throw error;
+      }
       
       // Sync with backend
       const response = await fetch(`${API_URL}/auth/sync`, {
@@ -223,8 +250,9 @@ export function FirebaseAuthProvider({ children }) {
 
       return combinedUser;
     } catch (error) {
-      setError(error.message);
-      throw error;
+      const message = getRequestErrorMessage(error);
+      setError(message);
+      throw new Error(message);
     }
   };
 
