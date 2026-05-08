@@ -12,6 +12,29 @@ import { auth } from '../config/firebase';
 const FirebaseAuthContext = createContext();
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const AUTH_CACHE_KEY = 'scholrboardUser';
+const EXPECTED_FIREBASE_PROJECT_ID = auth.app.options.projectId;
+
+const decodeTokenPayload = (token) => {
+  try {
+    const payload = token.split('.')[1];
+    const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(normalizedPayload));
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn('Unable to decode Firebase token payload:', error);
+    }
+    return null;
+  }
+};
+
+const assertTokenMatchesFirebaseProject = (token) => {
+  const payload = decodeTokenPayload(token);
+  if (payload?.aud && payload.aud !== EXPECTED_FIREBASE_PROJECT_ID) {
+    throw new Error(
+      `Firebase token is for "${payload.aud}", but this app expects "${EXPECTED_FIREBASE_PROJECT_ID}". Sign out, refresh the page, and try again.`
+    );
+  }
+};
 
 const getCachedUser = (firebaseUid) => {
   try {
@@ -67,10 +90,11 @@ export function FirebaseAuthProvider({ children }) {
           setLoading(false);
         }
 
-        // Get the Firebase ID token
-        const token = await user.getIdToken();
-        
         try {
+          // Get the Firebase ID token
+          const token = await user.getIdToken();
+          assertTokenMatchesFirebaseProject(token);
+
           // Sync with your backend
           const response = await fetch(`${API_URL}/auth/sync`, {
             method: 'POST',
@@ -128,6 +152,7 @@ export function FirebaseAuthProvider({ children }) {
 
       // Get fresh token
       const token = await userCredential.user.getIdToken(true);
+      assertTokenMatchesFirebaseProject(token);
 
       // Create user in your backend
       const requestBody = {
@@ -171,6 +196,7 @@ export function FirebaseAuthProvider({ children }) {
 
       // Get fresh ID token
       const token = await userCredential.user.getIdToken(true);
+      assertTokenMatchesFirebaseProject(token);
       
       // Sync with backend
       const response = await fetch(`${API_URL}/auth/sync`, {

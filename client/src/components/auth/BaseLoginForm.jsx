@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { GraduationCap } from 'lucide-react';
+import { Eye, EyeOff, GraduationCap } from 'lucide-react';
 import { useFirebaseAuth } from '../../contexts/FirebaseAuthContext';
 import { useNavigate } from 'react-router-dom';
 import { SignupForm } from './SignupForm';
@@ -9,6 +9,7 @@ export function BaseLoginForm({ role, additionalFields = [], disableSignup = fal
   const { login, user } = useFirebaseAuth();
   const [formType, setFormType] = useState('login');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -90,14 +91,24 @@ export function BaseLoginForm({ role, additionalFields = [], disableSignup = fal
 
           <div>
             <label className="block text-sm mb-1 subtle">Password</label>
-            <input
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              type="password"
-              className="w-full input-dark"
-              placeholder="Your password"
-            />
+            <div className="relative">
+              <input
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                type={showPassword ? 'text' : 'password'}
+                className="w-full input-dark pr-12"
+                placeholder="Your password"
+              />
+              <button
+                type="button"
+                className="absolute inset-y-0 right-3 grid place-items-center text-slate-400 hover:text-white"
+                onClick={() => setShowPassword(prev => !prev)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
 
           {error && (
