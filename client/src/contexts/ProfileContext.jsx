@@ -6,7 +6,7 @@ const defaultProfile = {
 	dept: "CSE",
 	year: "3rd",
 	gpa: "8.7",
-	email: "ananya@jecrc.edu.in",
+	email: "ananya@college.edu",
 	phone: "+91 98765 43210",
 	bio: "Passionate computer science student with interests in AI/ML and web development.",
 	skills: ["C++", "Python", "React", "Node.js", "SQL", "Tailwind", "Git", "Docker"],
