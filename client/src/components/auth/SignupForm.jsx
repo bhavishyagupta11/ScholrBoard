@@ -130,7 +130,7 @@ export function SignupForm({ role, onToggleForm, additionalFields = [] }) {
         <div className="flex items-center gap-3 mb-4">
           <GraduationCap className="text-brand-blue" />
           <div>
-            <div className="text-lg font-semibold text-brand-blue">JECRC University</div>
+            <div className="text-lg font-semibold text-brand-blue">ScholrBoard</div>
             <div className="text-sm" style={{color:'var(--text-secondary)'}}>ScholrBoard Platform</div>
           </div>
         </div>
@@ -239,14 +239,14 @@ export function SignupForm({ role, onToggleForm, additionalFields = [] }) {
 
           <div className="flex gap-2">
             <button 
-              className="btn btn-primary w-full" 
+              className="btn btn-primary w-full auth-action-button" 
               type="submit"
               disabled={isLoading}
             >
               {isLoading ? 'Creating Account...' : `Sign up as ${role.charAt(0).toUpperCase() + role.slice(1)}`}
             </button>
             <button
-              className="btn btn-outline w-full"
+              className="btn btn-outline w-full auth-action-button"
               type="button"
               onClick={() => onToggleForm('login')}
               disabled={isLoading}
