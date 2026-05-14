@@ -71,7 +71,7 @@ export function BaseLoginForm({ role, additionalFields = [], disableSignup = fal
         <div className="flex items-center gap-3 mb-4">
           <GraduationCap className="text-brand-blue" />
           <div>
-            <div className="text-lg font-semibold text-brand-blue">JECRC University</div>
+            <div className="text-lg font-semibold text-brand-blue">ScholrBoard</div>
             <div className="text-sm" style={{color:'var(--text-secondary)'}}>ScholrBoard Platform</div>
           </div>
         </div>
@@ -119,7 +119,7 @@ export function BaseLoginForm({ role, additionalFields = [], disableSignup = fal
             <button 
               type="submit"
               disabled={isLoading}
-              className="btn btn-primary w-full"
+              className="btn btn-primary w-full auth-action-button"
             >
               {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
@@ -127,7 +127,7 @@ export function BaseLoginForm({ role, additionalFields = [], disableSignup = fal
               <button
                 type="button"
                 onClick={() => setFormType('signup')}
-                className="btn btn-outline w-full"
+                className="btn btn-outline w-full auth-action-button"
                 disabled={isLoading}
               >
                 Create Account
