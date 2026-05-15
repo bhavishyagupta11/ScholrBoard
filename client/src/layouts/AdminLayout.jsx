@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { ClipboardList, BarChart3, LogOut, Home, Calendar, Briefcase } from 'lucide-react';
+import { ClipboardList, BarChart3, LogOut, Calendar, Briefcase } from 'lucide-react';
 import { Topbar } from '../components/Topbar.jsx';
 import { useFirebaseAuth } from '../contexts/FirebaseAuthContext.jsx';
 
@@ -26,16 +26,12 @@ export function AdminLayout() {
 					<a href="/" className="sidebar-brand-mark">S</a>
 					<div>
 						<a href="/" className="text-2xl font-bold" style={{color:'var(--primary-blue)'}}>ScholrBoard</a>
-						<div className="text-sm mt-1" style={{color:'var(--text-secondary)'}}>JECRC University</div>
+						<div className="text-sm mt-1" style={{color:'var(--text-secondary)'}}>Campus Portal</div>
 						<div className="text-xs mt-1 font-medium" style={{color:'var(--text-secondary)'}}>Admin Portal</div>
 					</div>
 				</div>
 
 				<nav className="flex flex-col space-y-2">
-					<a href="/" className={navLinkClass({ isActive: false })}>
-						<Home size={20}/> Homepage
-					</a>
-					
 					<NavLink to="/admin" end className={navLinkClass}>
 						<BarChart3 size={20} className="flex-shrink-0"/> Dashboard
 					</NavLink>
