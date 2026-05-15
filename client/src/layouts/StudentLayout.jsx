@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Code2, FileText, Home, LayoutDashboard, Upload, Table2, UserSquare2, LogOut } from 'lucide-react';
+import { Code2, FileText, LayoutDashboard, Upload, Table2, UserSquare2, LogOut } from 'lucide-react';
 import { Topbar } from '../components/Topbar.jsx';
 import { useFirebaseAuth } from '../contexts/FirebaseAuthContext.jsx';
 
@@ -35,12 +35,11 @@ export function StudentLayout() {
 						<span className="sidebar-brand-mark">S</span>
 						<span>
 							<span className="block text-lg font-bold text-brand-blue md:text-xl">ScholrBoard</span>
-							<span className="block text-xs font-medium" style={{color:'var(--text-secondary)'}}>JECRC University</span>
+							<span className="block text-xs font-medium" style={{color:'var(--text-secondary)'}}>Campus Portal</span>
 						</span>
 					</a>
 				</div>
 				<nav className="flex gap-2 overflow-x-auto pb-1 md:flex-col md:overflow-visible md:pb-0">
-					<a href="/landing" className={`${navLinkClass({ isActive: false })} flex-shrink-0 md:flex-shrink`}><Home size={18}/> <span>Home</span></a>
 					{navItems.map(({ to, label, icon: Icon }) => (
 						<NavLink key={to} to={to} className={(state) => `${navLinkClass(state)} flex-shrink-0 md:flex-shrink`}>
 							<Icon size={18} className="flex-shrink-0"/>
