@@ -9,7 +9,7 @@ const students = [
 		year: '3rd Year',
 		gpa: 8.7,
 		attendance: 92,
-		email: 'ananya.sharma@jecrc.edu',
+		email: 'ananya.sharma@college.edu',
 		phone: '+91 98765 43210',
 		codingProfile: {
 			leetcode: { solved: 156, rating: 1850, contests: 23 },
@@ -44,7 +44,7 @@ const students = [
 		year: '3rd Year',
 		gpa: 8.2,
 		attendance: 88,
-		email: 'rohan.gupta@jecrc.edu',
+		email: 'rohan.gupta@college.edu',
 		phone: '+91 98765 43211',
 		codingProfile: {
 			leetcode: { solved: 98, rating: 1650, contests: 18 },
