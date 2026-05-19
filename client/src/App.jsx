@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import { ProfileProvider } from './contexts/ProfileContext.jsx';
-import { FirebaseAuthProvider, useFirebaseAuth } from './contexts/FirebaseAuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 const StudentLoginPage = lazy(() => import('./pages/auth/StudentLoginPage').then((module) => ({ default: module.StudentLoginPage })));
 const FacultyLoginPage = lazy(() => import('./pages/auth/FacultyLoginPage').then((module) => ({ default: module.FacultyLoginPage })));
@@ -18,6 +18,7 @@ const PortfolioPage = lazy(() => import('./pages/PortfolioPage.jsx').then((modul
 const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx').then((module) => ({ default: module.ProfilePage })));
 const CodingPage = lazy(() => import('./pages/CodingPage.jsx').then((module) => ({ default: module.CodingPage })));
 const ResumeImportPage = lazy(() => import('./pages/ResumeImportPage.jsx').then((module) => ({ default: module.ResumeImportPage })));
+const AIChatPage = lazy(() => import('./pages/AIChatPage.jsx').then((module) => ({ default: module.AIChatPage })));
 const FacultyDashboard = lazy(() => import('./pages/FacultyDashboard.jsx').then((module) => ({ default: module.FacultyDashboard })));
 const FacultyApprovals = lazy(() => import('./pages/FacultyApprovals.jsx').then((module) => ({ default: module.FacultyApprovals })));
 const FacultyStudents = lazy(() => import('./pages/FacultyStudents.jsx').then((module) => ({ default: module.FacultyStudents })));
@@ -58,7 +59,7 @@ const getDashboardPath = (role) => {
 };
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
-	const { user, loading } = useFirebaseAuth();
+	const { user, loading } = useAuth();
 
 	if (loading) {
 		return <PageLoader />;
@@ -83,7 +84,7 @@ export default function App() {
 	}, []);
 
 	return (
-		<FirebaseAuthProvider>
+		<AuthProvider>
 			<ProfileProvider>
 				<BrowserRouter>
 					<Suspense fallback={<PageLoader />}>
@@ -109,6 +110,7 @@ export default function App() {
 								<Route path="profile" element={<ProfilePage />} />
 								<Route path="coding" element={<CodingPage />} />
 								<Route path="resume" element={<ResumeImportPage />} />
+								<Route path="ai-chat" element={<AIChatPage />} />
 							</Route>
 
 							<Route path="/faculty" element={
@@ -139,6 +141,6 @@ export default function App() {
 					</Suspense>
 				</BrowserRouter>
 			</ProfileProvider>
-		</FirebaseAuthProvider>
+		</AuthProvider>
 	);
 }
