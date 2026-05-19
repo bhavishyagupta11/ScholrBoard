@@ -23,6 +23,13 @@ export const aiApi = {
 
   /** Archive a conversation */
   archiveChat: (id) => api.delete(`/ai/chats/${id}`),
+
+  /** Run AI analysis on an uploaded resume */
+  analyzeResume: (analysisId) => api.post('/ai/analyze-resume', { analysisId }),
+
+  /** Extract structured data from an uploaded certificate */
+  extractCertificate: (fileUrl, mimeType) =>
+    api.post('/ai/extract-certificate', { fileUrl, mimeType }),
 };
 
 export default aiApi;
