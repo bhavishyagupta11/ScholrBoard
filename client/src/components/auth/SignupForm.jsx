@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Eye, EyeOff, GraduationCap } from 'lucide-react';
-import { useFirebaseAuth } from '../../contexts/FirebaseAuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 export function SignupForm({ role, onToggleForm, additionalFields = [] }) {
   const navigate = useNavigate();
-  const { register } = useFirebaseAuth();
+  const { register } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
