@@ -1,11 +1,11 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Code2, FileText, LayoutDashboard, Upload, Table2, UserSquare2, LogOut } from 'lucide-react';
+import { Code2, FileText, LayoutDashboard, Upload, Table2, UserSquare2, LogOut, MessageSquare } from 'lucide-react';
 import { Topbar } from '../components/Topbar.jsx';
-import { useFirebaseAuth } from '../contexts/FirebaseAuthContext.jsx';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 export function StudentLayout() {
 	const navigate = useNavigate();
-	const { logout } = useFirebaseAuth();
+	const { logout } = useAuth();
 	const handleLogout = async () => {
 		await logout();
 		navigate('/', { replace: true });
@@ -18,6 +18,7 @@ export function StudentLayout() {
 		{ to: '/student/portfolio', label: 'Portfolio', icon: UserSquare2 },
 		{ to: '/student/coding', label: 'Coding', icon: Code2 },
 		{ to: '/student/resume', label: 'Resume', icon: FileText },
+		{ to: '/student/ai-chat', label: 'AI Coach', icon: MessageSquare },
 	];
 
 	const navLinkClass = ({ isActive }) =>
