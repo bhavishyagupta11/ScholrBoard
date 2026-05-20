@@ -1,11 +1,11 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { ClipboardList, Users, BarChart3, LogOut, UserSquare2 } from 'lucide-react';
 import { Topbar } from '../components/Topbar.jsx';
-import { useFirebaseAuth } from '../contexts/FirebaseAuthContext.jsx';
+import { useAuth } from '../contexts/AuthContext.jsx';
 
 export function FacultyLayout() {
 	const navigate = useNavigate();
-	const { logout } = useFirebaseAuth();
+	const { logout } = useAuth();
 	const handleLogout = async () => { 
 		await logout();
 		navigate('/', { replace: true }); 

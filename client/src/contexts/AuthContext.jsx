@@ -1,154 +1,172 @@
-import React, { createContext, useCallback, useContext, useState, useEffect } from "react";
+/**
+ * AuthContext.jsx — Native JWT Auth Context
+ *
+ * One-token flow:
+ *   1. Client sends email/password to /api/auth/login or /api/auth/register
+ *   2. Backend verifies credentials and returns a server JWT
+ *   3. JWT is stored in localStorage
+ *   4. All API calls use this JWT (handled by api/index.js interceptors)
+ */
+import { useState, useEffect, createContext, useContext } from 'react';
+import authApi from '../api/auth.api.js';
+import { clearToken, getToken } from '../api/index.js';
 
 const AuthContext = createContext(undefined);
 
-const API_URL = 'http://localhost:5000/api';
+// ─── Local cache helpers ───────────────────────────────────────────────────────
+const CACHE_KEY = 'scholrboardUser';
+
+const getCachedUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+  } catch {
+    return null;
+  }
+};
+
+const cacheUser = (userData) => {
+  if (!userData) return;
+  const data = {
+    _id:         userData._id,
+    name:        userData.name,
+    email:       userData.email,
+    role:        userData.role,
+    avatar:      userData.avatar || null,
+    studentId:   userData.studentId || null,
+    facultyId:   userData.facultyId || null,
+    department:  userData.department || null,
+    semester:    userData.semester   || null,
+    verified:    userData.verified   || false,
+  };
+  localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+  if (data.role) {
+    localStorage.setItem('role', data.role);
+    localStorage.setItem('isAuthenticated', 'true');
+  }
+};
+
+const clearUserCache = () => {
+  localStorage.removeItem(CACHE_KEY);
+  localStorage.removeItem('role');
+  localStorage.removeItem('isAuthenticated');
+  clearToken();
+};
+
+// ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function AuthProvider({ children }) {
-	const [isAuthenticated, setIsAuthenticated] = useState(false);
-	const [role, setRole] = useState(null);
-	const [user, setUser] = useState(null);
-	const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser]       = useState(() => getCachedUser());
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
 
-	const logout = useCallback(() => {
-		setUser(null);
-		setRole(null);
-		setIsAuthenticated(false);
-		localStorage.removeItem("token");
-	}, []);
+  // Listen for session expiry events from the API client
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      setUser(null);
+      clearUserCache();
+    };
+    window.addEventListener('auth:session-expired', handleSessionExpired);
+    return () => window.removeEventListener('auth:session-expired', handleSessionExpired);
+  }, []);
 
-	const validateToken = useCallback(async (token) => {
-		try {
-			const response = await fetch(`${API_URL}/auth/profile`, {
-				headers: {
-					'Authorization': `Bearer ${token}`
-				}
-			});
-			if (response.ok) {
-				const userData = await response.json();
-				setUser(userData);
-				setRole(userData.role);
-				setIsAuthenticated(true);
-			} else {
-				// Token is invalid
-				logout();
-			}
-		} catch (error) {
-			console.error("Token validation error:", error);
-			logout();
-		} finally {
-			setIsLoading(false);
-		}
-	}, [logout]);
+  // Initial auth state check on mount
+  useEffect(() => {
+    const initAuth = async () => {
+      const token = getToken();
+      if (!token) {
+        setLoading(false);
+        return;
+      }
 
-	useEffect(() => {
-		try {
-			const token = localStorage.getItem("token");
-			if (token) {
-				// Validate token and fetch user data
-				validateToken(token);
-			} else {
-				setIsLoading(false);
-			}
-		} catch (error) {
-			console.error("Auth initialization error:", error);
-			setIsLoading(false);
-		}
-	}, [validateToken]);
+      try {
+        // Validate token with backend and get fresh user data
+        const res = await authApi.getMe();
+        if (res.user) {
+          cacheUser(res.user);
+          setUser(res.user);
+        }
+      } catch (err) {
+        console.warn('Session check failed, clearing auth cache', err);
+        clearUserCache();
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-	const login = async (email, password, userRole, additionalData = {}) => {
-		try {
-			const response = await fetch(`${API_URL}/auth/login`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({
-					email,
-					password,
-					role: userRole,
-					...additionalData
-				}),
-			});
+    initAuth();
+  }, []);
 
-			const data = await response.json();
+  // ─── Register ───────────────────────────────────────────────────────────────
+  const register = async (email, password, userData) => {
+    setError(null);
+    try {
+      const payload = {
+        email,
+        password,
+        ...userData
+      };
+      
+      const result = await authApi.register(payload);
+      
+      const loggedInUser = { ...result.user };
+      cacheUser(loggedInUser);
+      setUser(loggedInUser);
+      
+      return loggedInUser;
+    } catch (err) {
+      const message = err.message || 'Registration failed';
+      setError(message);
+      throw new Error(message);
+    }
+  };
 
-			if (response.ok && data.token) {
-				setUser(data);
-				setRole(data.role);
-				setIsAuthenticated(true);
-				localStorage.setItem("token", data.token);
-				return true;
-			} else {
-				throw new Error(data.message || 'Login failed');
-			}
-		} catch (error) {
-			console.error("Login error:", error);
-			throw error;
-		}
-	};
+  // ─── Login ───────────────────────────────────────────────────────────────────
+  const login = async (email, password) => {
+    setError(null);
+    try {
+      const result = await authApi.login({ email, password });
+      
+      const loggedInUser = { ...result.user };
+      cacheUser(loggedInUser);
+      setUser(loggedInUser);
+      
+      return loggedInUser;
+    } catch (err) {
+      const message = err.message || 'Login failed';
+      setError(message);
+      throw new Error(message);
+    }
+  };
 
-	const register = async (userData) => {
-		try {
-			const response = await fetch(`${API_URL}/auth/register`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(userData),
-			});
+  // ─── Logout ──────────────────────────────────────────────────────────────────
+  const logout = () => {
+    setError(null);
+    authApi.logout();
+    clearUserCache();
+    setUser(null);
+  };
 
-			const data = await response.json();
+  const value = {
+    user,
+    loading,
+    error,
+    register,
+    login,
+    logout,
+  };
 
-			if (response.ok && data.token) {
-				setUser(data);
-				setRole(data.role);
-				setIsAuthenticated(true);
-				localStorage.setItem("token", data.token);
-				return true;
-			} else {
-				throw new Error(data.message || 'Registration failed');
-			}
-		} catch (error) {
-			console.error("Registration error:", error);
-			throw error;
-		}
-	};
-
-	return (
-		<AuthContext.Provider 
-			value={{ 
-				isAuthenticated, 
-				role, 
-				user,
-				login, 
-				logout, 
-				register,
-				isLoading 
-			}}
-		>
-			{children}
-		</AuthContext.Provider>
-	);
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
-	const context = useContext(AuthContext);
-	if (context === undefined) {
-		throw new Error("useAuth must be used within an AuthProvider");
-	}
-	return context;
-}
-
-export function getDefaultPath(role) {
-	switch(role) {
-		case 'student':
-			return '/student/dashboard';
-		case 'faculty':
-			return '/faculty/dashboard';
-		case 'admin':
-			return '/admin/dashboard';
-		default:
-			return '/login';
-	}
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 }
