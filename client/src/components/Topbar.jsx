@@ -1,51 +1,45 @@
 import { Bell, Search, User2, X, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
-import { useFirebaseAuth } from '../contexts/FirebaseAuthContext.jsx';
+import { useAuth } from '../contexts/AuthContext.jsx';
+import notificationsApi from '../api/notifications.api.js';
 
 export function Topbar() {
 	const navigate = useNavigate();
-	const { user, logout } = useFirebaseAuth();
+	const { user, logout } = useAuth();
 	const role = user?.role || localStorage.getItem('role');
 	const profilePath = role === 'student' ? '/student/profile' : '/login';
 	const [open, setOpen] = useState(false);
 	const [q, setQ] = useState('');
 	const [showSearch, setShowSearch] = useState(false);
 	const [showProfileMenu, setShowProfileMenu] = useState(false);
-	const getNotifications = () => {
-		switch(role) {
-			case 'student':
-				return [
-					{ id: 1, t: 'Activity approved: Hackathon Winner', time: '2h ago' },
-					{ id: 2, t: 'New assignment posted: Data Structures', time: '4h ago' },
-					{ id: 3, t: 'Contest rating updated on LeetCode', time: '1d ago' },
-					{ id: 4, t: 'Project deadline reminder: AI Chatbot', time: '2d ago' },
-					{ id: 5, t: 'Portfolio view: 12 new views today', time: '3d ago' },
-				];
-			case 'faculty':
-				return [
-					{ id: 1, t: 'New activity submission: Ananya Sharma', time: '30m ago' },
-					{ id: 2, t: 'Assignment graded: Data Structures Lab', time: '1h ago' },
-					{ id: 3, t: 'Student query: Rohan Gupta - Project guidance', time: '2h ago' },
-					{ id: 4, t: 'Class attendance alert: 3 students below 75%', time: '4h ago' },
-					{ id: 5, t: 'Faculty meeting reminder: Tomorrow 10 AM', time: '1d ago' },
-				];
-			case 'admin':
-				return [
-					{ id: 1, t: 'System backup completed successfully', time: '1h ago' },
-					{ id: 2, t: 'New placement opportunity: TCS Software Engineer', time: '2h ago' },
-					{ id: 3, t: 'Event registration: Tech Fest 2025 - 156 students', time: '3h ago' },
-					{ id: 4, t: 'NAAC report generated and ready for download', time: '4h ago' },
-					{ id: 5, t: 'Faculty performance review due next week', time: '2d ago' },
-				];
-			default:
-				return [
-					{ id: 1, t: 'Welcome to ScholrBoard', time: 'Just now' },
-				];
-		}
-	};
+	const [notifications, setNotifications] = useState([]);
+	const [unreadCount, setUnreadCount] = useState(0);
 
-	const notifications = getNotifications();
+	useEffect(() => {
+		if (!user?._id) {
+			setNotifications([]);
+			setUnreadCount(0);
+			return;
+		}
+
+		let cancelled = false;
+		notificationsApi.getAll(false, 1)
+			.then((res) => {
+				if (cancelled) return;
+				setNotifications(res.notifications || []);
+				setUnreadCount(res.unreadCount || 0);
+			})
+			.catch(() => {
+				if (cancelled) return;
+				setNotifications([]);
+				setUnreadCount(0);
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	}, [user?._id]);
 
 	const handleLogout = async () => {
 		await logout();
@@ -150,7 +144,9 @@ export function Topbar() {
 				<div className="relative">
 					<button className="btn btn-outline relative h-10 w-10 px-0" title="Notifications" onClick={()=>setOpen(v=>!v)}>
 						<Bell size={20} color="var(--text-primary)" />
-						<span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full text-[10px] bg-red-500 text-white grid place-items-center">{notifications.length}</span>
+						{unreadCount > 0 && (
+							<span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full text-[10px] bg-red-500 text-white grid place-items-center">{unreadCount}</span>
+						)}
 					</button>
 					{open && (
 						<div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] surface p-3 z-20 shadow-lg">
@@ -159,11 +155,26 @@ export function Topbar() {
 								<button onClick={()=>setOpen(false)} className="text-xs" style={{color:'var(--text-secondary)'}}><X size={14}/></button>
 							</div>
 							<div className="space-y-2 max-h-64 overflow-auto">
-								{notifications.map(n => (
-									<div key={n.id} className="p-3 rounded-md cursor-pointer transition-colors nav-item-muted" style={{background:'var(--bg-medium)', border:'1px solid var(--border-color)'}}>
-										<div className="text-sm">{n.t}</div>
-										<div className="text-[11px]" style={{color:'var(--text-secondary)'}}>{n.time}</div>
-									</div>
+								{notifications.length === 0 ? (
+									<div className="text-sm subtle px-2 py-3">No notifications yet</div>
+								) : notifications.map(n => (
+									<button
+										key={n._id}
+										className="w-full text-left p-3 rounded-md cursor-pointer transition-colors nav-item-muted"
+										style={{background:'var(--bg-medium)', border:'1px solid var(--border-color)'}}
+										onClick={async () => {
+											if (!n.isRead) {
+												await notificationsApi.markRead(n._id).catch(() => {});
+												setUnreadCount((count) => Math.max(0, count - 1));
+											}
+											if (n.actionUrl) navigate(n.actionUrl);
+											setOpen(false);
+										}}
+									>
+										<div className="text-sm font-medium">{n.title}</div>
+										<div className="text-xs mt-1">{n.message}</div>
+										<div className="text-[11px] mt-1" style={{color:'var(--text-secondary)'}}>{new Date(n.createdAt).toLocaleString()}</div>
+									</button>
 								))}
 							</div>
 						</div>
