@@ -1,153 +1,115 @@
+/**
+ * AdminDashboard.jsx — Real dynamic admin overview
+ * Fetches real stats from /api/analytics/system
+ */
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useScrollAnimation, useStaggeredAnimation } from '../hooks/useScrollAnimation.js';
+import analyticsApi from '../api/analytics.api.js';
+import { Users, Activity, CheckCircle, TrendingUp, AlertCircle } from 'lucide-react';
+
+function StatCard({ label, value, color, icon, loading }) {
+  return (
+    <div className="card p-6">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>{label}</div>
+        <div style={{ color }}>{icon}</div>
+      </div>
+      {loading ? (
+        <div className="skeleton h-9 w-24" />
+      ) : (
+        <div className="text-3xl font-bold" style={{ color }}>{value ?? '–'}</div>
+      )}
+    </div>
+  );
+}
 
 export function AdminDashboard() {
-	const navigate = useNavigate();
+  const navigate = useNavigate();
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
 
-	// Scroll animation hooks
-	const headerRef = useScrollAnimation({ animationClass: 'fade-in-up', delay: 0.1 });
-	const statsRef = useScrollAnimation({ animationClass: 'fade-in-up', delay: 0.2 });
-	
-	// Staggered animations for stats cards
-	const { containerRef: statsContainerRef, setItemRef: setStatRef } = useStaggeredAnimation(4, 0.1);
+  const headerRef = useScrollAnimation({ animationClass: 'fade-in-up', delay: 0.1 });
+  const { containerRef: statsContainerRef } = useStaggeredAnimation(4, 0.1);
 
-	const switchRole = (newRole) => {
-		localStorage.setItem('role', newRole);
-		localStorage.setItem('isAuthenticated', 'true');
-		console.log(`Switching to ${newRole} role`);
-		
-		if (newRole === 'student') {
-			window.location.href = '/student';
-		} else if (newRole === 'faculty') {
-			window.location.href = '/faculty';
-		} else if (newRole === 'admin') {
-			window.location.href = '/admin';
-		}
-	};
+  useEffect(() => {
+    analyticsApi.getSystemAnalytics()
+      .then((res) => setData(res?.systemAnalytics || null))
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
 
-	return (
-		<div className="space-y-6">
-			{/* Header with Role Switcher */}
-			<div ref={headerRef} className="flex justify-between items-center gpu-accelerated">
-				<div>
-					<h1 className="text-3xl font-bold" style={{color:'var(--text-primary)'}}>Admin Dashboard</h1>
-					<p className="mt-2" style={{color:'var(--text-secondary)'}}>Complete system administration and oversight</p>
-				</div>
-				<div className="flex gap-2">
-					<button 
-						onClick={() => switchRole('student')}
-						className="btn btn-outline text-sm hover:scale-105 transition-transform"
-					>
-						Switch to Student
-					</button>
-					<button 
-						onClick={() => switchRole('faculty')}
-						className="btn btn-outline text-sm hover:scale-105 transition-transform"
-					>
-						Switch to Faculty
-					</button>
-				</div>
-			</div>
+  return (
+    <div className="space-y-6">
+      <div ref={headerRef} className="flex justify-between items-center gpu-accelerated">
+        <div>
+          <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>Admin Dashboard</h1>
+          <p className="mt-2" style={{ color: 'var(--text-secondary)' }}>Complete system administration and oversight</p>
+        </div>
+      </div>
 
-			{/* Quick Stats */}
-			<div ref={statsContainerRef} className="grid grid-cols-1 md:grid-cols-4 gap-6">
-				<div className="card p-6">
-					<div className="text-3xl font-bold mb-2" style={{color:'var(--primary-blue)'}}>370</div>
-					<div className="text-sm" style={{color:'var(--text-secondary)'}}>Total Students</div>
-				</div>
-				<div className="card p-6">
-					<div className="text-3xl font-bold mb-2" style={{color:'var(--primary-cyan)'}}>127</div>
-					<div className="text-sm" style={{color:'var(--text-secondary)'}}>Total Activities</div>
-				</div>
-				<div className="card p-6">
-					<div className="text-3xl font-bold mb-2 text-green-400">94%</div>
-					<div className="text-sm" style={{color:'var(--text-secondary)'}}>Approval Rate</div>
-				</div>
-				<div className="card p-6">
-					<div className="text-3xl font-bold mb-2 text-yellow-400">8.4</div>
-					<div className="text-sm" style={{color:'var(--text-secondary)'}}>System Health</div>
-				</div>
-			</div>
+      {error && (
+        <div className="flex items-center gap-2 p-3 rounded-lg text-sm" style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--danger-color)', border: '1px solid var(--danger-color)' }}>
+          <AlertCircle size={16} /> {error}
+        </div>
+      )}
 
-			{/* Quick Actions */}
-			<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-				<div 
-					className="card p-6 cursor-pointer hover:bg-white/5 transition-colors"
-					onClick={() => navigate('/admin/analytics')}
-				>
-					<h3 className="text-lg font-semibold mb-3" style={{color:'var(--text-primary)'}}>📊 Analytics & Reports</h3>
-					<p className="text-sm mb-4" style={{color:'var(--text-secondary)'}}>Generate NAAC/NIRF reports and view analytics</p>
-					<button className="btn btn-outline w-full">View Analytics</button>
-				</div>
-				
-				<div 
-					className="card p-6 cursor-pointer hover:bg-white/5 transition-colors"
-					onClick={() => navigate('/admin/placements')}
-				>
-					<h3 className="text-lg font-semibold mb-3" style={{color:'var(--text-primary)'}}>💼 Placements & Internships</h3>
-					<p className="text-sm mb-4" style={{color:'var(--text-secondary)'}}>Manage job postings and internship opportunities</p>
-					<button className="btn btn-outline w-full">Manage Placements</button>
-				</div>
-				
-				<div 
-					className="card p-6 cursor-pointer hover:bg-white/5 transition-colors"
-					onClick={() => navigate('/admin/events')}
-				>
-					<h3 className="text-lg font-semibold mb-3" style={{color:'var(--text-primary)'}}>📅 Events Management</h3>
-					<p className="text-sm mb-4" style={{color:'var(--text-secondary)'}}>Organize and manage university events</p>
-					<button className="btn btn-outline w-full">Manage Events</button>
-				</div>
-			</div>
+      {/* Real stats */}
+      <div ref={statsContainerRef} className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <StatCard label="Total Students" loading={loading} value={data?.totalStudents} color="var(--primary-blue)" icon={<Users size={20} />} />
+        <StatCard label="Total Activities" loading={loading} value={data?.activitySummary?.Total} color="var(--primary-cyan)" icon={<Activity size={20} />} />
+        <StatCard label="Approval Rate" loading={loading} value={data?.approvalRate != null ? `${data.approvalRate}%` : null} color="var(--success-color)" icon={<CheckCircle size={20} />} />
+        <StatCard label="Total Faculty" loading={loading} value={data?.totalFaculty} color="var(--warning-color)" icon={<TrendingUp size={20} />} />
+      </div>
 
-			{/* Secondary Actions */}
-			<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-				<div 
-					className="card p-6 cursor-pointer hover:bg-white/5 transition-colors"
-					onClick={() => navigate('/admin/approvals')}
-				>
-					<h3 className="text-lg font-semibold mb-3" style={{color:'var(--text-primary)'}}>📋 Activity Approvals</h3>
-					<p className="text-sm mb-4" style={{color:'var(--text-secondary)'}}>Review and approve student activities</p>
-					<button className="btn btn-outline w-full">Review Approvals</button>
-				</div>
-				
-				<div 
-					className="card p-6 cursor-pointer hover:bg-white/5 transition-colors"
-					onClick={() => navigate('/admin/settings')}
-				>
-					<h3 className="text-lg font-semibold mb-3" style={{color:'var(--text-primary)'}}>⚙️ System Settings</h3>
-					<p className="text-sm mb-4" style={{color:'var(--text-secondary)'}}>Configure system parameters and permissions</p>
-					<button className="btn btn-outline w-full">System Settings</button>
-				</div>
-			</div>
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {[
+          { title: '📊 Analytics & Reports', desc: 'Generate NAAC/NIRF reports and view analytics', path: '/admin/analytics', btn: 'View Analytics' },
+          { title: '💼 Placements & Internships', desc: 'Manage job postings and internship opportunities', path: '/admin/placements', btn: 'Manage Placements' },
+          { title: '📅 Events Management', desc: 'Organize and manage university events', path: '/admin/events', btn: 'Manage Events' },
+        ].map((card) => (
+          <div key={card.title} className="card p-6 cursor-pointer hover:bg-white/5 transition-colors" onClick={() => navigate(card.path)}>
+            <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>{card.title}</h3>
+            <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>{card.desc}</p>
+            <button className="btn btn-outline w-full">{card.btn}</button>
+          </div>
+        ))}
+      </div>
 
-			{/* Recent Admin Activity */}
-			<div className="card p-6">
-				<h2 className="text-xl font-semibold mb-4" style={{color:'var(--text-primary)'}}>Recent Admin Activity</h2>
-				<div className="space-y-3">
-					<div className="flex justify-between items-center py-3 border-b" style={{borderColor:'var(--border-color)'}}>
-						<div>
-							<div style={{color:'var(--text-primary)'}}>Generated NAAC compliance report</div>
-							<div className="text-sm" style={{color:'var(--text-secondary)'}}>System Administration</div>
-						</div>
-						<div className="text-sm" style={{color:'var(--text-secondary)'}}>2 hours ago</div>
-					</div>
-					<div className="flex justify-between items-center py-3 border-b" style={{borderColor:'var(--border-color)'}}>
-						<div>
-							<div style={{color:'var(--text-primary)'}}>Added new placement opportunity - TCS Software Engineer</div>
-							<div className="text-sm" style={{color:'var(--text-secondary)'}}>Placement Management</div>
-						</div>
-						<div className="text-sm" style={{color:'var(--text-secondary)'}}>4 hours ago</div>
-					</div>
-					<div className="flex justify-between items-center py-3 border-b" style={{borderColor:'var(--border-color)'}}>
-						<div>
-							<div style={{color:'var(--text-primary)'}}>Updated system permissions for faculty</div>
-							<div className="text-sm" style={{color:'var(--text-secondary)'}}>User Management</div>
-						</div>
-						<div className="text-sm" style={{color:'var(--text-secondary)'}}>1 day ago</div>
-					</div>
-				</div>
-			</div>
-
-		</div>
-	);
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="card p-6 cursor-pointer hover:bg-white/5 transition-colors" onClick={() => navigate('/admin/approvals')}>
+          <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>📋 Activity Approvals</h3>
+          {!loading && data?.activitySummary?.Pending > 0 && (
+            <div className="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold" style={{ background: 'rgba(234,179,8,0.2)', color: 'var(--warning-color)' }}>
+              {data.activitySummary.Pending} pending review
+            </div>
+          )}
+          <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Review and approve student activities</p>
+          <button className="btn btn-outline w-full">Review Approvals</button>
+        </div>
+        <div className="card p-6">
+          <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>📋 Recent Pending Activities</h3>
+          {loading ? (
+            <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="skeleton h-10 w-full" />)}</div>
+          ) : (data?.recentPendingActivities || []).length === 0 ? (
+            <div className="text-sm subtle">No pending activities</div>
+          ) : (
+            <div className="space-y-2">
+              {(data.recentPendingActivities || []).slice(0, 5).map((a) => (
+                <div key={a._id} className="flex justify-between items-center text-sm p-2 rounded" style={{ background: 'var(--bg-medium)' }}>
+                  <div>
+                    <div style={{ color: 'var(--text-primary)' }}>{a.title}</div>
+                    <div className="subtle">{a.userId?.name} · {a.category}</div>
+                  </div>
+                  <span className="badge badge-yellow">Pending</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }

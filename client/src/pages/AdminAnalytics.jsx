@@ -1,201 +1,158 @@
+/**
+ * AdminAnalytics.jsx — Dynamic analytics based on actual data
+ */
+import { useEffect, useState } from 'react';
+import analyticsApi from '../api/analytics.api.js';
+import { Users, Activity, CheckCircle, TrendingUp, AlertCircle, Download } from 'lucide-react';
 
 export function AdminAnalytics() {
-	const generateReport = (type) => {
-		alert(`${type} Report generated successfully!\n\nData included:\n- Total Students: 370\n- Total Activities: 127\n- Approval Rate: 94%\n- Generated: ${new Date().toLocaleDateString()}`);
-	};
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-	return (
-		<div className="space-y-6">
-			{/* Header */}
-			<div>
-				<h1 className="text-3xl font-bold" style={{color:'var(--text-primary)'}}>Analytics & Reports</h1>
-				<p className="mt-2" style={{color:'var(--text-secondary)'}}>Generate institutional reports and view detailed analytics</p>
-			</div>
+  useEffect(() => {
+    analyticsApi.getSystemAnalytics()
+      .then((res) => setData(res?.systemAnalytics || null))
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
 
-			{/* Key Metrics */}
-			<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-				<div className="card p-4">
-					<div className="text-2xl font-bold" style={{color:'var(--primary-blue)'}}>370</div>
-					<div className="text-sm" style={{color:'var(--text-secondary)'}}>Total Students</div>
-				</div>
-				<div className="card p-4">
-					<div className="text-2xl font-bold" style={{color:'var(--primary-cyan)'}}>127</div>
-					<div className="text-sm" style={{color:'var(--text-secondary)'}}>Total Activities</div>
-				</div>
-				<div className="card p-4">
-					<div className="text-2xl font-bold text-green-400">94%</div>
-					<div className="text-sm" style={{color:'var(--text-secondary)'}}>Approval Rate</div>
-				</div>
-				<div className="card p-4">
-					<div className="text-2xl font-bold text-yellow-400">8.4</div>
-					<div className="text-sm" style={{color:'var(--text-secondary)'}}>Avg GPA</div>
-				</div>
-			</div>
+  const generateReport = (type) => {
+    const rows = [
+      ['Report Type', type],
+      ['Generated At', new Date().toISOString()],
+      ['Total Students', data?.totalStudents || 0],
+      ['Total Faculty', data?.totalFaculty || 0],
+      ['Total Activities', data?.activitySummary?.Total || 0],
+      ['Pending Activities', data?.activitySummary?.Pending || 0],
+      ['Approved Activities', data?.activitySummary?.Approved || 0],
+      ['Rejected Activities', data?.activitySummary?.Rejected || 0],
+      ['Approval Rate', `${data?.approvalRate || 0}%`],
+    ];
+    downloadCsv(`${type.toLowerCase()}-report.csv`, rows);
+  };
 
-			{/* Department Analytics */}
-			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-				<div className="card p-6">
-					<h3 className="text-lg font-semibold mb-4" style={{color:'var(--text-primary)'}}>Department-wise Statistics</h3>
-					<div className="space-y-3">
-						<div>
-							<div className="flex justify-between text-sm mb-1">
-								<span>Computer Science (CSE)</span>
-								<span>120 students</span>
-							</div>
-							<div className="w-full bg-slate-700 rounded-full h-2">
-								<div className="h-2 rounded-full bg-blue-500" style={{width:'40%'}} />
-							</div>
-						</div>
-						<div>
-							<div className="flex justify-between text-sm mb-1">
-								<span>Electronics (ECE)</span>
-								<span>90 students</span>
-							</div>
-							<div className="w-full bg-slate-700 rounded-full h-2">
-								<div className="h-2 rounded-full bg-green-500" style={{width:'30%'}} />
-							</div>
-						</div>
-						<div>
-							<div className="flex justify-between text-sm mb-1">
-								<span>Mechanical (ME)</span>
-								<span>85 students</span>
-							</div>
-							<div className="w-full bg-slate-700 rounded-full h-2">
-								<div className="h-2 rounded-full bg-yellow-500" style={{width:'28%'}} />
-							</div>
-						</div>
-						<div>
-							<div className="flex justify-between text-sm mb-1">
-								<span>Civil (CE)</span>
-								<span>75 students</span>
-							</div>
-							<div className="w-full bg-slate-700 rounded-full h-2">
-								<div className="h-2 rounded-full bg-purple-500" style={{width:'25%'}} />
-							</div>
-						</div>
-					</div>
-				</div>
+  const downloadCsv = (filename, rows) => {
+    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
-				<div className="card p-6">
-					<h3 className="text-lg font-semibold mb-4" style={{color:'var(--text-primary)'}}>Activity Categories</h3>
-					<div className="space-y-3">
-						<div>
-							<div className="flex justify-between text-sm mb-1">
-								<span>Technical Projects</span>
-								<span>35%</span>
-							</div>
-							<div className="w-full bg-slate-700 rounded-full h-2">
-								<div className="h-2 rounded-full bg-blue-500" style={{width:'35%'}} />
-							</div>
-						</div>
-						<div>
-							<div className="flex justify-between text-sm mb-1">
-								<span>Research Papers</span>
-								<span>25%</span>
-							</div>
-							<div className="w-full bg-slate-700 rounded-full h-2">
-								<div className="h-2 rounded-full bg-green-500" style={{width:'25%'}} />
-							</div>
-						</div>
-						<div>
-							<div className="flex justify-between text-sm mb-1">
-								<span>Leadership Roles</span>
-								<span>20%</span>
-							</div>
-							<div className="w-full bg-slate-700 rounded-full h-2">
-								<div className="h-2 rounded-full bg-yellow-500" style={{width:'20%'}} />
-							</div>
-						</div>
-						<div>
-							<div className="flex justify-between text-sm mb-1">
-								<span>Sports & Others</span>
-								<span>20%</span>
-							</div>
-							<div className="w-full bg-slate-700 rounded-full h-2">
-								<div className="h-2 rounded-full bg-purple-500" style={{width:'20%'}} />
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold" style={{color:'var(--text-primary)'}}>Analytics & Reports</h1>
+        <p className="mt-2" style={{color:'var(--text-secondary)'}}>Generate institutional reports and view detailed analytics</p>
+      </div>
 
-			{/* Report Generation */}
-			<div className="card p-6">
-				<h3 className="text-lg font-semibold mb-4" style={{color:'var(--text-primary)'}}>Institutional Reports</h3>
-				<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-					<button 
-						onClick={() => generateReport('NAAC')}
-						className="btn btn-outline p-4 h-auto"
-					>
-						<div className="text-left">
-							<div className="font-semibold">NAAC Report</div>
-							<div className="text-sm" style={{color:'var(--text-secondary)'}}>National Assessment and Accreditation Council</div>
-						</div>
-					</button>
-					<button 
-						onClick={() => generateReport('NIRF')}
-						className="btn btn-outline p-4 h-auto"
-					>
-						<div className="text-left">
-							<div className="font-semibold">NIRF Report</div>
-							<div className="text-sm" style={{color:'var(--text-secondary)'}}>National Institutional Ranking Framework</div>
-						</div>
-					</button>
-					<button 
-						onClick={() => alert('Student performance data exported to Excel successfully!')}
-						className="btn btn-outline p-4 h-auto"
-					>
-						<div className="text-left">
-							<div className="font-semibold">Export Data</div>
-							<div className="text-sm" style={{color:'var(--text-secondary)'}}>Download Excel reports</div>
-						</div>
-					</button>
-				</div>
-			</div>
+      {error && (
+        <div className="flex items-center gap-2 p-3 rounded-lg text-sm" style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--danger-color)', border: '1px solid var(--danger-color)' }}>
+          <AlertCircle size={16} /> {error}
+        </div>
+      )}
 
-			{/* Performance Metrics */}
-			<div className="card p-6">
-				<h3 className="text-lg font-semibold mb-4" style={{color:'var(--text-primary)'}}>Institutional Performance</h3>
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-					<div className="space-y-3">
-						<div className="flex justify-between">
-							<span>Average GPA</span>
-							<span style={{color:'var(--text-primary)'}}>8.4/10</span>
-						</div>
-						<div className="flex justify-between">
-							<span>Activities per Student</span>
-							<span style={{color:'var(--text-primary)'}}>3.2</span>
-						</div>
-						<div className="flex justify-between">
-							<span>Employment Rate</span>
-							<span style={{color:'var(--text-primary)'}}>87%</span>
-						</div>
-						<div className="flex justify-between">
-							<span>Alumni Satisfaction</span>
-							<span style={{color:'var(--text-primary)'}}>4.6/5</span>
-						</div>
-					</div>
-					<div className="space-y-3">
-						<div className="flex justify-between">
-							<span>Faculty-Student Ratio</span>
-							<span style={{color:'var(--text-primary)'}}>1:15</span>
-						</div>
-						<div className="flex justify-between">
-							<span>Research Publications</span>
-							<span style={{color:'var(--text-primary)'}}>156</span>
-						</div>
-						<div className="flex justify-between">
-							<span>Industry Partnerships</span>
-							<span style={{color:'var(--text-primary)'}}>23</span>
-						</div>
-						<div className="flex justify-between">
-							<span>Campus Infrastructure</span>
-							<span style={{color:'var(--text-primary)'}}>Excellent</span>
-						</div>
-					</div>
-				</div>
-			</div>
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="card p-6">
+          <div className="flex justify-between items-center mb-2">
+            <div className="text-sm" style={{color:'var(--text-secondary)'}}>Total Students</div>
+            <Users size={20} className="text-blue-500 opacity-50" />
+          </div>
+          {loading ? <div className="skeleton h-8 w-16" /> : <div className="text-3xl font-bold text-blue-500">{data?.totalStudents || 0}</div>}
+        </div>
+        <div className="card p-6">
+          <div className="flex justify-between items-center mb-2">
+            <div className="text-sm" style={{color:'var(--text-secondary)'}}>Total Activities</div>
+            <Activity size={20} className="text-cyan-500 opacity-50" />
+          </div>
+          {loading ? <div className="skeleton h-8 w-16" /> : <div className="text-3xl font-bold text-cyan-500">{data?.activitySummary?.Total || 0}</div>}
+        </div>
+        <div className="card p-6">
+          <div className="flex justify-between items-center mb-2">
+            <div className="text-sm" style={{color:'var(--text-secondary)'}}>Approval Rate</div>
+            <CheckCircle size={20} className="text-green-500 opacity-50" />
+          </div>
+          {loading ? <div className="skeleton h-8 w-16" /> : <div className="text-3xl font-bold text-green-500">{data?.approvalRate != null ? `${data.approvalRate}%` : '–'}</div>}
+        </div>
+        <div className="card p-6">
+          <div className="flex justify-between items-center mb-2">
+            <div className="text-sm" style={{color:'var(--text-secondary)'}}>Total Faculty</div>
+            <TrendingUp size={20} className="text-yellow-500 opacity-50" />
+          </div>
+          {loading ? <div className="skeleton h-8 w-16" /> : <div className="text-3xl font-bold text-yellow-500">{data?.totalFaculty || 0}</div>}
+        </div>
+      </div>
 
-		</div>
-	);
+      {/* Report Generation */}
+      <div className="card p-6">
+        <h3 className="text-lg font-semibold mb-4" style={{color:'var(--text-primary)'}}>Institutional Reports</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <button 
+            onClick={() => generateReport('NAAC')}
+            className="btn btn-outline p-4 h-auto hover:-translate-y-1 transition-transform"
+            disabled={loading}
+          >
+            <div className="flex justify-between items-start">
+              <div className="text-left">
+                <div className="font-semibold">NAAC Report</div>
+                <div className="text-sm mt-1" style={{color:'var(--text-secondary)'}}>National Assessment and Accreditation Council</div>
+              </div>
+              <Download size={18} className="text-blue-400" />
+            </div>
+          </button>
+          <button 
+            onClick={() => generateReport('NIRF')}
+            className="btn btn-outline p-4 h-auto hover:-translate-y-1 transition-transform"
+            disabled={loading}
+          >
+            <div className="flex justify-between items-start">
+              <div className="text-left">
+                <div className="font-semibold">NIRF Report</div>
+                <div className="text-sm mt-1" style={{color:'var(--text-secondary)'}}>National Institutional Ranking Framework</div>
+              </div>
+              <Download size={18} className="text-blue-400" />
+            </div>
+          </button>
+          <button 
+            onClick={() => generateReport('Student Performance Export')}
+            className="btn btn-outline p-4 h-auto hover:-translate-y-1 transition-transform"
+            disabled={loading}
+          >
+            <div className="flex justify-between items-start">
+              <div className="text-left">
+                <div className="font-semibold">Export Data</div>
+                <div className="text-sm mt-1" style={{color:'var(--text-secondary)'}}>Download raw Excel reports</div>
+              </div>
+              <Download size={18} className="text-green-400" />
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Activity Breakdown */}
+      <div className="card p-6">
+        <h3 className="text-lg font-semibold mb-4" style={{color:'var(--text-primary)'}}>Activity Status Breakdown</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-4 rounded-lg text-center" style={{ background: 'var(--bg-medium)' }}>
+            <div className="text-2xl font-bold text-yellow-400">{data?.activitySummary?.Pending || 0}</div>
+            <div className="text-sm subtle mt-1">Pending Review</div>
+          </div>
+          <div className="p-4 rounded-lg text-center" style={{ background: 'var(--bg-medium)' }}>
+            <div className="text-2xl font-bold text-green-400">{data?.activitySummary?.Approved || 0}</div>
+            <div className="text-sm subtle mt-1">Approved</div>
+          </div>
+          <div className="p-4 rounded-lg text-center" style={{ background: 'var(--bg-medium)' }}>
+            <div className="text-2xl font-bold text-red-400">{data?.activitySummary?.Rejected || 0}</div>
+            <div className="text-sm subtle mt-1">Rejected</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  );
 }
