@@ -7,6 +7,11 @@ const connectDB = async () => {
 
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('MongoDB Connected Successfully');
+
+    if (process.env.NODE_ENV !== 'production') {
+      const { default: User } = await import('../models/User.js');
+      await User.syncIndexes();
+    }
   } catch (error) {
     console.error('Could not connect to MongoDB:', error);
     process.exit(1);
