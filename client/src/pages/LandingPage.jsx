@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { ChevronDown, LayoutGrid, BarChart2, ArrowRight, Sparkles, Zap, Target, Sun, Moon, ShieldCheck, GraduationCap, Building2 } from 'lucide-react';
 import { useScrollAnimation, useStaggeredAnimation } from '../hooks/useScrollAnimation.js';
-import { useFirebaseAuth } from '../contexts/FirebaseAuthContext.jsx';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import heroPreview from '../../publiclanding-hero.png.png';
 
 export function LandingPage() {
@@ -10,7 +10,7 @@ export function LandingPage() {
 	const [customersOpen, setCustomersOpen] = useState(false);
 	const [scrollProgress, setScrollProgress] = useState(0);
 	const [theme, setTheme] = useState(() => document.documentElement.getAttribute('data-theme') || 'light');
-	const { user, logout } = useFirebaseAuth();
+	const { user, logout } = useAuth();
 	
 	const role = user?.role || localStorage.getItem('role');
 	
@@ -178,13 +178,13 @@ export function LandingPage() {
 							<div>
 								<div className="inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-sm font-medium">
 									<ShieldCheck className="w-4 h-4" />
-									<span>Verified academic record system</span>
+									<span>Built for real student journeys</span>
 								</div>
 								<h1 className="max-w-4xl text-4xl md:text-5xl lg:text-6xl font-black leading-tight text-slate-900 mb-6">
-									Build placement-ready student records without spreadsheet chaos.
+									Keep student progress organized without chasing forms and sheets.
 								</h1>
 								<p className="text-lg md:text-xl leading-relaxed mb-8 max-w-3xl" style={{color:'var(--text-secondary)'}}>
-									ScholrBoard brings achievements, faculty approvals, coding profiles, resumes, and accreditation evidence into one clean workflow for colleges.
+									ScholrBoard gives students, mentors, and admins one shared workspace for achievements, approvals, coding profiles, and placement-ready portfolios.
 								</p>
 								<div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center mb-10">
 									<Link 
@@ -231,9 +231,9 @@ export function LandingPage() {
 							</div>
 							<div ref={valueStepsContainerRef} className="grid gap-5 md:grid-cols-3 lg:col-span-2">
 								{[
-									{ t:'Capture', d:'Students easily log every achievement, from coursework to club leadership.', icon: <Zap className="w-5 h-5" /> },
-									{ t:'Verify', d:'Faculty approve entries with a single click, ensuring institutional credibility.', icon: <Target className="w-5 h-5" /> },
-									{ t:'Showcase', d:'Instantly generate a verified digital portfolio for jobs and higher education.', icon: <Sparkles className="w-5 h-5" /> },
+									{ t:'Capture', d:'Students add projects, events, certificates, and milestones in minutes.', icon: <Zap className="w-5 h-5" /> },
+									{ t:'Verify', d:'Faculty review entries quickly with proof attached and clear status updates.', icon: <Target className="w-5 h-5" /> },
+									{ t:'Showcase', d:'Profiles stay updated so students can confidently share their work anytime.', icon: <Sparkles className="w-5 h-5" /> },
 								].map((v, index)=> (
 									<div key={v.t} ref={setValueStepRef(index)} className="value-step p-5 rounded-lg border border-slate-200 bg-white/80 transition-all duration-300 group">
 										<div className="flex items-start gap-4">
@@ -258,30 +258,30 @@ export function LandingPage() {
 						<div ref={featuresRef} className="gpu-accelerated">
 							<div className="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-sm font-medium">
 								<Zap className="w-4 h-4" />
-								<span>Built for academic operations</span>
+								<span>Built for day-to-day academic operations</span>
 							</div>
 							<h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-6">
-								One product for students, faculty, and institutions
+								One product for students, faculty, and admins
 							</h2>
 							<p className="text-lg mx-auto leading-relaxed" style={{color:'var(--text-secondary)', maxWidth:'48rem'}}>
-								Every role gets the same source of truth, so student progress can become verified evidence for mentoring, placements, and accreditation.
+								Everyone works from the same source of truth, so progress tracking, mentoring, and reporting stay accurate.
 							</p>
 						</div>
 						<div ref={featuresContainerRef} className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mt-16">
 							{[
 								{ 
 									title:'Accreditation & Audits', 
-									desc:'Generate comprehensive reports for NAAC, AICTE, and NIRF in minutes, not weeks.', 
+									desc:'Prepare evidence-backed reports for NAAC, AICTE, and NIRF without last-minute panic.', 
 									icon: Building2
 								},
 								{ 
 									title:'Career-Ready Portfolios', 
-									desc:'Empower students with verified, dynamic portfolios that stand out to employers.', 
+									desc:'Help students build trusted portfolios that are ready to share with recruiters.', 
 									icon: GraduationCap
 								},
 								{ 
 									title:'Data-Driven Mentoring', 
-									desc:'Provide faculty with a 360° view of student progress for more effective guidance.', 
+									desc:'Give mentors a clear 360° view of each learner to guide better, faster decisions.', 
 									icon: ShieldCheck
 								},
 							].map((f, index)=> {
@@ -316,9 +316,9 @@ export function LandingPage() {
 
 				<section className="py-16">
 					<div className="max-w-6xl mx-auto px-6 text-center reveal">
-						<h3 className="text-sm font-semibold uppercase tracking-widest" style={{color:'var(--text-secondary)'}}>Designed for measurable institutional outcomes</h3>
+								<h3 className="text-sm font-semibold uppercase tracking-widest" style={{color:'var(--text-secondary)'}}>Designed for measurable outcomes</h3>
 						<div className="grid gap-4 mt-8 md:grid-cols-4">
-							{['Verified evidence', 'Mentor visibility', 'Placement portfolios', 'Accreditation reports'].map((n)=> (
+								{['Verified evidence', 'Mentor visibility', 'Placement portfolios', 'Audit-ready reports'].map((n)=> (
 								<div key={n} className="metric-tile px-4 py-4 text-sm font-semibold" style={{color:'var(--text-primary)'}}>{n}</div>
 							))}
 						</div>
@@ -334,10 +334,10 @@ export function LandingPage() {
 								<span>Student workspace</span>
 							</div>
 							<h3 className="text-3xl md:text-4xl font-bold text-slate-900 mb-5">
-								A calmer way to track academic work
+								A simple way to keep academic work on track
 							</h3>
 							<p className="text-lg mx-auto leading-relaxed mb-10" style={{color:'var(--text-secondary)', maxWidth:'48rem'}}>
-								The dashboard keeps daily progress, pending approvals, and portfolio readiness visible without making students dig through scattered records.
+								The dashboard highlights what needs attention today, what is pending review, and what is ready to present.
 							</p>
 						</div>
 						
@@ -415,14 +415,14 @@ export function LandingPage() {
 						<div ref={contactRef} className="p-12 rounded-xl gpu-accelerated" style={{background:'linear-gradient(145deg, color-mix(in srgb, var(--bg-medium) 98%, transparent), rgba(var(--primary-rgb), 0.14))', border:'1px solid var(--border-color)', boxShadow:'0 18px 42px rgba(var(--primary-rgb), 0.2)'}}>
 							<div className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-sm font-medium">
 								<Sparkles className="w-4 h-4" />
-								<span>Ready to Transform?</span>
+								<span>Ready to roll this out?</span>
 							</div>
 							<h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-6">
-								Get Started with 
+								Start with 
 								<span className="text-blue-700"> ScholrBoard</span>
 							</h2>
 							<p className="text-lg mx-auto leading-relaxed mb-10" style={{color:'var(--text-secondary)', maxWidth:'48rem'}}>
-								Modernize your institution and empower your students. Schedule a personalized demo today and see the future of education.
+								Set up your team in one place and make student progress easier to manage from day one.
 							</p>
 							<div className="flex flex-col sm:flex-row gap-4 justify-center">
 								<a href="mailto:demo@scholrboard.com" className="group inline-flex items-center gap-2 px-8 py-4 rounded-lg font-semibold text-white transition-all duration-300 hover:-translate-y-0.5" style={{background:'var(--primary-blue)', boxShadow:'0 12px 24px rgba(var(--primary-rgb), 0.26)'}}>
