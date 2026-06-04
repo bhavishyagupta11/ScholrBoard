@@ -124,7 +124,7 @@ export function LoginPage() {
 				<div className="flex items-center gap-3 mb-4">
 					<GraduationCap className="text-brand-blue" />
 					<div>
-						<div className="text-lg font-semibold text-brand-blue">JECRC University</div>
+						<div className="text-lg font-semibold text-brand-blue">ScholrBoard</div>
 						<div className="text-sm" style={{color:'var(--text-secondary)'}}>ScholrBoard Platform</div>
 					</div>
 				</div>
@@ -150,8 +150,8 @@ export function LoginPage() {
 						{passwordError && <div className="text-red-400 text-sm mt-1">{passwordError}</div>}
 					</div>
 					<div className="flex gap-2">
-						<button className="btn btn-primary w-full" type="submit">Login</button>
-						<button className="btn btn-outline w-full" type="button">Sign up</button>
+						<button className="btn btn-primary w-full auth-action-button" type="submit">Login</button>
+						<button className="btn btn-outline w-full auth-action-button" type="button">Sign up</button>
 					</div>
 					<button type="button" className="text-sm text-brand-blue">Forgot Password?</button>
 					<div className="text-sm subtle">Faculty/Admin? <a className="text-brand-blue underline" onClick={()=>navigate('/auth')}>Login or Signup here</a></div>
