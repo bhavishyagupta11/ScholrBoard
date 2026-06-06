@@ -1,22 +1,28 @@
 import express from 'express';
-import { registerUser, syncUserData, getUserProfile } from '../controllers/authController.js';
-import { verifyFirebaseToken } from '../middleware/verifyFirebaseToken.js';
+import {
+  registerUser,
+  loginUser,
+  getMe,
+  refreshToken,
+} from '../controllers/authController.js';
+import auth from '../middleware/auth.js';
 
 const router = express.Router();
 
 // @route   POST /api/auth/register
 // @desc    Register a new user
-// @access  Private (requires Firebase token)
-router.post('/register', verifyFirebaseToken, registerUser);
+router.post('/register', registerUser);
 
-// @route   POST /api/auth/sync
-// @desc    Sync user data after Firebase authentication
-// @access  Private (requires Firebase token)
-router.post('/sync', verifyFirebaseToken, syncUserData);
+// @route   POST /api/auth/login
+// @desc    Login and get JWT
+router.post('/login', loginUser);
 
-// @route   GET /api/auth/profile
-// @desc    Get user profile
-// @access  Private (requires Firebase token)
-router.get('/profile', verifyFirebaseToken, getUserProfile);
+// @route   GET /api/auth/me
+// @desc    Get current user profile
+router.get('/me', auth, getMe);
+
+// @route   POST /api/auth/refresh
+// @desc    Refresh server JWT
+router.post('/refresh', auth, refreshToken);
 
 export default router;
