@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { SignupForm } from './SignupForm';
 
-export function BaseLoginForm({ role, additionalFields = [], disableSignup = false }) {
+export function BaseLoginForm({ role, additionalFields = [], disableSignup = false, presentation = 'page' }) {
   const navigate = useNavigate();
   const { login, user } = useAuth();
   const [formType, setFormType] = useState('login');
@@ -61,13 +61,17 @@ export function BaseLoginForm({ role, additionalFields = [], disableSignup = fal
         role={role} 
         additionalFields={additionalFields}
         onToggleForm={setFormType}
+        presentation={presentation}
       />
     );
   }
 
   return (
-    <div className="min-h-screen grid place-items-center p-6" style={{background:'var(--bg-dark)'}}>
-      <div className="w-full max-w-md card p-6 gpu-accelerated hover:scale-105 transition-transform">
+    <div
+      className={presentation === 'modal' ? 'auth-form-frame' : 'min-h-screen grid place-items-center p-6'}
+      style={presentation === 'modal' ? undefined : {background:'var(--bg-dark)'}}
+    >
+      <div className={`w-full max-w-md card p-6 ${presentation === 'modal' ? 'auth-modal-card' : 'gpu-accelerated hover:scale-105 transition-transform'}`}>
         <div className="flex items-center gap-3 mb-4">
           <GraduationCap className="text-brand-blue" />
           <div>
@@ -78,27 +82,33 @@ export function BaseLoginForm({ role, additionalFields = [], disableSignup = fal
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm mb-1 subtle">Email</label>
+            <label className="block text-sm mb-1 subtle" htmlFor={`${role}-login-email`}>Email</label>
             <input
+              id={`${role}-login-email`}
               name="email"
               value={formData.email}
               onChange={handleChange}
               type="email"
               className="w-full input-dark"
               placeholder="you@college.edu"
+              required
+              autoComplete="email"
             />
           </div>
 
           <div>
-            <label className="block text-sm mb-1 subtle">Password</label>
+            <label className="block text-sm mb-1 subtle" htmlFor={`${role}-login-password`}>Password</label>
             <div className="relative">
               <input
                 name="password"
+                id={`${role}-login-password`}
                 value={formData.password}
                 onChange={handleChange}
                 type={showPassword ? 'text' : 'password'}
                 className="w-full input-dark pr-12"
                 placeholder="Your password"
+                required
+                autoComplete="current-password"
               />
               <button
                 type="button"
