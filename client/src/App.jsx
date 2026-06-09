@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import { ProfileProvider } from './contexts/ProfileContext.jsx';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthOverlay } from './components/auth/AuthOverlay.jsx';
 
 const StudentLoginPage = lazy(() => import('./pages/auth/StudentLoginPage').then((module) => ({ default: module.StudentLoginPage })));
 const FacultyLoginPage = lazy(() => import('./pages/auth/FacultyLoginPage').then((module) => ({ default: module.FacultyLoginPage })));
@@ -91,11 +92,11 @@ export default function App() {
 						<Routes>
 							<Route path="/" element={<LandingPage />} />
 							<Route path="/landing" element={<LandingPage />} />
-							<Route path="/login">
+							<Route path="/login" element={<AuthOverlay />}>
 								<Route index element={<Navigate to="/login/student" replace />} />
-								<Route path="student" element={<StudentLoginPage />} />
-								<Route path="faculty" element={<FacultyLoginPage />} />
-								<Route path="admin" element={<AdminLoginPage />} />
+								<Route path="student" element={<StudentLoginPage presentation="modal" />} />
+								<Route path="faculty" element={<FacultyLoginPage presentation="modal" />} />
+								<Route path="admin" element={<AdminLoginPage presentation="modal" />} />
 							</Route>
 							<Route path="/student" element={
 								<ProtectedRoute allowedRoles={['student']}>
