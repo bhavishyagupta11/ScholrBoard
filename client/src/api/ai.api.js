@@ -27,8 +27,8 @@ export const aiApi = {
   /** Run AI analysis on an uploaded resume */
   analyzeResume: (analysisId) => api.post('/ai/analyze-resume', { analysisId }),
 
-  /** Extract structured data from an uploaded certificate */
-  extractCertificate: (fileUrl, mimeType) =>
+  /** Extract certificate details from an uploaded image/PDF using Gemini Vision */
+  extractCertificate: (fileUrl, mimeType = 'image/jpeg') =>
     api.post('/ai/extract-certificate', { fileUrl, mimeType }),
 };
 
