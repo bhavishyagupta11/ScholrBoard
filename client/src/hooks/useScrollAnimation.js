@@ -17,6 +17,7 @@ export const useScrollAnimation = (options = {}) => {
   useEffect(() => {
     const element = elementRef.current;
     if (!element) return;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     // Set initial styles based on direction
     const setInitialStyles = () => {
@@ -47,8 +48,14 @@ export const useScrollAnimation = (options = {}) => {
       element.style.transform = 'translate(0)';
     };
 
+    if (prefersReducedMotion || typeof IntersectionObserver === 'undefined') {
+      setVisibleStyles();
+      return;
+    }
+
     // Initialize styles
     setInitialStyles();
+    const revealFallback = window.setTimeout(setVisibleStyles, 1200);
 
     // Create intersection observer
     observerRef.current = new IntersectionObserver(
@@ -78,6 +85,7 @@ export const useScrollAnimation = (options = {}) => {
     observerRef.current.observe(element);
 
     return () => {
+      window.clearTimeout(revealFallback);
       if (observerRef.current) {
         observerRef.current.disconnect();
       }
@@ -95,6 +103,21 @@ export const useStaggeredAnimation = (itemCount, baseDelay = 0.2) => {
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const revealItems = () => {
+      itemRefs.current.forEach((item) => {
+        if (item) {
+          item.style.opacity = '1';
+          item.style.transform = 'translateY(0)';
+        }
+      });
+    };
+
+    if (prefersReducedMotion || typeof IntersectionObserver === 'undefined') {
+      revealItems();
+      return;
+    }
 
     // Initialize all items as hidden with staggered delays
     itemRefs.current.forEach((item, index) => {
@@ -127,8 +150,12 @@ export const useStaggeredAnimation = (itemCount, baseDelay = 0.2) => {
     );
 
     observer.observe(container);
+    const revealFallback = window.setTimeout(revealItems, 1400);
 
-    return () => observer.disconnect();
+    return () => {
+      window.clearTimeout(revealFallback);
+      observer.disconnect();
+    };
   }, [itemCount, baseDelay]);
 
   const setItemRef = (index) => (el) => {

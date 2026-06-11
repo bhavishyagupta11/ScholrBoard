@@ -39,7 +39,7 @@ export function ActivitiesPage() {
       await activitiesApi.archive(id);
       setActivities(activities.filter(a => a._id !== id));
     } catch (err) {
-      alert(err.message || 'Failed to delete activity');
+      setError(err.message || 'Failed to delete activity');
     }
   };
 
@@ -96,10 +96,23 @@ export function ActivitiesPage() {
                     <td className="px-6 py-4">
                       <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{a.title}</div>
                       {a.subCategory && <div className="text-xs subtle mt-1">{a.subCategory}</div>}
+                      {a.status === 'Needs Revision' && a.reviewComments && (
+                        <div className="text-xs mt-1.5 p-2 rounded max-w-md" style={{ background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.2)', color: '#f97316' }}>
+                          <strong>Revision required:</strong> {a.reviewComments}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">{a.category}</td>
                     <td className="px-6 py-4">
-                      <span className={`badge ${a.status === 'Approved' ? 'badge-green' : a.status === 'Pending' ? 'badge-yellow' : 'badge-red'}`}>
+                      <span className={`badge ${
+                        a.status === 'Approved'
+                          ? 'badge-green'
+                          : a.status === 'Pending'
+                          ? 'badge-yellow'
+                          : a.status === 'Needs Revision'
+                          ? 'badge-orange'
+                          : 'badge-red'
+                      }`}>
                         {a.status}
                       </span>
                     </td>
@@ -108,12 +121,11 @@ export function ActivitiesPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
-                        {a.status === 'Pending' && (
+                        {(a.status === 'Pending' || a.status === 'Needs Revision') && (
                           <button onClick={() => onDelete(a._id)} className="p-1.5 rounded hover:bg-white/10 text-red-400 transition-colors" title="Delete">
                             <Trash2 size={16} />
                           </button>
                         )}
-                        {/* Optionally add an edit button linking to an edit form here */}
                       </div>
                     </td>
                   </tr>
