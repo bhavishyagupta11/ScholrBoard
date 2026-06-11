@@ -112,6 +112,12 @@ const userSchema = new mongoose.Schema(
         message: 'Valid semester (1–8) is required for student accounts',
       },
     },
+    advisorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+      index: true,
+    },
 
     // --- Account status ---
     isActive: {

@@ -62,6 +62,43 @@ const socialLinksSchema = new mongoose.Schema({
   twitter:   { type: String, trim: true },
 }, { _id: false });
 
+const githubMetricsSchema = new mongoose.Schema({
+  publicRepos:   { type: Number, default: 0 },
+  effectiveRepositoryCount: { type: Number, default: 0 },
+  followers:     { type: Number, default: 0 },
+  stars:         { type: Number, default: 0 },
+  forks:         { type: Number, default: 0 },
+  topLanguages:  [{ name: String, count: Number }],
+  topics:        [{ type: String }],
+}, { _id: false });
+
+const leetcodeMetricsSchema = new mongoose.Schema({
+  totalSolved:   { type: Number, default: 0 },
+  easySolved:    { type: Number, default: 0 },
+  mediumSolved:  { type: Number, default: 0 },
+  hardSolved:    { type: Number, default: 0 },
+  contestRating: { type: Number, default: 0 },
+  contestGlobalRanking: { type: Number, default: null },
+  attendedContestsCount: { type: Number, default: 0 },
+}, { _id: false });
+
+const codeforcesMetricsSchema = new mongoose.Schema({
+  rating:        { type: Number, default: 0 },
+  maxRating:     { type: Number, default: 0 },
+  rank:          { type: String, default: null },
+  maxRank:       { type: String, default: null },
+  contribution:  { type: Number, default: 0 },
+  lastContestAt: { type: Date, default: null },
+}, { _id: false });
+
+const scoreBreakdownSchema = new mongoose.Schema({
+  githubWeight:     { type: Number, default: 0 },
+  dsaWeight:        { type: Number, default: 0 },
+  cpWeight:         { type: Number, default: 0 },
+  achievementBonus: { type: Number, default: 0 },
+  readinessBonus:   { type: Number, default: 0 },
+}, { _id: false });
+
 const codingStatsSchema = new mongoose.Schema({
   // These are self-reported / imported from external platforms
   leetcodeProblemsSolved: { type: Number, default: 0, min: 0 },
@@ -77,6 +114,8 @@ const codingStatsSchema = new mongoose.Schema({
   geeksforgeeksScore:     { type: Number, default: 0, min: 0 },
   hackerrankBadges:       { type: Number, default: 0, min: 0 },
   linkedInConnected:      { type: Boolean, default: false },
+  
+  // Platform Usernames
   profiles: {
     github:       { type: String, trim: true },
     leetcode:     { type: String, trim: true },
@@ -86,6 +125,24 @@ const codingStatsSchema = new mongoose.Schema({
     codechef:     { type: String, trim: true },
     linkedin:     { type: String, trim: true },
   },
+
+  // Caching Metadata
+  githubLastSyncedAt:     { type: Date, default: null },
+  leetcodeLastSyncedAt:   { type: Date, default: null },
+  codeforcesLastSyncedAt: { type: Date, default: null },
+  lastSyncedAt:           { type: Date, default: null },
+
+  // Sync Concurrency Protection
+  isSyncing:              { type: Boolean, default: false },
+  syncStartedAt:          { type: Date, default: null },
+
+  // Raw platform metrics
+  rawMetrics: {
+    github:               { type: githubMetricsSchema,     default: () => ({}) },
+    leetcode:             { type: leetcodeMetricsSchema,   default: () => ({}) },
+    codeforces:           { type: codeforcesMetricsSchema, default: () => ({}) },
+  },
+
   platformDetails: {
     type: Map,
     of: mongoose.Schema.Types.Mixed,
@@ -139,12 +196,97 @@ const profileSchema = new mongoose.Schema(
       min: [0, 'GPA cannot be negative'],
       max: [10, 'GPA cannot exceed 10'],
       default: null,
+      index: true,
     },
     attendanceOverall: {
       type: Number,
       min: 0,
       max: 100,
       default: null,         // percentage
+    },
+    backlogs: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    achievementPoints: {
+      type: Number,
+      default: 0,
+      min: 0,
+      index: true,
+    },
+    placementReadinessScore: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    developerScore: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+      index: true,
+    },
+    githubScore: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+      index: true,
+    },
+    dsaScore: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+      index: true,
+    },
+    cpScore: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+      index: true,
+    },
+    developerScoreVersion: {
+      type: Number,
+      default: 1,
+    },
+    scoringFormulaVersion: {
+      type: String,
+      default: 'v1.0.0',
+    },
+    lastScoreCalculatedAt: {
+      type: Date,
+      default: null,
+    },
+    lastScoreCalculationReason: {
+      type: String,
+      default: null,
+    },
+    scoreBreakdown: {
+      type: scoreBreakdownSchema,
+      default: () => ({}),
+    },
+
+    // --- Sync Status & Throttling Metadata ---
+    lastSyncStatus: {
+      type: String,
+      enum: ['success', 'failed', 'cooldown', null],
+      default: null,
+    },
+    lastSyncError: {
+      type: String,
+      default: null,
+    },
+    consecutiveSyncFailures: {
+      type: Number,
+      default: 0,
+    },
+    lastFailedSyncAt: {
+      type: Date,
+      default: null,
     },
 
     // --- Skills (free-form tags) ---
@@ -155,6 +297,7 @@ const profileSchema = new mongoose.Schema(
         validator: (arr) => arr.length <= 50,
         message: 'Cannot store more than 50 skills',
       },
+      index: true,
     },
 
     // --- Goals ---
@@ -200,6 +343,9 @@ const profileSchema = new mongoose.Schema(
     toObject: { virtuals: true },
   }
 );
+
+// Compound index for Talent Discovery sorting by developerScore and GPA
+profileSchema.index({ developerScore: -1, gpa: -1 });
 
 const Profile = mongoose.model('Profile', profileSchema);
 export default Profile;

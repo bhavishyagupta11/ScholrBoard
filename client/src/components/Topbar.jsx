@@ -15,6 +15,7 @@ export function Topbar() {
 	const [showProfileMenu, setShowProfileMenu] = useState(false);
 	const [notifications, setNotifications] = useState([]);
 	const [unreadCount, setUnreadCount] = useState(0);
+	const [notificationError, setNotificationError] = useState(null);
 
 	useEffect(() => {
 		if (!user?._id) {
@@ -30,10 +31,11 @@ export function Topbar() {
 				setNotifications(res.notifications || []);
 				setUnreadCount(res.unreadCount || 0);
 			})
-			.catch(() => {
+			.catch((err) => {
 				if (cancelled) return;
 				setNotifications([]);
 				setUnreadCount(0);
+				setNotificationError(err.message || 'Failed to load notifications');
 			});
 
 		return () => {
@@ -152,9 +154,24 @@ export function Topbar() {
 						<div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] surface p-3 z-20 shadow-lg">
 							<div className="flex items-center justify-between mb-2">
 								<div className="font-medium">Notifications</div>
-								<button onClick={()=>setOpen(false)} className="text-xs" style={{color:'var(--text-secondary)'}}><X size={14}/></button>
+								<div className="flex gap-2 items-center">
+									{unreadCount > 0 && (
+										<button
+											onClick={async () => {
+												await notificationsApi.markAllRead().catch((err) => setNotificationError(err.message || 'Failed to mark notifications read'));
+												setUnreadCount(0);
+												setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+											}}
+											className="text-[10px] text-blue-400 hover:underline"
+										>
+											Mark all read
+										</button>
+									)}
+									<button onClick={()=>setOpen(false)} className="text-xs" style={{color:'var(--text-secondary)'}}><X size={14}/></button>
+								</div>
 							</div>
 							<div className="space-y-2 max-h-64 overflow-auto">
+								{notificationError && <div className="text-xs text-red-400 px-2 py-1">{notificationError}</div>}
 								{notifications.length === 0 ? (
 									<div className="text-sm subtle px-2 py-3">No notifications yet</div>
 								) : notifications.map(n => (
@@ -164,7 +181,7 @@ export function Topbar() {
 										style={{background:'var(--bg-medium)', border:'1px solid var(--border-color)'}}
 										onClick={async () => {
 											if (!n.isRead) {
-												await notificationsApi.markRead(n._id).catch(() => {});
+												await notificationsApi.markRead(n._id).catch((err) => setNotificationError(err.message || 'Failed to mark notification read'));
 												setUnreadCount((count) => Math.max(0, count - 1));
 											}
 											if (n.actionUrl) navigate(n.actionUrl);

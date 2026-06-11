@@ -11,7 +11,7 @@ const departments = [
   'BioTechnology',
 ];
 
-export function FacultyLoginPage() {
+export function FacultyLoginPage({ presentation = 'page' }) {
   const additionalFields = [
     {
       name: 'facultyId',
@@ -33,6 +33,7 @@ export function FacultyLoginPage() {
     <BaseLoginForm
       role="faculty"
       additionalFields={additionalFields}
+      presentation={presentation}
     />
   );
 }

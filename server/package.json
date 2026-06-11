@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "server": "nodemon server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "security:reaudit": "node scratch/security_reaudit_phase36.js"
   },
   "keywords": [],
   "author": "",

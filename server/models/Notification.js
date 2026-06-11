@@ -49,16 +49,27 @@ const notificationSchema = new mongoose.Schema(
     type: {
       type: String,
       enum: [
-        'activity_approved',    // faculty approved a student's activity
-        'activity_rejected',    // faculty rejected a student's activity
-        'activity_submitted',   // student submitted (notifies faculty)
-        'placement_new',        // new job posting relevant to this student
-        'event_new',            // new event of interest
-        'event_reminder',       // event starting soon
-        'event_cancelled',      // event was cancelled
-        'ai_insight',           // AI generated a new insight or recommendation
-        'system',               // general system announcement
-        'profile_incomplete',   // reminder to complete profile
+        'activity_approved',
+        'activity_rejected',
+        'activity_submitted',
+        'placement_new',
+        'event_new',
+        'event_reminder',
+        'event_cancelled',
+        'ai_insight',
+        'system',
+        'profile_incomplete',
+        // Phase 2 additions:
+        'verification_approved',
+        'verification_rejected',
+        'revision_requested',
+        'od_approved',
+        'od_rejected',
+        'announcement',
+        // Phase 3 additions:
+        'opportunity_match',
+        'application_status_changed',
+        'scholarship_match'
       ],
       required: true,
       index: true,
@@ -71,7 +82,11 @@ const notificationSchema = new mongoose.Schema(
     },
     relatedModel: {
       type: String,
-      enum: ['Activity', 'Placement', 'Event', 'AiChatHistory', null],
+      enum: [
+        'Activity', 'Placement', 'Event', 'AiChatHistory', 'OdRequest', 
+        'Announcement', 'Opportunity', 'Application', 'Scholarship', 
+        'ScholarshipApplication', null
+      ],
       default: null,
     },
     actionUrl: {
@@ -104,9 +119,10 @@ const notificationSchema = new mongoose.Schema(
 
 // Most common query: unread notifications for a user (unread badge count)
 notificationSchema.index({ userId: 1, isRead: 1, createdAt: -1 });
+notificationSchema.index({ relatedId: 1, relatedModel: 1 });
+notificationSchema.index({ userId: 1, type: 1, createdAt: -1 });
 
-// Auto-delete after 90 days to keep the collection lean
-notificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 90 });
+// Note: TTL index is removed to retain notification history indefinitely for audit and compliance reporting.
 
 const Notification = mongoose.model('Notification', notificationSchema);
 export default Notification;

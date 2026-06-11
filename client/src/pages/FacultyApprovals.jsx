@@ -31,23 +31,24 @@ export function FacultyApprovals() {
 
   const handleReview = async (id, status) => {
     let rejectionReason = null;
-    let points = 10; // Default points, could be dynamic
+    let reviewComments = null;
 
     if (status === 'Rejected') {
       rejectionReason = window.prompt('Please enter a reason for rejection:');
       if (!rejectionReason) return; // Cancelled
+    } else if (status === 'Needs Revision') {
+      reviewComments = window.prompt('Specify the changes / revision feedback required:');
+      if (!reviewComments) return; // Cancelled
     } else {
-      if (!window.confirm('Are you sure you want to approve this activity?')) return;
-      const pts = window.prompt('Assign points for this activity (default 10):', '10');
-      points = parseInt(pts, 10) || 10;
+      if (!window.confirm('Are you sure you want to approve this activity? Points will be calculated automatically by the system.')) return;
     }
 
     try {
-      await activitiesApi.review(id, { status, rejectionReason, points });
+      await activitiesApi.review(id, { status, rejectionReason, reviewComments });
       // Remove from list after review
       setPendingList(prev => prev.filter(item => item._id !== id));
     } catch (err) {
-      alert(err.message || 'Failed to review activity');
+      setError(err.message || 'Failed to review activity');
     }
   };
 
@@ -186,6 +187,12 @@ export function FacultyApprovals() {
                           className="btn px-3 py-1.5 text-xs bg-green-600/20 text-green-400 hover:bg-green-600 hover:text-white border border-green-600/30"
                         >
                           Approve
+                        </button>
+                        <button
+                          onClick={() => handleReview(item._id, 'Needs Revision')}
+                          className="btn px-3 py-1.5 text-xs bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600 hover:text-white border border-yellow-600/30"
+                        >
+                          Request Revision
                         </button>
                         <button
                           onClick={() => handleReview(item._id, 'Rejected')}

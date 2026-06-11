@@ -67,7 +67,7 @@ export function LandingPage() {
 	}, []);
 
 	return (
-		<div>
+		<div className="overflow-x-hidden">
 			{/* Scroll Progress Indicator */}
 			<div 
 				className="scroll-indicator" 
@@ -175,11 +175,7 @@ export function LandingPage() {
 				<section className="relative pt-36 pb-16 overflow-hidden" style={{background:"linear-gradient(180deg, color-mix(in srgb, var(--bg-medium) 94%, transparent), color-mix(in srgb, var(--bg-dark) 82%, transparent))"}}>
 					<div className="max-w-6xl mx-auto px-6">
 						<div ref={heroRef} className="gpu-accelerated relative grid items-center gap-10 lg:grid-cols-[0.92fr_1.08fr]" style={{opacity: 1}}>
-							<div>
-								<div className="inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-sm font-medium">
-									<ShieldCheck className="w-4 h-4" />
-									<span>Built for real student journeys</span>
-								</div>
+							<div className="min-w-0">
 								<h1 className="max-w-4xl text-4xl md:text-5xl lg:text-6xl font-black leading-tight text-slate-900 mb-6">
 									Keep student progress organized without chasing forms and sheets.
 								</h1>
@@ -202,7 +198,7 @@ export function LandingPage() {
 										</a>
 									)}
 								</div>
-								<div className="grid grid-cols-3 gap-3 max-w-xl">
+								<div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-xl">
 									{[
 										{ n:'3', label:'Role portals' },
 										{ n:'1-click', label:'Verification' },
@@ -215,7 +211,7 @@ export function LandingPage() {
 									))}
 								</div>
 							</div>
-							<div className="relative">
+							<div className="relative min-w-0">
 								<div className="rounded-xl border p-2 shadow-2xl" style={{background:'var(--surface-card)', borderColor:'var(--border-color)'}}>
 									<img src={heroPreview} alt="ScholrBoard dashboard preview" className="w-full rounded-lg border object-cover" style={{borderColor:'var(--border-color)'}} />
 								</div>
@@ -256,10 +252,6 @@ export function LandingPage() {
 					<div className="absolute inset-0" style={{background:'linear-gradient(180deg, transparent, rgba(var(--primary-rgb),0.11), transparent)'}}></div>
 					<div className="max-w-6xl mx-auto px-6 text-center relative">
 						<div ref={featuresRef} className="gpu-accelerated">
-							<div className="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-sm font-medium">
-								<Zap className="w-4 h-4" />
-								<span>Built for day-to-day academic operations</span>
-							</div>
 							<h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-6">
 								One product for students, faculty, and admins
 							</h2>
@@ -329,10 +321,6 @@ export function LandingPage() {
 					<div className="absolute inset-0" style={{background:'linear-gradient(180deg, transparent, rgba(var(--primary-rgb),0.12), transparent)'}}></div>
 					<div className="max-w-6xl mx-auto px-6 text-center relative">
 						<div ref={prototypeRef} className="gpu-accelerated">
-							<div className="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-full bg-blue-100 border border-blue-200 text-blue-700 text-sm font-medium">
-								<Target className="w-4 h-4" />
-								<span>Student workspace</span>
-							</div>
 							<h3 className="text-3xl md:text-4xl font-bold text-slate-900 mb-5">
 								A simple way to keep academic work on track
 							</h3>
@@ -413,10 +401,6 @@ export function LandingPage() {
 					<div className="absolute inset-0" style={{background:'linear-gradient(180deg, transparent, rgba(var(--primary-rgb),0.12), transparent)'}}></div>
 					<div className="max-w-6xl mx-auto px-6 text-center relative">
 						<div ref={contactRef} className="p-12 rounded-xl gpu-accelerated" style={{background:'linear-gradient(145deg, color-mix(in srgb, var(--bg-medium) 98%, transparent), rgba(var(--primary-rgb), 0.14))', border:'1px solid var(--border-color)', boxShadow:'0 18px 42px rgba(var(--primary-rgb), 0.2)'}}>
-							<div className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-sm font-medium">
-								<Sparkles className="w-4 h-4" />
-								<span>Ready to roll this out?</span>
-							</div>
 							<h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-6">
 								Start with 
 								<span className="text-blue-700"> ScholrBoard</span>

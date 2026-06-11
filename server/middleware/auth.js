@@ -20,8 +20,9 @@
  *   - Token expiry is enforced strictly
  */
 import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
 
-const auth = (req, res, next) => {
+const auth = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -43,9 +44,17 @@ const auth = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Attach the full decoded payload so downstream route handlers can read
-    // req.user._id, req.user.role, req.user.department, etc.
-    req.user = decoded;
+    const user = await User.findById(decoded._id).select('-password');
+    if (!user || !user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: 'Account is unavailable or deactivated',
+        code: 'ACCOUNT_INACTIVE',
+      });
+    }
+
+    // Always use current database authorization state, never stale JWT claims.
+    req.user = user;
     return next();
   } catch (err) {
     // Be specific about the error type for better client-side handling

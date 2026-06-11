@@ -1,0 +1,6 @@
+node_modules/
+playwright-report/
+test-results/
+.test-users.json
+load-test-results.json
+smoke-test-results.json

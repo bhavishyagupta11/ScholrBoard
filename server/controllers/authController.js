@@ -98,7 +98,14 @@ const validateRoleFields = (role, data) => {
  */
 export const registerUser = async (req, res) => {
   try {
-    const { email, password, name, role, studentId, facultyId, department, semester } = req.body;
+    const { email, password, name, role = 'student', studentId, department, semester } = req.body;
+
+    if (role !== 'student') {
+      return res.status(403).json({
+        success: false,
+        message: 'Public registration is available for student accounts only',
+      });
+    }
 
     // --- Basic field validation ---
     if (!email || !password || !name || !role) {
@@ -115,7 +122,7 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    const roleErrors = validateRoleFields(role, { studentId, facultyId, department, semester });
+    const roleErrors = validateRoleFields(role, { studentId, department, semester });
     if (roleErrors.length > 0) {
       return res.status(400).json({ success: false, message: 'Validation failed', errors: roleErrors });
     }
@@ -125,7 +132,6 @@ export const registerUser = async (req, res) => {
       $or: [
         { email },
         ...(studentId ? [{ studentId }] : []),
-        ...(facultyId ? [{ facultyId }] : []),
       ],
     });
 
@@ -135,9 +141,6 @@ export const registerUser = async (req, res) => {
       }
       if (studentId && existingUser.studentId === studentId) {
         return res.status(409).json({ success: false, message: 'Student ID is already registered' });
-      }
-      if (facultyId && existingUser.facultyId === facultyId) {
-        return res.status(409).json({ success: false, message: 'Faculty ID is already registered' });
       }
     }
 
@@ -152,9 +155,6 @@ export const registerUser = async (req, res) => {
     if (role === 'student') {
       createData.studentId = studentId;
       createData.semester = semester;
-    }
-    if (role === 'faculty') {
-      createData.facultyId = facultyId;
     }
 
     const user = await User.create(createData);

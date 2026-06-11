@@ -21,8 +21,34 @@ import Activity from '../models/Activity.js';
 import Analytics from '../models/Analytics.js';
 import Profile from '../models/Profile.js';
 import ResumeAnalysis from '../models/ResumeAnalysis.js';
-import { PDFParse } from 'pdf-parse';
-import mammoth from 'mammoth';
+import { createRequire } from 'module';
+
+// CJS interop for packages that don't ship ESM
+const require = createRequire(import.meta.url);
+const pdfParseModule = require('pdf-parse');
+const mammoth    = require('mammoth');
+
+/** Robust helper to extract text from a PDF buffer */
+const extractTextFromPdf = async (buffer) => {
+  if (pdfParseModule && typeof pdfParseModule === 'function') {
+    const data = await pdfParseModule(buffer);
+    return data.text || '';
+  } else if (pdfParseModule && pdfParseModule.PDFParse) {
+    const parser = new pdfParseModule.PDFParse({ data: buffer, verbosity: -1 });
+    try {
+      const result = await parser.getText();
+      return result.text || '';
+    } finally {
+      try {
+        await parser.destroy();
+      } catch (e) {
+        console.warn('[ai] Failed to destroy pdf parser:', e.message);
+      }
+    }
+  } else {
+    throw new Error('PDF parsing library is not properly configured.');
+  }
+};
 
 // Initialize Gemini client (fails gracefully if key is missing)
 const getGeminiClient = () => {
@@ -78,6 +104,8 @@ const buildGeminiHistory = (messages) => {
   return slice;
 };
 
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const generateWithModelFallback = async ({ prompt, systemInstruction, json = false, parts = null }) => {
   const genAI = getGeminiClient();
   const errors = [];
@@ -89,21 +117,36 @@ const generateWithModelFallback = async ({ prompt, systemInstruction, json = fal
   ].filter(Boolean);
 
   for (const modelName of models) {
-    try {
-      const model = genAI.getGenerativeModel({
-        model: modelName,
-        ...(systemInstruction ? { systemInstruction } : {}),
-        ...(json ? { generationConfig: { responseMimeType: 'application/json' } } : {}),
-      });
-      const result = await model.generateContent(parts || prompt);
-      const text = extractGeminiText(result.response);
-      if (!text) {
-        errors.push(`${modelName}: empty or blocked response`);
-        continue;
+    let attempts = 0;
+    const maxAttempts = 3;
+
+    while (attempts < maxAttempts) {
+      try {
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          ...(systemInstruction ? { systemInstruction } : {}),
+          ...(json ? { generationConfig: { responseMimeType: 'application/json' } } : {}),
+        });
+        const result = await model.generateContent(parts || prompt);
+        const text = extractGeminiText(result.response);
+        if (!text) {
+          errors.push(`${modelName} (attempt ${attempts + 1}): empty or blocked response`);
+          break;
+        }
+        return { text, result, modelName };
+      } catch (error) {
+        attempts++;
+        const isRateLimit = error.message.includes('429') || error.message.toLowerCase().includes('quota');
+        errors.push(`${modelName} (attempt ${attempts}): ${error.message}`);
+
+        if (isRateLimit && attempts < maxAttempts) {
+          const waitTime = attempts * 3000;
+          console.warn(`[ai] Rate limit hit on ${modelName}. Retrying in ${waitTime}ms...`);
+          await delay(waitTime);
+        } else {
+          break;
+        }
       }
-      return { text, result, modelName };
-    } catch (error) {
-      errors.push(`${modelName}: ${error.message}`);
     }
   }
 
@@ -161,10 +204,7 @@ const buildUserContext = (profile, analytics) => {
 
 const extractResumeText = async (buffer, mimeType) => {
   if (mimeType === 'application/pdf') {
-    const parser = new PDFParse({ data: buffer });
-    const pdfData = await parser.getText();
-    await parser.destroy();
-    return pdfData.text;
+    return await extractTextFromPdf(buffer);
   }
 
   if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
@@ -492,52 +532,123 @@ const applyResumeAnalysisFromAi = (analysisDoc, env) => {
     return Math.min(100, Math.max(0, x));
   };
 
-  if (env.overallScore != null) analysisDoc.overallScore = clamp100(env.overallScore);
-  if (env.atsScore != null) analysisDoc.atsScore = clamp100(env.atsScore);
-  if (env.summary != null) analysisDoc.summary = String(env.summary).slice(0, 2000);
-  if (Array.isArray(env.strengths)) analysisDoc.strengths = env.strengths.map(String).slice(0, 30);
-  if (Array.isArray(env.improvements)) analysisDoc.improvements = env.improvements.map(String).slice(0, 30);
-  if (Array.isArray(env.skillsDetected)) analysisDoc.skillsDetected = env.skillsDetected.map(String).slice(0, 50);
-  if (Array.isArray(env.skillGaps)) {
-    analysisDoc.skillGaps = env.skillGaps
-      .filter((g) => g && g.skill)
+  const ra = env.resume_analysis || {};
+
+  // Scores & Summary
+  if (ra.resume_score != null) {
+    analysisDoc.overallScore = clamp100(ra.resume_score);
+  } else if (env.overallScore != null) {
+    analysisDoc.overallScore = clamp100(env.overallScore);
+  }
+
+  if (ra.ats_score != null) {
+    analysisDoc.atsScore = clamp100(ra.ats_score);
+  } else if (env.atsScore != null) {
+    analysisDoc.atsScore = clamp100(env.atsScore);
+  }
+
+  if (env.candidate_summary != null) {
+    analysisDoc.summary = String(env.candidate_summary).slice(0, 2000);
+  } else if (env.summary != null) {
+    analysisDoc.summary = String(env.summary).slice(0, 2000);
+  }
+
+  // Strengths & Improvements
+  if (Array.isArray(ra.strengths)) {
+    analysisDoc.strengths = ra.strengths.map(String).slice(0, 30);
+  } else if (Array.isArray(env.strengths)) {
+    analysisDoc.strengths = env.strengths.map(String).slice(0, 30);
+  }
+  
+  if (Array.isArray(ra.improvements)) {
+    analysisDoc.improvements = ra.improvements.map(String).slice(0, 30);
+  } else if (Array.isArray(env.improvements)) {
+    analysisDoc.improvements = env.improvements.map(String).slice(0, 30);
+  }
+
+  // Skills Detected
+  const detectedSkills = [];
+  if (env.skills && typeof env.skills === 'object') {
+    for (const cat in env.skills) {
+      if (Array.isArray(env.skills[cat])) {
+        detectedSkills.push(...env.skills[cat]);
+      }
+    }
+  }
+  if (detectedSkills.length > 0) {
+    analysisDoc.skillsDetected = [...new Set(detectedSkills)].map(String).slice(0, 50);
+  } else if (Array.isArray(env.skillsDetected)) {
+    analysisDoc.skillsDetected = env.skillsDetected.map(String).slice(0, 50);
+  }
+
+  // Skill Gaps
+  const gapsSource = ra.skill_gaps || env.skillGaps || [];
+  if (Array.isArray(gapsSource)) {
+    analysisDoc.skillGaps = gapsSource
+      .filter((g) => g && (g.skill || g.name))
       .map((g) => ({
-        skill: String(g.skill).slice(0, 120),
+        skill: String(g.skill || g.name).slice(0, 120),
         importance: ['high', 'medium', 'low'].includes(g.importance) ? g.importance : 'medium',
-        suggestion: g.suggestion ? String(g.suggestion).slice(0, 500) : '',
+        suggestion: g.suggestion || g.description ? String(g.suggestion || g.description).slice(0, 500) : '',
       }))
       .slice(0, 25);
   }
-  if (Array.isArray(env.sectionFeedback)) {
-    analysisDoc.sectionFeedback = env.sectionFeedback
-      .filter((s) => s && s.section)
+
+  // Section Feedback
+  const feedbackSource = ra.section_feedback || env.sectionFeedback || [];
+  if (Array.isArray(feedbackSource)) {
+    analysisDoc.sectionFeedback = feedbackSource
+      .filter((s) => s && (s.section || s.name))
       .map((s) => ({
-        section: String(s.section).slice(0, 80),
+        section: String(s.section || s.name).slice(0, 80),
         score: Math.min(10, Math.max(0, Number(s.score) || 0)),
         feedback: s.feedback ? String(s.feedback).slice(0, 1000) : '',
         issues: Array.isArray(s.issues) ? s.issues.map(String).slice(0, 20) : [],
-        tips: Array.isArray(s.tips) ? s.tips.map(String).slice(0, 20) : [],
+        tips: Array.isArray(s.tips || s.suggestions) ? (s.tips || s.suggestions).map(String).slice(0, 20) : [],
       }))
       .slice(0, 20);
   }
-  if (Array.isArray(env.recommendedRoles)) analysisDoc.recommendedRoles = env.recommendedRoles.map(String).slice(0, 20);
-  if (Array.isArray(env.keywordsToAdd)) analysisDoc.keywordsToAdd = env.keywordsToAdd.map(String).slice(0, 40);
 
-  if (env.parsedData && typeof env.parsedData === 'object') {
-    const p = env.parsedData;
-    analysisDoc.parsedData = {
-      name: p.name != null ? String(p.name).slice(0, 200) : analysisDoc.parsedData?.name,
-      email: p.email != null ? String(p.email).slice(0, 200) : analysisDoc.parsedData?.email,
-      phone: p.phone != null ? String(p.phone).slice(0, 40) : analysisDoc.parsedData?.phone,
-      links: Array.isArray(p.links) ? p.links.map(String).filter(Boolean).slice(0, 30) : [],
-      education: Array.isArray(p.education) ? p.education.slice(0, 15) : [],
-      experience: Array.isArray(p.experience) ? p.experience.slice(0, 20) : [],
-      projects: Array.isArray(p.projects) ? p.projects.slice(0, 25) : [],
-      certifications: Array.isArray(p.certifications) ? p.certifications.slice(0, 20) : [],
-      achievements: Array.isArray(p.achievements) ? p.achievements.map(String).slice(0, 30) : [],
-      technologies: Array.isArray(p.technologies) ? p.technologies.map(String).slice(0, 60) : [],
-    };
+  // Recommended Roles & Keywords to Add
+  const rolesSource = ra.recommended_roles || env.recommendedRoles || [];
+  if (Array.isArray(rolesSource)) {
+    analysisDoc.recommendedRoles = rolesSource.map(String).slice(0, 20);
   }
+
+  const keywordsSource = ra.keywords_to_add || env.keywordsToAdd || [];
+  if (Array.isArray(keywordsSource)) {
+    analysisDoc.keywordsToAdd = keywordsSource.map(String).slice(0, 40);
+  }
+
+  // Parsed Data Block
+  const p = env.personal_information || {};
+  const c = env.contact_information || {};
+  const s = env.social_links || {};
+
+  // links collection from social profiles
+  const socialLinksList = [];
+  if (s && typeof s === 'object') {
+    for (const key in s) {
+      if (s[key] && typeof s[key] === 'string' && s[key].startsWith('http')) {
+        socialLinksList.push(s[key]);
+      }
+    }
+  }
+
+  const origParsed = env.parsedData || {};
+
+  analysisDoc.parsedData = {
+    name: p.full_name || (p.first_name || p.last_name ? [p.first_name, p.middle_name, p.last_name].filter(Boolean).join(' ') : null) || origParsed.name || analysisDoc.parsedData?.name,
+    email: c.email || origParsed.email || analysisDoc.parsedData?.email,
+    phone: c.phone || c.whatsapp_number || origParsed.phone || analysisDoc.parsedData?.phone,
+    links: socialLinksList.length > 0 ? socialLinksList.slice(0, 30) : (origParsed.links || []),
+    education: Array.isArray(env.education) ? env.education.slice(0, 15) : (Array.isArray(origParsed.education) ? origParsed.education : []),
+    experience: Array.isArray(env.work_experience) ? env.work_experience.slice(0, 20) : (Array.isArray(origParsed.experience) ? origParsed.experience : []),
+    projects: Array.isArray(env.projects) ? env.projects.slice(0, 25) : (Array.isArray(origParsed.projects) ? origParsed.projects : []),
+    certifications: Array.isArray(env.certifications) ? env.certifications.slice(0, 20) : (Array.isArray(origParsed.certifications) ? origParsed.certifications : []),
+    achievements: Array.isArray(env.achievements) ? env.achievements.map((item) => typeof item === 'object' ? item.title || JSON.stringify(item) : String(item)).slice(0, 30) : (Array.isArray(origParsed.achievements) ? origParsed.achievements : []),
+    technologies: Array.isArray(env.keywords) ? env.keywords.slice(0, 60) : (Array.isArray(origParsed.technologies) ? origParsed.technologies : detectedSkills.slice(0, 60)),
+  };
 };
 
 // ─── ARCHIVE a conversation ───────────────────────────────────────────────────
@@ -590,43 +701,224 @@ export const analyzeResume = async (req, res) => {
     analysis.extractedText = String(textContent || '').slice(0, 20000);
 
     // 3. Construct Gemini Prompt
-    const prompt = `
-You are an expert ATS (Applicant Tracking System) and Career Coach. 
-Analyze the following resume text and provide a highly detailed, structured evaluation.
+    const prompt = `# SCHOLRBOARD AI RESUME EXTRACTION SYSTEM PROMPT
 
-RESUME TEXT:
+You are an advanced Resume Parsing and Information Extraction Engine.
+Your task is to extract structured candidate information from resumes with maximum accuracy.
+
+The resume text to evaluate is:
+---
 ${textContent.substring(0, 15000)}
+---
 
-Provide the evaluation exactly in this JSON structure:
+## EXTRACTION OBJECTIVES
+Extract all candidate info matching the objectives:
+1. Personal Information
+2. Contact Details
+3. Education
+4. Work Experience
+5. Projects
+6. Skills
+7. Certifications
+8. Achievements
+9. Internships
+10. Publications
+11. Research Work
+12. Extracurricular Activities
+13. Languages
+14. Social Profiles
+15. Portfolio Links
+16. Resume Metadata
+
+Never hallucinate information. If data is missing, return null. Never invent values.
+
+## IMPORTANT EXTRACTION RULES
+- Extract only information explicitly present in the resume.
+- Do not guess graduation year, company names, phone numbers, email addresses, or skills.
+- If confidence is low, return "confidence": "low".
+- Preserve original text where needed. Normalize only when requested.
+
+## SPECIFIC EXTRACTION AND SCHEMAS
+- Personal Information: Extract full_name, first_name, middle_name, last_name, gender, current_location, city, state, country.
+- Contact Information: Extract email, phone, alternate_phone, whatsapp_number, address.
+- Social Links: Extract full URLs for linkedin, github, portfolio, website, kaggle, leetcode, codeforces, hackerrank, hackerearth, stackoverflow, behance, dribbble, medium.
+- Education: Normalize degree names. Extract degree, specialization, institution, board, university, start_date, end_date, cgpa, percentage, grade.
+- Work Experience: Extract company, job_title, employment_type, location, start_date, end_date, duration, is_current (boolean), responsibilities (array of strings), achievements (array of strings).
+- Internships: Separate from work experience. Extract company, role, duration, technologies_used.
+- Projects: Extract project_name, description, technologies (array of strings), github_link, live_link, duration, team_size.
+- Skills: Categorize skills into programming_languages, frameworks, libraries, databases, cloud, devops, aiml, data_science, testing, operating_systems, soft_skills. Remove duplicates, normalize casing.
+- Certifications: Extract name, issuing_organization, issue_date, credential_id, credential_url.
+- Achievements: Extract competitive programming ratings,AIR Rank, hackathons, awards.
+- Publications: Extract title, journal, conference, publication_date, doi.
+- Research: Extract research_topic, organization, mentor, duration.
+- Languages: Extract all spoken languages.
+- Resume Quality Analysis: Generate resume_score (0-100), ats_score (0-100), strengths (array of strings), improvements (array of strings), skill_gaps (array of objects with skill, importance: high|medium|low, suggestion), section_feedback (array of objects with section, score, feedback, issues, tips), recommended_roles, keywords_to_add.
+- Candidate Summary: Maximum 150 words.
+- Experience Calculation: Calculate total_experience_months, internship_experience_months.
+- Keywords: Extract top 50 ATS keywords.
+
+## FINAL OUTPUT FORMAT
+Return VALID JSON ONLY. No markdown wrapper (NO \`\`\`json blocks), no explanations, no comments, no code blocks.
+
+Schema:
 {
-  "parsedData": {
-    "name": "Candidate name or null",
-    "email": "email or null",
-    "phone": "phone or null",
-    "links": ["portfolio/github/linkedin URLs"],
-    "education": [{"institution":"", "degree":"", "field":"", "year":""}],
-    "experience": [{"company":"", "role":"", "duration":"", "highlights":[""]}],
-    "projects": [{"name":"", "description":"", "technologies":[""], "links":[""]}],
-    "certifications": [{"title":"", "issuer":"", "date":""}],
-    "achievements": ["achievement"],
-    "technologies": ["technology"]
+  "personal_information": {
+    "full_name": null,
+    "first_name": null,
+    "middle_name": null,
+    "last_name": null,
+    "gender": null,
+    "current_location": null,
+    "city": null,
+    "state": null,
+    "country": null
   },
-  "overallScore": 85,
-  "atsScore": 80,
-  "summary": "Executive summary...",
-  "strengths": ["Strength 1", "Strength 2"],
-  "improvements": ["Improvement 1", "Improvement 2"],
-  "skillsDetected": ["React", "Node.js"],
-  "skillGaps": [
-    { "skill": "TypeScript", "importance": "high", "suggestion": "Learn basic types" }
+  "contact_information": {
+    "email": null,
+    "phone": null,
+    "alternate_phone": null,
+    "whatsapp_number": null,
+    "address": null
+  },
+  "social_links": {
+    "linkedin": null,
+    "github": null,
+    "portfolio": null,
+    "website": null,
+    "kaggle": null,
+    "leetcode": null,
+    "codeforces": null,
+    "hackerrank": null,
+    "hackerearth": null,
+    "stackoverflow": null,
+    "behance": null,
+    "dribbble": null,
+    "medium": null
+  },
+  "education": [
+    {
+      "degree": null,
+      "specialization": null,
+      "institution": null,
+      "board": null,
+      "university": null,
+      "start_date": null,
+      "end_date": null,
+      "cgpa": null,
+      "percentage": null,
+      "grade": null
+    }
   ],
-  "sectionFeedback": [
-    { "section": "Experience", "score": 7, "feedback": "Needs quantifiable metrics", "issues": ["No numbers"], "tips": ["Use XYZ formula"] }
+  "work_experience": [
+    {
+      "company": null,
+      "job_title": null,
+      "employment_type": null,
+      "location": null,
+      "start_date": null,
+      "end_date": null,
+      "duration": null,
+      "is_current": false,
+      "responsibilities": [],
+      "achievements": []
+    }
   ],
-  "recommendedRoles": ["Frontend Developer"],
-  "keywordsToAdd": ["Agile", "REST API"]
+  "internships": [
+    {
+      "company": null,
+      "role": null,
+      "duration": null,
+      "technologies_used": []
+    }
+  ],
+  "projects": [
+    {
+      "project_name": null,
+      "description": null,
+      "technologies": [],
+      "github_link": null,
+      "live_link": null,
+      "duration": null,
+      "team_size": null
+    }
+  ],
+  "skills": {
+    "programming_languages": [],
+    "frameworks": [],
+    "libraries": [],
+    "databases": [],
+    "cloud": [],
+    "devops": [],
+    "aiml": [],
+    "data_science": [],
+    "testing": [],
+    "operating_systems": [],
+    "soft_skills": []
+  },
+  "certifications": [
+    {
+      "name": null,
+      "issuing_organization": null,
+      "issue_date": null,
+      "credential_id": null,
+      "credential_url": null
+    }
+  ],
+  "achievements": [
+    {
+      "title": null,
+      "description": null,
+      "rating": null
+    }
+  ],
+  "publications": [
+    {
+      "title": null,
+      "journal": null,
+      "conference": null,
+      "publication_date": null,
+      "doi": null
+    }
+  ],
+  "research": [
+    {
+      "research_topic": null,
+      "organization": null,
+      "mentor": null,
+      "duration": null
+    }
+  ],
+  "languages": [],
+  "resume_analysis": {
+    "resume_score": 0,
+    "ats_score": 0,
+    "strengths": [],
+    "improvements": [],
+    "skill_gaps": [
+      {
+        "skill": "",
+        "importance": "high",
+        "suggestion": ""
+      }
+    ],
+    "section_feedback": [
+      {
+        "section": "",
+        "score": 0,
+        "feedback": "",
+        "issues": [],
+        "tips": []
+      }
+    ],
+    "recommended_roles": [],
+    "keywords_to_add": [],
+    "total_experience_months": 0,
+    "internship_experience_months": 0
+  },
+  "candidate_summary": "",
+  "keywords": [],
+  "confidence": ""
 }
-Return ONLY valid JSON.
 `;
 
     // 4. Call Gemini
@@ -710,10 +1002,8 @@ Return ONLY valid JSON with this exact shape:
 }`;
 
     if (mimeType === 'application/pdf') {
-      const parser = new PDFParse({ data: buffer });
-      const pdfData = await parser.getText();
-      await parser.destroy();
-      promptInput = `${prompt}\n\nCERTIFICATE TEXT:\n${pdfData.text.slice(0, 8000)}`;
+      const pdfText = await extractTextFromPdf(buffer);
+      promptInput = `${prompt}\n\nCERTIFICATE TEXT:\n${pdfText.slice(0, 8000)}`;
     } else {
       promptInput = [
         prompt,

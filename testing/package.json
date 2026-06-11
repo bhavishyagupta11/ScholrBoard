@@ -1,0 +1,22 @@
+{
+  "name": "scholrboard-testing",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "seed": "node scripts/seed-test-users.js",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:load": "node load/load-test.js",
+    "test:smoke": "node scripts/smoke-test.js",
+    "test:scoring": "node scripts/developer-scoring-unit-tests.js",
+    "test:transactions": "node scripts/transaction-failure-simulation.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "autocannon": "^8.0.0",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.2.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.18.2"
+  }
+}

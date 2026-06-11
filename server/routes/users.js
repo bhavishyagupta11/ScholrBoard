@@ -5,23 +5,115 @@ import express from 'express';
 import auth from '../middleware/auth.js';
 import requireRole from '../middleware/roleAuth.js';
 import User from '../models/User.js';
+import Profile from '../models/Profile.js';
+import validateObjectId from '../middleware/validateObjectId.js';
+import { getTalentDiscovery } from '../controllers/talentDiscoveryController.js';
 
 const router = express.Router();
 
 router.use(auth);
+
+// @route   POST /api/users/faculty
+// @desc    Provision a faculty account
+// @access  Admin only
+router.post('/faculty', requireRole('admin'), async (req, res) => {
+  try {
+    const { name, email, password, facultyId, department } = req.body;
+    if (!name || !email || !password || !facultyId || !department) {
+      return res.status(400).json({
+        success: false,
+        message: 'name, email, password, facultyId, and department are required',
+      });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters long' });
+    }
+
+    const faculty = await User.create({ name, email, password, facultyId, department, role: 'faculty' });
+    await Profile.create({ userId: faculty._id });
+    return res.status(201).json({
+      success: true,
+      message: 'Faculty account created',
+      user: await User.findById(faculty._id).select('-password -__v'),
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ success: false, message: 'Email or faculty ID is already registered' });
+    }
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation error',
+        errors: Object.values(error.errors).map((item) => item.message),
+      });
+    }
+    console.error('create-faculty error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to create faculty account' });
+  }
+});
+
+// @route   PUT /api/users/assign-advisor
+// @desc    Assign students to a faculty advisor
+// @access  Admin only
+router.put('/assign-advisor', requireRole('admin'), async (req, res) => {
+  try {
+    const { studentIds, advisorId } = req.body;
+    if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'studentIds array is required' });
+    }
+    if (advisorId) {
+      const advisor = await User.findById(advisorId);
+      if (!advisor || advisor.role !== 'faculty') {
+        return res.status(400).json({ success: false, message: 'Invalid advisorId. User must be faculty.' });
+      }
+    }
+
+    await User.updateMany(
+      { _id: { $in: studentIds }, role: 'student' },
+      { $set: { advisorId: advisorId || null } }
+    );
+
+    return res.json({ success: true, message: 'Successfully updated advisor assignment' });
+  } catch (error) {
+    console.error('assign-advisor error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to assign advisor' });
+  }
+});
+
+// @route   GET /api/users/advisor/students
+// @desc    Get all students assigned to the logged-in advisor
+// @access  Faculty only
+router.get('/advisor/students', requireRole('faculty'), async (req, res) => {
+  try {
+    const students = await User.find({
+      role: 'student',
+      advisorId: req.user._id,
+      isActive: true,
+    }).select('-password -__v');
+
+    return res.json({ success: true, students });
+  } catch (error) {
+    console.error('get-advisor-students error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch assigned students' });
+  }
+});
 
 // @route   GET /api/users
 // @desc    Get all users (with filtering by role/department)
 // @access  Admin or Faculty
 router.get('/', requireRole('admin', 'faculty'), async (req, res) => {
   try {
-    const { role, department, verified, page = 1, limit = 50 } = req.query;
+    const { role, department, verified, page = 1, limit = 50, scope } = req.query;
 
     const query = { isActive: true };
     
     if (req.user.role === 'faculty') {
       query.role = 'student';
-      if (req.user.department) query.department = new RegExp(`^${req.user.department}$`, 'i');
+      if (scope === 'all') {
+        if (req.user.department) query.department = new RegExp(`^${req.user.department}$`, 'i');
+      } else {
+        query.advisorId = req.user._id;
+      }
     } else {
       if (role)       query.role       = role;
       if (department) query.department = new RegExp(department, 'i');
@@ -54,6 +146,11 @@ router.get('/', requireRole('admin', 'faculty'), async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error while fetching users' });
   }
 });
+
+// @route   GET /api/users/talent-discovery
+// @desc    Admin Talent Discovery (searching, filtering, ranking)
+// @access  Admin only
+router.get('/talent-discovery', requireRole('admin'), getTalentDiscovery);
 
 // @route   GET /api/users/me
 // @desc    Get current user (quick route — same as /api/auth/me)
@@ -104,7 +201,7 @@ router.get('/:id', requireRole('admin', 'faculty'), async (req, res) => {
 // @route   PUT /api/users/:id
 // @desc    Update user (admin only — for role changes, verification, etc.)
 // @access  Admin only
-router.put('/:id', requireRole('admin'), async (req, res) => {
+router.put('/:id', requireRole('admin'), validateObjectId('id'), async (req, res) => {
   try {
     const { id } = req.params;
     const updates = { ...req.body };
@@ -132,7 +229,7 @@ router.put('/:id', requireRole('admin'), async (req, res) => {
 
 // @route   DELETE /api/users/:id (soft-delete)
 // @access  Admin only
-router.delete('/:id', requireRole('admin'), async (req, res) => {
+router.delete('/:id', requireRole('admin'), validateObjectId('id'), async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(
       req.params.id,

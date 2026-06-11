@@ -3,7 +3,7 @@ import { Eye, EyeOff, GraduationCap } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
-export function SignupForm({ role, onToggleForm, additionalFields = [] }) {
+export function SignupForm({ role, onToggleForm, additionalFields = [], presentation = 'page' }) {
   const navigate = useNavigate();
   const { register } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -125,8 +125,11 @@ export function SignupForm({ role, onToggleForm, additionalFields = [] }) {
   };
 
   return (
-    <div className="min-h-screen grid place-items-center p-6" style={{background:'var(--bg-dark)'}}>
-      <div className="w-full max-w-md card p-6 gpu-accelerated hover:scale-105 transition-transform">
+    <div
+      className={presentation === 'modal' ? 'auth-form-frame' : 'min-h-screen grid place-items-center p-6'}
+      style={presentation === 'modal' ? undefined : {background:'var(--bg-dark)'}}
+    >
+      <div className={`w-full max-w-md card p-6 ${presentation === 'modal' ? 'auth-modal-card' : 'gpu-accelerated hover:scale-105 transition-transform'}`}>
         <div className="flex items-center gap-3 mb-4">
           <GraduationCap className="text-brand-blue" />
           <div>

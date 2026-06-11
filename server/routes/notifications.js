@@ -1,5 +1,6 @@
 import express from 'express';
 import auth from '../middleware/auth.js';
+import validateObjectId from '../middleware/validateObjectId.js';
 import {
   getMyNotifications,
   markAsRead,
@@ -21,10 +22,10 @@ router.put('/read-all', markAllAsRead);
 
 // @route   PUT /api/notifications/:id/read
 // @desc    Mark a specific notification as read
-router.put('/:id/read', markAsRead);
+router.put('/:id/read', validateObjectId('id'), markAsRead);
 
 // @route   DELETE /api/notifications/:id
 // @desc    Delete a notification
-router.delete('/:id', deleteNotification);
+router.delete('/:id', validateObjectId('id'), deleteNotification);
 
 export default router;

@@ -16,7 +16,7 @@ import { useProfile } from '../contexts/ProfileContext.jsx';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight, BellRing, BriefcaseBusiness, CalendarDays,
-  CheckCircle2, Code2, FileText, Lightbulb, Sparkles, UploadCloud,
+  CheckCircle2, Code2, FileText, Lightbulb, UploadCloud,
   ShieldCheck, RefreshCw, TrendingUp, Flame, BookOpen,
 } from 'lucide-react';
 import { useScrollAnimation, useStaggeredAnimation } from '../hooks/useScrollAnimation.js';
@@ -25,6 +25,7 @@ import activitiesApi from '../api/activities.api.js';
 import placementsApi from '../api/placements.api.js';
 import eventsApi from '../api/events.api.js';
 import aiApi from '../api/ai.api.js';
+import announcementsApi from '../api/announcements.api.js';
 
 const AcademicActivityChart = lazy(() =>
   import('../components/StudentDashboardCharts.jsx').then((m) => ({ default: m.AcademicActivityChart }))
@@ -91,6 +92,9 @@ export function DashboardPage() {
   const [loadingEvents,    setLoadingEvents]    = useState(true);
   const [loadingRecs,      setLoadingRecs]      = useState(true);
   const [recsError,        setRecsError]        = useState(false);
+  const [announcements,    setAnnouncements]    = useState([]);
+  const [loadingAnns,      setLoadingAnns]      = useState(true);
+  const [dashboardError,   setDashboardError]   = useState(null);
 
   const headerRef = useScrollAnimation({ direction: 'up', delay: 0.1 });
   const chartsRef = useScrollAnimation({ direction: 'up', delay: 0.3 });
@@ -115,6 +119,7 @@ export function DashboardPage() {
 
   // Fetch all dashboard data in parallel
   const fetchDashboard = useCallback(async () => {
+    setDashboardError(null);
     // Analytics + progress
     Promise.all([
       analyticsApi.getDashboard().catch(() => null),
@@ -123,22 +128,25 @@ export function DashboardPage() {
       setAnalytics(analyticsData?.analytics || null);
       setProgress(progressData?.progress || []);
       setLoadingAnalytics(false);
+    }).catch((err) => {
+      setDashboardError(err.message || 'Failed to load dashboard analytics');
+      setLoadingAnalytics(false);
     });
 
     // Recent activities
     activitiesApi.getMyActivities({ limit: 3 }).then((data) => {
       setRecentActivities(data?.activities || []);
-    }).catch(() => {}).finally(() => setLoadingActivities(false));
+    }).catch((err) => setDashboardError(err.message || 'Failed to load recent activities')).finally(() => setLoadingActivities(false));
 
     // Personalized placements
     placementsApi.getMyPlacements({ limit: 3 }).then((data) => {
       setPlacements(data?.placements || []);
-    }).catch(() => {}).finally(() => setLoadingPlacements(false));
+    }).catch((err) => setDashboardError(err.message || 'Failed to load placements')).finally(() => setLoadingPlacements(false));
 
     // Upcoming events
     eventsApi.getMyEvents({ limit: 3, upcoming: 'true' }).then((data) => {
       setEvents(data?.events || []);
-    }).catch(() => {}).finally(() => setLoadingEvents(false));
+    }).catch((err) => setDashboardError(err.message || 'Failed to load events')).finally(() => setLoadingEvents(false));
 
     // AI Recommendations
     aiApi.getRecommendations().then((data) => {
@@ -146,6 +154,11 @@ export function DashboardPage() {
     }).catch(() => {
       setRecsError(true);
     }).finally(() => setLoadingRecs(false));
+
+    // Targeted Announcements
+    announcementsApi.getMyAnnouncements().then((data) => {
+      setAnnouncements(data?.announcements || []);
+    }).catch((err) => setDashboardError(err.message || 'Failed to load announcements')).finally(() => setLoadingAnns(false));
   }, []);
 
   useEffect(() => {
@@ -160,14 +173,15 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {dashboardError && (
+        <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
+          <BellRing size={16} /> {dashboardError}
+        </div>
+      )}
       {/* ─── Header ─────────────────────────────────────────────────────────── */}
       <div ref={headerRef} className="gpu-accelerated rounded-xl border p-5 md:p-6" style={{ background: 'var(--surface-card)', borderColor: 'var(--border-color)', boxShadow: 'var(--shadow-soft)' }}>
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold mb-3" style={{ background: 'var(--accent-soft)', color: 'var(--primary-blue)' }}>
-              <Sparkles size={14} />
-              <span>Student workspace</span>
-            </div>
             <h1 className="headline">{greeting}, {firstName}</h1>
             <p className="mt-2 max-w-2xl text-sm md:text-base" style={{ color: 'var(--text-secondary)' }}>
               Here is what needs attention, what is already verified, and what can make your portfolio stronger today.
@@ -323,6 +337,40 @@ export function DashboardPage() {
         )}
       </div>
 
+      {/* ─── Announcements ─────────────────────────────────────────────────── */}
+      <div className="card p-4">
+        <div className="font-medium mb-3 flex items-center justify-between">
+          <span className="flex items-center gap-2">📢 Targeted Announcements</span>
+        </div>
+        {loadingAnns ? (
+          <ListSkeleton rows={3} />
+        ) : announcements.length === 0 ? (
+          <div className="text-sm subtle py-4 text-center">No announcements for your department today.</div>
+        ) : (
+          <div className="space-y-3 max-h-60 overflow-y-auto custom-scrollbar">
+            {announcements.map((ann) => (
+              <div key={ann._id} className="p-3 rounded-md border" style={{ background: 'var(--bg-medium)', borderColor: 'var(--border-color)' }}>
+                <div className="flex justify-between items-start">
+                  <div className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{ann.title}</div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-semibold ${
+                    ann.category === 'Placement' ? 'bg-blue-500/20 text-blue-400' :
+                    ann.category === 'Scholarship' ? 'bg-green-500/20 text-green-400' :
+                    ann.category === 'Event' ? 'bg-purple-500/20 text-purple-400' :
+                    ann.category === 'Academic' ? 'bg-orange-500/20 text-orange-400' : 'bg-slate-500/20 text-slate-400'
+                  }`}>
+                    {ann.category}
+                  </span>
+                </div>
+                <p className="text-xs subtle mt-1.5 leading-relaxed">{ann.content}</p>
+                <div className="text-[10px] subtle mt-2 text-right">
+                  Posted by {ann.postedBy?.name || 'Admin'} on {new Date(ann.createdAt).toLocaleDateString()}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* ─── Placements + Events ─────────────────────────────────────────────── */}
       <div className="grid md:grid-cols-2 gap-4">
         {/* Personalized Placements */}
@@ -354,7 +402,7 @@ export function DashboardPage() {
                   </div>
                   <div className="mt-2">
                     <button
-                      onClick={() => placementsApi.apply(job._id).catch(() => {})}
+                      onClick={() => placementsApi.apply(job._id).catch((err) => setDashboardError(err.message || 'Failed to apply'))}
                       className="btn btn-primary text-xs px-3 py-1"
                     >
                       Apply
@@ -388,7 +436,7 @@ export function DashboardPage() {
                   {event.requiresRegistration && (
                     <div className="mt-2">
                       <button
-                        onClick={() => eventsApi.register(event._id).catch(() => {})}
+                        onClick={() => eventsApi.register(event._id).catch((err) => setDashboardError(err.message || 'Failed to register for event'))}
                         className="btn btn-primary text-xs px-3 py-1 flex items-center gap-1"
                       >
                         <CheckCircle2 size={13} /> Register

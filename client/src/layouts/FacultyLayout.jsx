@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { ClipboardList, Users, BarChart3, LogOut, UserSquare2 } from 'lucide-react';
+import { ClipboardList, Users, BarChart3, LogOut, UserSquare2, Calendar } from 'lucide-react';
 import { Topbar } from '../components/Topbar.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
@@ -38,6 +38,10 @@ export function FacultyLayout() {
 					
 					<NavLink to="/faculty/approvals" className={navLinkClass}>
 						<ClipboardList size={20}/> Activity Approvals
+					</NavLink>
+
+					<NavLink to="/faculty/od-approvals" className={navLinkClass}>
+						<Calendar size={20}/> OD Approvals
 					</NavLink>
 					
 					<NavLink to="/faculty/students" className={navLinkClass}>

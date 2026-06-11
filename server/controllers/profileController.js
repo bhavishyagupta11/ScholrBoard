@@ -27,7 +27,21 @@ export const getMyProfile = async (req, res) => {
       profile = await profile.populate('userId', 'name email role department semester studentId facultyId avatar verified lastLogin');
     }
 
-    return res.json({ success: true, profile });
+    let profileData = profile.toObject();
+    if (req.user.role === 'faculty') {
+      delete profileData.developerScore;
+      delete profileData.githubScore;
+      delete profileData.dsaScore;
+      delete profileData.cpScore;
+      delete profileData.codingStats;
+      delete profileData.scoreBreakdown;
+      delete profileData.developerScoreVersion;
+      delete profileData.scoringFormulaVersion;
+      delete profileData.lastScoreCalculatedAt;
+      delete profileData.lastScoreCalculationReason;
+    }
+
+    return res.json({ success: true, profile: profileData });
   } catch (error) {
     console.error('getMyProfile error:', error);
     return res.status(500).json({ success: false, message: 'Failed to fetch profile' });
@@ -46,9 +60,11 @@ export const getProfileByUserId = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Profile not found' });
     }
 
+    let profileData = profile.toObject();
+
     // Faculty can only view student profiles in their own department
     if (req.user.role === 'faculty') {
-      const targetUser = profile.userId;
+      const targetUser = profileData.userId;
       if (
         targetUser.role !== 'student' ||
         (targetUser.department && targetUser.department !== req.user.department)
@@ -58,9 +74,21 @@ export const getProfileByUserId = async (req, res) => {
           message: 'Access denied — you can only view student profiles in your department',
         });
       }
+
+      // Restrict coding profile metrics and scores from faculty
+      delete profileData.developerScore;
+      delete profileData.githubScore;
+      delete profileData.dsaScore;
+      delete profileData.cpScore;
+      delete profileData.codingStats;
+      delete profileData.scoreBreakdown;
+      delete profileData.developerScoreVersion;
+      delete profileData.scoringFormulaVersion;
+      delete profileData.lastScoreCalculatedAt;
+      delete profileData.lastScoreCalculationReason;
     }
 
-    return res.json({ success: true, profile });
+    return res.json({ success: true, profile: profileData });
   } catch (error) {
     console.error('getProfileByUserId error:', error);
     return res.status(500).json({ success: false, message: 'Failed to fetch profile' });
@@ -103,10 +131,49 @@ export const updateMyProfile = async (req, res) => {
       { new: true, runValidators: true, upsert: true }
     ).populate('userId', 'name email role department semester studentId facultyId avatar verified');
 
+    // Sync to Monthly Analytics snapshot for dashboard consistency
+    if (gpa !== undefined || attendanceOverall !== undefined) {
+      try {
+        const { default: Analytics } = await import('../models/Analytics.js');
+        const now = new Date();
+        const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        const analyticsUpdates = { computedAt: new Date() };
+        if (gpa !== undefined) {
+          analyticsUpdates.currentGPA = gpa === '' || gpa == null ? null : Number(gpa);
+        }
+        if (attendanceOverall !== undefined) {
+          analyticsUpdates.overallAttendance = attendanceOverall === '' || attendanceOverall == null ? null : Number(attendanceOverall);
+        }
+
+        await Analytics.findOneAndUpdate(
+          { userId: req.user._id, period: 'monthly', periodStart },
+          { $set: analyticsUpdates },
+          { upsert: true }
+        );
+      } catch (err) {
+        console.warn('[profile] Failed to sync GPA/attendance to monthly analytics:', err.message);
+      }
+    }
+
+    let profileData = profile.toObject();
+    if (req.user.role === 'faculty') {
+      delete profileData.developerScore;
+      delete profileData.githubScore;
+      delete profileData.dsaScore;
+      delete profileData.cpScore;
+      delete profileData.codingStats;
+      delete profileData.scoreBreakdown;
+      delete profileData.developerScoreVersion;
+      delete profileData.scoringFormulaVersion;
+      delete profileData.lastScoreCalculatedAt;
+      delete profileData.lastScoreCalculationReason;
+    }
+
     return res.json({
       success: true,
       message: 'Profile updated successfully',
-      profile,
+      profile: profileData,
     });
   } catch (error) {
     if (error.name === 'ValidationError') {
@@ -172,5 +239,27 @@ export const updateCodingStats = async (req, res) => {
   } catch (error) {
     console.error('updateCodingStats error:', error);
     return res.status(500).json({ success: false, message: 'Failed to update coding stats' });
+  }
+};
+
+// ─── DELETE a certification from the user's profile ──────────────────────────
+export const deleteCertification = async (req, res) => {
+  try {
+    const { certId } = req.params;
+
+    const profile = await Profile.findOneAndUpdate(
+      { userId: req.user._id },
+      { $pull: { certifications: { _id: certId } } },
+      { new: true }
+    );
+
+    if (!profile) {
+      return res.status(404).json({ success: false, message: 'Profile not found' });
+    }
+
+    return res.json({ success: true, message: 'Certificate removed', certifications: profile.certifications });
+  } catch (error) {
+    console.error('deleteCertification error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to delete certificate' });
   }
 };

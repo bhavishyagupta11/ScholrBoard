@@ -114,7 +114,7 @@ export function FacultyStudent360() {
           <div className="lg:col-span-3">
             {/* Tab Navigation */}
             <div className="border-b mb-6 flex space-x-6 overflow-x-auto custom-scrollbar" style={{borderColor:'var(--border-color)'}}>
-              {['overview', 'coding', 'projects'].map((tab) => (
+              {['overview', 'projects'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -124,7 +124,7 @@ export function FacultyStudent360() {
                       : 'border-transparent text-gray-400 hover:text-white'
                   }`}
                 >
-                  {tab === 'coding' ? 'Coding Profile' : tab}
+                  {tab}
                 </button>
               ))}
             </div>
@@ -160,38 +160,6 @@ export function FacultyStudent360() {
                         <p className="text-sm subtle leading-relaxed">{studentProfile.bio}</p>
                       </div>
                     )}
-                  </div>
-                )}
-
-                {activeTab === 'coding' && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="card p-6">
-                      <div className="flex justify-between items-center mb-4">
-                        <span className="font-medium text-lg">LeetCode</span>
-                      </div>
-                      <div className="space-y-3 text-sm">
-                        <div className="flex justify-between"><span className="subtle">Solved</span><span className="font-semibold">{studentProfile.codingStats?.leetcodeProblemsSolved || 0}</span></div>
-                        <div className="flex justify-between"><span className="subtle">Rating</span><span className="font-semibold">{studentProfile.codingStats?.leetcodeContestRating || 0}</span></div>
-                        <div className="flex justify-between"><span className="subtle">Streak</span><span className="font-semibold text-orange-400">{studentProfile.codingStats?.leetcodeStreak || 0} days</span></div>
-                      </div>
-                    </div>
-                    <div className="card p-6">
-                      <div className="flex justify-between items-center mb-4">
-                        <span className="font-medium text-lg">GitHub</span>
-                      </div>
-                      <div className="space-y-3 text-sm">
-                        <div className="flex justify-between"><span className="subtle">Contributions</span><span className="font-semibold">{studentProfile.codingStats?.githubContributions || 0}</span></div>
-                      </div>
-                    </div>
-                    <div className="card p-6">
-                      <div className="flex justify-between items-center mb-4">
-                        <span className="font-medium text-lg">Other</span>
-                      </div>
-                      <div className="space-y-3 text-sm">
-                        <div className="flex justify-between"><span className="subtle">Codeforces</span><span className="font-semibold">{studentProfile.codingStats?.codeforcesRating || '–'}</span></div>
-                        <div className="flex justify-between"><span className="subtle">HackerRank</span><span className="font-semibold">{studentProfile.codingStats?.hackerrankBadges || 0} badges</span></div>
-                      </div>
-                    </div>
                   </div>
                 )}
 

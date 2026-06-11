@@ -1,13 +1,19 @@
+import { redactObject } from './requestLogger.js';
+
 const errorHandler = (err, req, res, next) => {
   const statusCode = err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
-  
-  console.error('Error occurred:', {
+
+  console.error('[error]', JSON.stringify({
+    timestamp: new Date().toISOString(),
     message: err.message,
-    stack: err.stack,
-    path: req.path,
-    body: req.body
-  });
-  
+    path: req.originalUrl,
+    method: req.method,
+    statusCode,
+    userId: req.user?._id?.toString() || null,
+    body: req.body ? redactObject(req.body) : undefined,
+    stack: process.env.NODE_ENV === 'production' ? undefined : err.stack,
+  }));
+
   res.status(statusCode).json({
     success: false,
     message: err.message,

@@ -11,7 +11,7 @@ const departments = [
   'BioTechnology',
 ];
 
-export function StudentLoginPage() {
+export function StudentLoginPage({ presentation = 'page' }) {
   const additionalFields = [
     {
       name: 'studentId',
@@ -42,6 +42,7 @@ export function StudentLoginPage() {
     <BaseLoginForm
       role="student"
       additionalFields={additionalFields}
+      presentation={presentation}
     />
   );
 }

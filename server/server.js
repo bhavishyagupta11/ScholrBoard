@@ -18,6 +18,8 @@ import path from 'node:path';
 
 import connectDB from './config/db.js';
 import { errorHandler, notFound } from './middleware/error.js';
+import requestLogger from './middleware/requestLogger.js';
+import healthRoutes from './routes/health.js';
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 import authRoutes         from './routes/auth.js';
@@ -31,6 +33,12 @@ import eventRoutes        from './routes/events.js';
 import notificationRoutes from './routes/notifications.js';
 import uploadRoutes       from './routes/upload.js';
 import codingRoutes       from './routes/coding.js';
+import odRoutes           from './routes/od.js';
+import announcementRoutes from './routes/announcements.js';
+import opportunityRoutes  from './routes/opportunities.js';
+import applicationRoutes  from './routes/applications.js';
+import scholarshipRoutes  from './routes/scholarships.js';
+import developerSyncRoutes from './routes/developerSync.js';
 
 // ─── Validate critical environment variables ──────────────────────────────────
 const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET'];
@@ -40,7 +48,17 @@ if (missingEnvVars.length > 0) {
   process.exit(1);
 }
 
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason instanceof Error ? reason.message : reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err.message);
+  process.exit(1);
+});
+
 const app = express();
+app.set('trust proxy', 1);
 
 // ─── Security: HTTP headers ───────────────────────────────────────────────────
 app.use(helmet({
@@ -69,28 +87,30 @@ app.use(cors({
 }));
 
 // ─── Security: Rate limiting ──────────────────────────────────────────────────
-// General API rate limit
-app.use('/api/', rateLimit({
-  windowMs: 15 * 60 * 1000,   // 15 minutes
-  max: 300,                    // 300 requests per window per IP
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, message: 'Too many requests. Please try again in 15 minutes.' },
-}));
+if (process.env.NODE_ENV !== 'test') {
+  // General API rate limit
+  app.use('/api/', rateLimit({
+    windowMs: 15 * 60 * 1000,   // 15 minutes
+    max: process.env.NODE_ENV === 'production' ? 300 : 10000,                    // 300 requests per window per IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, message: 'Too many requests. Please try again in 15 minutes.' },
+  }));
 
-// Stricter limit for auth routes (prevent brute force)
-app.use('/api/auth/', rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  message: { success: false, message: 'Too many authentication attempts. Please try again in 15 minutes.' },
-}));
+  // Stricter limit for auth routes (prevent brute force)
+  app.use('/api/auth/', rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: process.env.NODE_ENV === 'production' ? 20 : 10000,
+    message: { success: false, message: 'Too many authentication attempts. Please try again in 15 minutes.' },
+  }));
 
-// AI routes — limited to prevent API key abuse
-app.use('/api/ai/', rateLimit({
-  windowMs: 60 * 1000,        // 1 minute
-  max: 20,                    // 20 AI requests per minute per IP
-  message: { success: false, message: 'AI rate limit reached. Please wait a moment.' },
-}));
+  // AI routes — limited to prevent API key abuse
+  app.use('/api/ai/', rateLimit({
+    windowMs: 60 * 1000,        // 1 minute
+    max: process.env.NODE_ENV === 'production' ? 20 : 10000,                    // 20 AI requests per minute per IP
+    message: { success: false, message: 'AI rate limit reached. Please wait a moment.' },
+  }));
+}
 
 // ─── Request parsing ──────────────────────────────────────────────────────────
 // Large enough for profile/projects/roadmap JSON; uploads use multipart (multer), not this limit.
@@ -136,15 +156,10 @@ app.use((req, _res, next) => {
   next();
 });
 
+app.use(requestLogger);
+
 // ─── Health check ─────────────────────────────────────────────────────────────
-app.get('/api/health', (req, res) => {
-  res.json({
-    success: true,
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-  });
-});
+app.use('/api/health', healthRoutes);
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/auth',          authRoutes);
@@ -158,6 +173,12 @@ app.use('/api/events',        eventRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/upload',        uploadRoutes);
 app.use('/api/coding',        codingRoutes);
+app.use('/api/od',            odRoutes);
+app.use('/api/announcements', announcementRoutes);
+app.use('/api/opportunities', opportunityRoutes);
+app.use('/api/applications',  applicationRoutes);
+app.use('/api/scholarships',  scholarshipRoutes);
+app.use('/api/developer',     developerSyncRoutes);
 
 // ─── 404 + Global Error Handler ───────────────────────────────────────────────
 app.use(notFound);

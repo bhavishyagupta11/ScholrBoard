@@ -7,6 +7,7 @@ import {
   getDashboardAnalytics,
   updateAcademicData,
   getSystemAnalytics,
+  getPlacementAnalytics,
 } from '../controllers/analyticsController.js';
 
 const router = express.Router();
@@ -31,6 +32,10 @@ router.put('/academic', updateAcademicData);
 
 // @route   GET /api/analytics/system
 // @desc    System-wide analytics for admin
-router.get('/system', requireRole('admin', 'faculty'), getSystemAnalytics);
+router.get('/system', requireRole('admin'), getSystemAnalytics);
+
+// @route   GET /api/analytics/placements
+// @desc    Placement analytics for admin and faculty
+router.get('/placements', requireRole('admin'), getPlacementAnalytics);
 
 export default router;

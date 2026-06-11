@@ -4,6 +4,7 @@
 import LearningProgress from '../models/LearningProgress.js';
 import Analytics from '../models/Analytics.js';
 import Activity from '../models/Activity.js';
+import Profile from '../models/Profile.js';
 import mongoose from 'mongoose';
 
 // Helper: normalize a date to midnight UTC (strips time component)
@@ -118,6 +119,7 @@ export const getDashboardAnalytics = async (req, res) => {
       activityCounts,
       weeklyProgress,
       latestAnalytics,
+      profile,
     ] = await Promise.all([
       // Activity approval breakdown
       Activity.aggregate([
@@ -133,6 +135,9 @@ export const getDashboardAnalytics = async (req, res) => {
 
       // Latest pre-computed analytics snapshot
       Analytics.findOne({ userId, period: 'monthly' }).sort({ periodStart: -1 }),
+
+      // User Profile (for GPA and overall attendance fallbacks)
+      Profile.findOne({ userId }),
     ]);
 
     const activitySummary = { Pending: 0, Approved: 0, Rejected: 0 };
@@ -146,11 +151,11 @@ export const getDashboardAnalytics = async (req, res) => {
         activities:        activitySummary,
         weeklyStudyMinutes,
         weeklyProgress,
-        gpa:               latestAnalytics?.currentGPA || null,
-        attendance:        latestAnalytics?.overallAttendance || null,
+        gpa:               latestAnalytics?.currentGPA || profile?.gpa || null,
+        attendance:        latestAnalytics?.overallAttendance || profile?.attendanceOverall || null,
         currentStreak:     latestAnalytics?.currentStreak || 0,
         longestStreak:     latestAnalytics?.longestStreak || 0,
-        totalPoints:       latestAnalytics?.totalPointsEarned || 0,
+        totalPoints:       latestAnalytics?.totalPointsEarned || profile?.achievementPoints || 0,
         percentileRank:    latestAnalytics?.percentileRank || null,
         aiInsight:         latestAnalytics?.aiInsight || null,
         subjectBreakdown:  latestAnalytics?.subjectBreakdown || [],
@@ -210,15 +215,15 @@ export const getSystemAnalytics = async (req, res) => {
       User.countDocuments({
         role: 'student',
         isActive: true,
-        ...(req.user.role === 'faculty' && req.user.department ? { department: req.user.department } : {}),
+        ...(req.user.role === 'faculty' ? { advisorId: req.user._id } : {}),
       }),
       req.user.role === 'admin'
         ? User.countDocuments({ role: 'faculty', isActive: true })
         : Promise.resolve(1),
       (async () => {
         const match = {};
-        if (req.user.role === 'faculty' && req.user.department) {
-          const students = await User.find({ role: 'student', department: req.user.department }).select('_id');
+        if (req.user.role === 'faculty') {
+          const students = await User.find({ role: 'student', advisorId: req.user._id }).select('_id');
           match.userId = { $in: students.map((student) => student._id) };
         }
         return Activity.aggregate([
@@ -228,8 +233,8 @@ export const getSystemAnalytics = async (req, res) => {
       })(),
       (async () => {
         const query = { status: 'Pending' };
-        if (req.user.role === 'faculty' && req.user.department) {
-          const students = await User.find({ role: 'student', department: req.user.department }).select('_id');
+        if (req.user.role === 'faculty') {
+          const students = await User.find({ role: 'student', advisorId: req.user._id }).select('_id');
           query.userId = { $in: students.map((student) => student._id) };
         }
         return Activity.find(query)
@@ -263,5 +268,98 @@ export const getSystemAnalytics = async (req, res) => {
   } catch (error) {
     console.error('getSystemAnalytics error:', error);
     return res.status(500).json({ success: false, message: 'Failed to fetch system analytics' });
+  }
+};
+
+// ─── ADMIN/FACULTY: Placement analytics statistics ───────────────────────────
+export const getPlacementAnalytics = async (req, res) => {
+  try {
+    const User = mongoose.model('User');
+    const Application = mongoose.model('Application');
+
+    // 1. Get total students registered
+    const totalStudents = await User.countDocuments({ role: 'student', isActive: true });
+
+    // 2. Get unique placed student count (Application status is 'Selected')
+    const placedStudentIds = await Application.distinct('studentId', { status: 'Selected' });
+    const totalPlaced = placedStudentIds.length;
+
+    const placementPercentage = totalStudents > 0 ? Math.round((totalPlaced / totalStudents) * 1000) / 10 : 0;
+
+    // 3. Get all selected applications populated with package details
+    const selectedApps = await Application.find({ status: 'Selected' })
+      .populate('studentId', 'department')
+      .populate('opportunityId', 'salaryPackage');
+
+    const packages = selectedApps.map(a => a.opportunityId?.salaryPackage || 0).filter(Boolean);
+    const highestPackage = packages.length > 0 ? Math.max(...packages) : 0;
+    const averagePackage = packages.length > 0 ? Math.round(packages.reduce((sum, p) => sum + p, 0) / packages.length) : 0;
+
+    // 4. Department breakdown
+    const deptStudents = await User.aggregate([
+      { $match: { role: 'student', isActive: true } },
+      { $group: { _id: '$department', count: { $sum: 1 } } }
+    ]);
+
+    const deptMap = {};
+    deptStudents.forEach(d => {
+      if (d._id) {
+        const deptKey = d._id.toUpperCase();
+        deptMap[deptKey] = {
+          department: deptKey,
+          totalStudents: d.count,
+          placed: 0,
+          highest: 0,
+          packagesSum: 0,
+          average: 0
+        };
+      }
+    });
+
+    selectedApps.forEach(app => {
+      const dept = app.studentId?.department?.toUpperCase();
+      const salary = app.opportunityId?.salaryPackage || 0;
+      if (dept) {
+        if (!deptMap[dept]) {
+          deptMap[dept] = { department: dept, totalStudents: 0, placed: 0, highest: 0, packagesSum: 0, average: 0 };
+        }
+        deptMap[dept].placed += 1;
+        if (salary > deptMap[dept].highest) {
+          deptMap[dept].highest = salary;
+        }
+        if (salary > 0) {
+          deptMap[dept].packagesSum += salary;
+        }
+      }
+    });
+
+    const departmentBreakdown = Object.values(deptMap).map(d => {
+      const placedCount = d.placed;
+      const avg = placedCount > 0 ? Math.round(d.packagesSum / placedCount) : 0;
+      const pct = d.totalStudents > 0 ? Math.round((placedCount / d.totalStudents) * 1000) / 10 : 0;
+      
+      return {
+        department: d.department,
+        totalStudents: d.totalStudents,
+        placed: placedCount,
+        percentage: pct,
+        highest: d.highest,
+        average: avg
+      };
+    });
+
+    return res.json({
+      success: true,
+      stats: {
+        totalPlaced,
+        placementPercentage,
+        highestPackage,
+        averagePackage,
+        departmentBreakdown
+      }
+    });
+  } catch (error) {
+    console.error('getPlacementAnalytics error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch placement analytics' });
   }
 };

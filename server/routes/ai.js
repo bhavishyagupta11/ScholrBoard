@@ -1,5 +1,6 @@
 import express from 'express';
 import auth from '../middleware/auth.js';
+import validateObjectId from '../middleware/validateObjectId.js';
 import requireRole from '../middleware/roleAuth.js';
 import {
   sendChatMessage,
@@ -34,11 +35,11 @@ router.get('/chats', listConversations);
 
 // @route   GET /api/ai/chats/:id
 // @desc    Get a specific conversation with all messages
-router.get('/chats/:id', getConversation);
+router.get('/chats/:id', validateObjectId('id'), getConversation);
 
 // @route   DELETE /api/ai/chats/:id
 // @desc    Archive (soft-delete) a conversation
-router.delete('/chats/:id', archiveConversation);
+router.delete('/chats/:id', validateObjectId('id'), archiveConversation);
 
 // @route   POST /api/ai/analyze-resume
 // @desc    Run full AI extraction and ATS scoring on an uploaded resume

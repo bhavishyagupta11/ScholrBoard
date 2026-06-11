@@ -87,7 +87,7 @@ const activitySchema = new mongoose.Schema(
     // --- Approval workflow ---
     status: {
       type: String,
-      enum: ['Pending', 'Approved', 'Rejected'],
+      enum: ['Pending', 'Approved', 'Rejected', 'Needs Revision'],
       default: 'Pending',
       index: true,
     },

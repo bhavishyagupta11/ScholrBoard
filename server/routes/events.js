@@ -1,6 +1,7 @@
 import express from 'express';
 import auth from '../middleware/auth.js';
 import requireRole from '../middleware/roleAuth.js';
+import validateObjectId from '../middleware/validateObjectId.js';
 import {
   createEvent,
   getMyEvents,
@@ -20,7 +21,7 @@ router.get('/my', getMyEvents);
 
 // @route   POST /api/events/:id/register
 // @desc    Register for an event
-router.post('/:id/register', registerForEvent);
+router.post('/:id/register', validateObjectId('id'), registerForEvent);
 
 // @route   GET /api/events
 // @desc    Admin/Faculty: get all events
@@ -32,10 +33,10 @@ router.post('/', requireRole('admin', 'faculty'), createEvent);
 
 // @route   PUT /api/events/:id
 // @desc    Admin: update an event
-router.put('/:id', requireRole('admin'), updateEvent);
+router.put('/:id', requireRole('admin'), validateObjectId('id'), updateEvent);
 
 // @route   DELETE /api/events/:id
 // @desc    Admin: delete an event
-router.delete('/:id', requireRole('admin'), deleteEvent);
+router.delete('/:id', requireRole('admin'), validateObjectId('id'), deleteEvent);
 
 export default router;

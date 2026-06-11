@@ -1,0 +1,4 @@
+E2E Test Certificate
+Issued to: Test Student
+Course: Playwright Testing Workshop
+Date: 2026-01-15

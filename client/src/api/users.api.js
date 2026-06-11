@@ -15,6 +15,12 @@ export const usersApi = {
 
   /** Soft delete user (Admin only) */
   deleteUser: (id) => api.delete(`/users/${id}`),
+
+  /** Assign students to an advisor (Admin only) */
+  assignAdvisor: (studentIds, advisorId) => api.put('/users/assign-advisor', { studentIds, advisorId }),
+
+  /** Get advisor's assigned students (Faculty only) */
+  getAssignedStudents: () => api.get('/users/advisor/students'),
 };
 
 export default usersApi;

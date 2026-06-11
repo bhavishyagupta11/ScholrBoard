@@ -20,14 +20,20 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx').then((module) =
 const CodingPage = lazy(() => import('./pages/CodingPage.jsx').then((module) => ({ default: module.CodingPage })));
 const ResumeImportPage = lazy(() => import('./pages/ResumeImportPage.jsx').then((module) => ({ default: module.ResumeImportPage })));
 const AIChatPage = lazy(() => import('./pages/AIChatPage.jsx').then((module) => ({ default: module.AIChatPage })));
+const CertificatesPage = lazy(() => import('./pages/CertificatesPage.jsx').then((module) => ({ default: module.CertificatesPage })));
+const StudentOdPage = lazy(() => import('./pages/StudentOdPage.jsx').then((module) => ({ default: module.StudentOdPage })));
 const FacultyDashboard = lazy(() => import('./pages/FacultyDashboard.jsx').then((module) => ({ default: module.FacultyDashboard })));
 const FacultyApprovals = lazy(() => import('./pages/FacultyApprovals.jsx').then((module) => ({ default: module.FacultyApprovals })));
 const FacultyStudents = lazy(() => import('./pages/FacultyStudents.jsx').then((module) => ({ default: module.FacultyStudents })));
 const FacultyStudent360 = lazy(() => import('./pages/FacultyStudent360.jsx').then((module) => ({ default: module.FacultyStudent360 })));
+const FacultyOdApprovals = lazy(() => import('./pages/FacultyOdApprovals.jsx').then((module) => ({ default: module.FacultyOdApprovals })));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard.jsx').then((module) => ({ default: module.AdminDashboard })));
 const AdminAnalytics = lazy(() => import('./pages/AdminAnalytics.jsx').then((module) => ({ default: module.AdminAnalytics })));
+const AdminPlacementDashboard = lazy(() => import('./pages/AdminPlacementDashboard.jsx').then((module) => ({ default: module.AdminPlacementDashboard })));
+const StudentPlacementDashboard = lazy(() => import('./pages/StudentPlacementDashboard.jsx').then((module) => ({ default: module.StudentPlacementDashboard })));
 const AdminPlacements = lazy(() => import('./pages/AdminPlacements.jsx').then((module) => ({ default: module.AdminPlacements })));
 const AdminEvents = lazy(() => import('./pages/AdminEvents.jsx').then((module) => ({ default: module.AdminEvents })));
+const AdminAnnouncements = lazy(() => import('./pages/AdminAnnouncements.jsx').then((module) => ({ default: module.AdminAnnouncements })));
 
 const PageLoader = () => (
 	<div className="min-h-screen p-6" style={{ background: 'var(--bg-dark)', color: 'var(--text-primary)' }}>
@@ -111,7 +117,10 @@ export default function App() {
 								<Route path="profile" element={<ProfilePage />} />
 								<Route path="coding" element={<CodingPage />} />
 								<Route path="resume" element={<ResumeImportPage />} />
+								<Route path="certificates" element={<CertificatesPage />} />
 								<Route path="ai-chat" element={<AIChatPage />} />
+								<Route path="od" element={<StudentOdPage />} />
+								<Route path="placements" element={<StudentPlacementDashboard />} />
 							</Route>
 
 							<Route path="/faculty" element={
@@ -123,6 +132,7 @@ export default function App() {
 								<Route path="approvals" element={<FacultyApprovals />} />
 								<Route path="students" element={<FacultyStudents />} />
 								<Route path="mentor" element={<FacultyStudent360 />} />
+								<Route path="od-approvals" element={<FacultyOdApprovals />} />
 							</Route>
 
 							<Route path="/admin" element={
@@ -133,8 +143,9 @@ export default function App() {
 								<Route index element={<AdminDashboard />} />
 								<Route path="approvals" element={<FacultyApprovals />} />
 								<Route path="analytics" element={<AdminAnalytics />} />
-								<Route path="placements" element={<AdminPlacements />} />
+								<Route path="placements" element={<AdminPlacementDashboard />} />
 								<Route path="events" element={<AdminEvents />} />
+								<Route path="announcements" element={<AdminAnnouncements />} />
 							</Route>
 
 							<Route path="*" element={<Navigate to="/" replace />} />

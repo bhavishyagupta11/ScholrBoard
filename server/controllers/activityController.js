@@ -2,8 +2,9 @@
  * activityController.js — Student activity submission and approval workflow
  */
 import Activity from '../models/Activity.js';
+import AuditLog from '../models/AuditLog.js';
 import Notification from '../models/Notification.js';
-import Analytics from '../models/Analytics.js';
+import { withTransaction } from '../utils/withTransaction.js';
 
 // ─── STUDENT: Submit a new activity ──────────────────────────────────────────
 export const createActivity = async (req, res) => {
@@ -170,20 +171,15 @@ export const archiveActivity = async (req, res) => {
 // ─── FACULTY/ADMIN: Get all activities pending review ─────────────────────────
 export const getPendingActivities = async (req, res) => {
   try {
-    const { department, category, page = 1, limit = 20 } = req.query;
+    const { category, page = 1, limit = 20 } = req.query;
 
     const query = { status: 'Pending', isArchived: false };
 
-    // Faculty only see activities from students in their department
+    // Faculty only see activities from assigned advisees.
     if (req.user.role === 'faculty') {
-      // Join through User model to filter by department
       const { default: User } = await import('../models/User.js');
-      const deptStudents = await User.find({
-        role: 'student',
-        department: req.user.department,
-      }).select('_id');
-
-      query.userId = { $in: deptStudents.map((s) => s._id) };
+      const assignedStudents = await User.find({ role: 'student', advisorId: req.user._id }).select('_id');
+      query.userId = { $in: assignedStudents.map((student) => student._id) };
     }
 
     if (category) query.category = category;
@@ -192,7 +188,7 @@ export const getPendingActivities = async (req, res) => {
 
     const [activities, total] = await Promise.all([
       Activity.find(query)
-        .populate('userId', 'name email studentId department semester')
+        .populate('userId', 'name email studentId department semester advisorId')
         .sort({ createdAt: 1 })   // oldest first (FIFO review queue)
         .skip(skip)
         .limit(Number(limit))
@@ -215,15 +211,15 @@ export const getPendingActivities = async (req, res) => {
   }
 };
 
-// ─── FACULTY/ADMIN: Approve or reject an activity ────────────────────────────
+// ─── FACULTY/ADMIN: Approve or reject an activity / request revision ──────────
 export const reviewActivity = async (req, res) => {
   try {
-    const { status, reviewComments, rejectionReason, points } = req.body;
+    const { status, reviewComments, rejectionReason } = req.body;
 
-    if (!['Approved', 'Rejected'].includes(status)) {
+    if (!['Approved', 'Rejected', 'Needs Revision'].includes(status)) {
       return res.status(400).json({
         success: false,
-        message: 'Status must be "Approved" or "Rejected"',
+        message: 'Status must be one of: "Approved", "Rejected", "Needs Revision"',
       });
     }
     if (status === 'Rejected' && !rejectionReason) {
@@ -232,22 +228,15 @@ export const reviewActivity = async (req, res) => {
         message: 'A rejection reason is required when rejecting an activity',
       });
     }
+    if (status === 'Needs Revision' && !reviewComments) {
+      return res.status(400).json({
+        success: false,
+        message: 'Comments detailing the required changes are required when requesting revision',
+      });
+    }
 
-    const activity = await Activity.findOneAndUpdate(
-      { _id: req.params.id, status: 'Pending' },
-      {
-        $set: {
-          status,
-          reviewedBy:      req.user._id,
-          reviewedAt:      new Date(),
-          reviewComments:  reviewComments?.trim(),
-          rejectionReason: rejectionReason?.trim(),
-          points:          status === 'Approved' ? (points || 10) : 0,
-        },
-      },
-      { new: true }
-    ).populate('userId', 'name email');
-
+    // Load active activity
+    const activity = await Activity.findOne({ _id: req.params.id, status: 'Pending' });
     if (!activity) {
       return res.status(404).json({
         success: false,
@@ -255,19 +244,81 @@ export const reviewActivity = async (req, res) => {
       });
     }
 
-    // ─── Create a notification for the student ───────────────────────────────
-    await Notification.create({
-      userId:       activity.userId._id,
-      title:        `Activity ${status}: ${activity.title}`,
-      message:      status === 'Approved'
-        ? `Your activity "${activity.title}" has been approved!${points ? ` You earned ${points} points.` : ''}`
-        : `Your activity "${activity.title}" was rejected. Reason: ${rejectionReason}`,
-      type:         status === 'Approved' ? 'activity_approved' : 'activity_rejected',
-      relatedId:    activity._id,
-      relatedModel: 'Activity',
-      actionUrl:    '/student/activities',
-      priority:     status === 'Rejected' ? 'high' : 'medium',
+    // Faculty may only review submissions from assigned advisees.
+    if (req.user.role === 'faculty') {
+      const { default: User } = await import('../models/User.js');
+      const student = await User.findById(activity.userId);
+      if (!student) {
+        return res.status(404).json({ success: false, message: 'Student account not found' });
+      }
+
+      const isAdvisor = student.advisorId && student.advisorId.toString() === req.user._id.toString();
+
+      if (!isAdvisor) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied — you do not have permission to review this student\'s submissions',
+        });
+      }
+    }
+
+    // Points calculation: system-controlled, advisors cannot override
+    let calculatedPoints = 0;
+    if (status === 'Approved') {
+      const { calculateActivityPoints } = await import('../services/scoringService.js');
+      calculatedPoints = calculateActivityPoints(activity);
+    }
+
+    const studentId = activity.userId;
+
+    await withTransaction(async (session) => {
+      activity.status = status;
+      activity.reviewedBy = req.user._id;
+      activity.reviewedAt = new Date();
+      activity.reviewComments = reviewComments?.trim() || null;
+      activity.rejectionReason = status === 'Rejected' ? rejectionReason?.trim() : null;
+      activity.points = calculatedPoints;
+
+      await activity.save({ session });
+
+      if (status === 'Approved') {
+        const { updateStudentPoints } = await import('../services/scoringService.js');
+        await updateStudentPoints(studentId, session);
+      }
+
+      await AuditLog.create([{
+        action: status === 'Approved' ? 'approve_activity' : status === 'Rejected' ? 'reject_activity' : 'revision_requested_activity',
+        performedBy: req.user._id,
+        role: req.user.role,
+        targetModel: 'Activity',
+        targetId: activity._id,
+        details: {
+          title: activity.title,
+          points: calculatedPoints,
+          comments: reviewComments || rejectionReason,
+        },
+      }], { session });
+
+      const notificationTitle = `Activity ${status}: ${activity.title}`;
+      const notificationMessage = status === 'Approved'
+        ? `Your activity "${activity.title}" has been approved! System points allocated: ${calculatedPoints} points.`
+        : status === 'Rejected'
+        ? `Your activity "${activity.title}" was rejected. Reason: ${rejectionReason}`
+        : `Your activity "${activity.title}" requires revision. Comments: ${reviewComments}`;
+
+      await Notification.create([{
+        userId: studentId,
+        title: notificationTitle,
+        message: notificationMessage,
+        type: status === 'Approved' ? 'activity_approved' : status === 'Rejected' ? 'activity_rejected' : 'system',
+        relatedId: activity._id,
+        relatedModel: 'Activity',
+        actionUrl: '/student/activities',
+        priority: status === 'Approved' ? 'medium' : 'high',
+      }], { session });
     });
+
+    await activity.populate('userId', 'name email');
 
     return res.json({
       success: true,

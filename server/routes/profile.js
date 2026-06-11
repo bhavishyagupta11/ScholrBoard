@@ -6,8 +6,10 @@ import {
   updateMyProfile,
   updateMyBasicInfo,
   updateCodingStats,
+  deleteCertification,
 } from '../controllers/profileController.js';
 import requireRole from '../middleware/roleAuth.js';
+import validateObjectId from '../middleware/validateObjectId.js';
 
 const router = express.Router();
 
@@ -30,9 +32,13 @@ router.put('/me/basic', updateMyBasicInfo);
 // @desc    Update coding platform statistics
 router.put('/me/coding', updateCodingStats);
 
+// @route   DELETE /api/profile/certifications/:certId
+// @desc    Remove a certification from user's profile
+router.delete('/certifications/:certId', validateObjectId('certId'), deleteCertification);
+
 // @route   GET /api/profile/:userId
 // @desc    Get any user's profile (faculty 360 view / admin)
 // @access  Faculty or Admin only
-router.get('/:userId', requireRole('faculty', 'admin'), getProfileByUserId);
+router.get('/:userId', requireRole('faculty', 'admin'), validateObjectId('userId'), getProfileByUserId);
 
 export default router;

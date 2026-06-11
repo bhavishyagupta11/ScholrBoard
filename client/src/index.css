@@ -133,7 +133,8 @@ body::after {
 .badge { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold; }
 .badge-green { background-color: color-mix(in srgb, var(--success-color) 14%, transparent); color: var(--success-color); border: 1px solid color-mix(in srgb, var(--success-color) 32%, transparent); }
 .badge-yellow { background-color: color-mix(in srgb, var(--warning-color) 14%, transparent); color: var(--warning-color); border: 1px solid color-mix(in srgb, var(--warning-color) 32%, transparent); }
-.badge-red { @apply bg-red-100 text-red-700 border border-red-200; }
+.badge-red { background-color: color-mix(in srgb, var(--danger-color) 14%, transparent); color: var(--danger-color); border: 1px solid color-mix(in srgb, var(--danger-color) 32%, transparent); }
+.badge-orange { background-color: color-mix(in srgb, #f97316 14%, transparent); color: #f97316; border: 1px solid color-mix(in srgb, #f97316 32%, transparent); }
 
 .surface { background: var(--surface-glass); border: 1px solid var(--border-color); border-radius: 0.5rem; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
 .surface:hover { transform: translateY(-1px); border-color: rgba(var(--primary-rgb), 0.3); box-shadow: var(--shadow-soft); }

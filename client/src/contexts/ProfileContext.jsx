@@ -82,7 +82,7 @@ export function ProfileProvider({ children }) {
     } finally {
       setIsLoading(false);
     }
-  }, [user?._id]);
+  }, [user]);
 
   useEffect(() => {
     fetchProfile();

@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { Code2, FileText, LayoutDashboard, Upload, Table2, UserSquare2, LogOut, MessageSquare } from 'lucide-react';
+import { Code2, FileText, LayoutDashboard, Upload, Table2, UserSquare2, LogOut, MessageSquare, Award, Calendar, Briefcase } from 'lucide-react';
 import { Topbar } from '../components/Topbar.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
@@ -18,6 +18,9 @@ export function StudentLayout() {
 		{ to: '/student/portfolio', label: 'Portfolio', icon: UserSquare2 },
 		{ to: '/student/coding', label: 'Coding', icon: Code2 },
 		{ to: '/student/resume', label: 'Resume', icon: FileText },
+		{ to: '/student/certificates', label: 'Certificates', icon: Award },
+		{ to: '/student/od', label: 'OD Requests', icon: Calendar },
+		{ to: '/student/placements', label: 'Placements', icon: Briefcase },
 		{ to: '/student/ai-chat', label: 'AI Coach', icon: MessageSquare },
 	];
 

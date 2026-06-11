@@ -1,5 +1,6 @@
 import express from 'express';
 import auth from '../middleware/auth.js';
+import validateObjectId from '../middleware/validateObjectId.js';
 import {
   avatarUpload,
   resumeUpload,
@@ -62,6 +63,6 @@ router.get('/resume/analyses', getMyResumeAnalyses);
 
 // @route   GET /api/upload/resume/analyses/:id
 // @desc    Get a specific resume analysis
-router.get('/resume/analyses/:id', getResumeAnalysis);
+router.get('/resume/analyses/:id', validateObjectId('id'), getResumeAnalysis);
 
 export default router;
