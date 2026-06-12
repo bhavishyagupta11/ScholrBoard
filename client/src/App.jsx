@@ -34,6 +34,9 @@ const StudentPlacementDashboard = lazy(() => import('./pages/StudentPlacementDas
 const AdminPlacements = lazy(() => import('./pages/AdminPlacements.jsx').then((module) => ({ default: module.AdminPlacements })));
 const AdminEvents = lazy(() => import('./pages/AdminEvents.jsx').then((module) => ({ default: module.AdminEvents })));
 const AdminAnnouncements = lazy(() => import('./pages/AdminAnnouncements.jsx').then((module) => ({ default: module.AdminAnnouncements })));
+const DeveloperDashboard = lazy(() => import('./pages/DeveloperDashboard.jsx').then((module) => ({ default: module.DeveloperDashboard })));
+const ResumeIntelligencePage = lazy(() => import('./pages/ResumeIntelligencePage.jsx').then((module) => ({ default: module.ResumeIntelligencePage })));
+const AdminTalentDiscovery = lazy(() => import('./pages/AdminTalentDiscovery.jsx').then((module) => ({ default: module.AdminTalentDiscovery })));
 
 const PageLoader = () => (
 	<div className="min-h-screen p-6" style={{ background: 'var(--bg-dark)', color: 'var(--text-primary)' }}>
@@ -117,6 +120,8 @@ export default function App() {
 								<Route path="profile" element={<ProfilePage />} />
 								<Route path="coding" element={<CodingPage />} />
 								<Route path="resume" element={<ResumeImportPage />} />
+								<Route path="developer" element={<DeveloperDashboard />} />
+								<Route path="resume-intelligence" element={<ResumeIntelligencePage />} />
 								<Route path="certificates" element={<CertificatesPage />} />
 								<Route path="ai-chat" element={<AIChatPage />} />
 								<Route path="od" element={<StudentOdPage />} />
@@ -146,6 +151,7 @@ export default function App() {
 								<Route path="placements" element={<AdminPlacementDashboard />} />
 								<Route path="events" element={<AdminEvents />} />
 								<Route path="announcements" element={<AdminAnnouncements />} />
+								<Route path="talent-discovery" element={<AdminTalentDiscovery />} />
 							</Route>
 
 							<Route path="*" element={<Navigate to="/" replace />} />

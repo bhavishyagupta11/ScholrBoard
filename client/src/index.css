@@ -16,6 +16,7 @@
   --text-primary: #111827;
   --text-secondary: #6f5b3e;
   --primary-blue: #d97706;
+  --nav-active-text: #78350f;
   --primary-cyan: #f59e0b;
   --primary-green: #b45309;
   --primary-yellow: #f59e0b;
@@ -43,6 +44,7 @@
   --text-primary: #fff7ed;
   --text-secondary: #f2c98f;
   --primary-blue: #f59e0b;
+  --nav-active-text: var(--primary-blue);
   --primary-cyan: #facc15;
   --primary-green: #f59e0b;
   --primary-yellow: #fbbf24;
@@ -168,7 +170,7 @@ body::after {
 
 .nav-item-active {
   background: color-mix(in srgb, var(--primary-blue) 10%, var(--surface-card));
-  color: var(--primary-blue);
+  color: var(--nav-active-text);
   box-shadow: inset 3px 0 0 var(--primary-blue);
 }
 
