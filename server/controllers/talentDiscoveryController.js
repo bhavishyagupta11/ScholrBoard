@@ -275,14 +275,17 @@ export const getTalentDiscovery = async (req, res) => {
       { $count: 'total' }
     ];
 
+    const hasUserFilters = !!(search || department || branch || semester || year);
+    const hasResumeFilters = !!(hasResumeAnalysis !== undefined || atsScoreMin !== undefined);
+    const shouldPaginateEarly = profileSortFields.includes(sortBy) && !hasUserFilters && !hasResumeFilters;
+
     // Data pipeline — sorted, paged, projected
     const dataPipeline = [
       profileMatchStage,
       { $sort: { [sortField]: sortDir } },
       // Pagination-before-lookup: when sorting on a profile field we can page
-      // BEFORE the expensive User/Resume lookups, drastically reducing work.
-      // (If sortField is a user field we must page after userMatch — handled below)
-      ...(profileSortFields.includes(sortBy) ? [{ $skip: skipNum }, { $limit: limitNum }] : []),
+      // BEFORE the expensive User/Resume lookups, but only if no user/resume filters exist.
+      ...(shouldPaginateEarly ? [{ $skip: skipNum }, { $limit: limitNum }] : []),
       {
         $lookup: {
           from: 'users',
@@ -305,8 +308,8 @@ export const getTalentDiscovery = async (req, res) => {
       },
       { $unwind: { path: '$resumeAnalysis', preserveNullAndEmptyArrays: true } },
       ...(resumeMatchClauses.length > 0 ? [{ $match: { $and: resumeMatchClauses } }] : []),
-      // For user-field sorts (e.g. createdAt), paginate AFTER all filters are applied
-      ...(!profileSortFields.includes(sortBy) ? [{ $skip: skipNum }, { $limit: limitNum }] : []),
+      // Paginate AFTER filters if we could not paginate early due to user/resume matching constraints
+      ...(!shouldPaginateEarly ? [{ $skip: skipNum }, { $limit: limitNum }] : []),
       // ── Whitelist projection ──────────────────────────────────────────────
       {
         $project: {

@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Upload, FileText, CheckCircle, AlertCircle, Award,
   Target, TrendingUp, Zap, BookOpen, ChevronDown, ChevronUp,
@@ -828,6 +829,12 @@ export function ResumeImportPage() {
   const showResults = activeAnalysis?.analysisStatus === 'completed';
 
   // ── Render ───────────────────────────────────────────────────────────────────
+  const completedAnalysis = analyses.find(a => a.analysisStatus === 'completed');
+  const latestAtsScore = completedAnalysis?.atsScore ?? '—';
+  const latestDate = completedAnalysis?.createdAt 
+    ? new Date(completedAnalysis.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' }) 
+    : 'No completed analysis yet';
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
 
@@ -839,6 +846,36 @@ export function ResumeImportPage() {
         <p className="mt-2 subtle">
           Upload your resume (PDF or DOCX) to receive an AI-powered ATS score, skill analysis, section feedback, and career recommendations.
         </p>
+      </div>
+
+      {/* Resume Intelligence CTA Banner */}
+      <div className="card p-6 relative overflow-hidden bg-gradient-to-r from-emerald-900/40 to-teal-900/40 border border-emerald-500/30 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-lg shadow-emerald-950/20">
+        <div className="flex flex-col md:flex-row md:items-center gap-6">
+          <div className="flex items-center justify-center w-20 h-20 rounded-full border-4 border-emerald-500/20 bg-emerald-950/40 relative shrink-0">
+            <span className="text-3xl font-extrabold text-white">{latestAtsScore}</span>
+            <div className="absolute -bottom-1 bg-emerald-500 text-[10px] font-bold text-white px-2 py-0.5 rounded-full uppercase tracking-wider">ATS</div>
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-xl font-bold text-white">Resume Intelligence Reports</h2>
+            <p className="text-sm text-slate-305 max-w-xl">
+              Compare multiple resumes, analyze detailed ATS metrics, review skill gap suggestions, and track feedback history.
+            </p>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-xs text-slate-400">Latest Analysis:</span>
+              <span className="text-xs font-semibold text-emerald-400">
+                {latestDate}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <Link 
+            to="/student/resume-intelligence" 
+            className="btn btn-primary whitespace-nowrap shadow-lg shadow-emerald-500/20 flex items-center gap-2 hover:translate-x-0.5 transition-transform"
+          >
+            View Resume Intelligence
+          </Link>
+        </div>
       </div>
 
       {/* ── SECTION 1: Upload ────────────────────────────────────────────── */}
