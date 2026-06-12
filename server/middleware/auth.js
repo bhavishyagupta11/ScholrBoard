@@ -1,18 +1,12 @@
 /**
  * auth.js — JWT verification middleware
  *
- * Verifies the JWT that the server issues after a successful Firebase sync.
+ * Verifies the JWT that the server issues after a successful native login/signup.
  * This token is short-lived (7d) and contains the MongoDB user _id and role.
  *
  * Flow:
- *   1. Client Firebase-authenticates → sends Firebase ID token to /api/auth/sync
- *   2. Backend verifies Firebase token → issues its own JWT → client stores it
- *   3. All subsequent protected API calls send the server JWT in Authorization header
- *
- * Why two tokens?
- *   Firebase tokens expire in 1 hour and carry Firebase-specific claims.
- *   Our server JWT carries our own payload (MongoDB _id, role, department)
- *   and avoids repeated Firebase Admin SDK calls on every request.
+ *   1. Client sends credentials → Server verifies → issues JWT → client stores it
+ *   2. All subsequent protected API calls send the server JWT in Authorization header
  *
  * Security:
  *   - No fallback / bypass in any environment

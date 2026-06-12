@@ -70,7 +70,7 @@ export const apiRequest = async (endpoint, options = {}) => {
       localStorage.removeItem('scholrboardUser');
       localStorage.removeItem('role');
       localStorage.removeItem('isAuthenticated');
-      // Dispatch event so FirebaseAuthContext can react
+      // Dispatch event so AuthContext can react
       window.dispatchEvent(new CustomEvent('auth:session-expired'));
     }
 
