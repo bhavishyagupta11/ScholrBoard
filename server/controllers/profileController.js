@@ -28,6 +28,24 @@ export const getMyProfile = async (req, res) => {
     }
 
     let profileData = profile.toObject();
+    
+    // Fetch latest resume analysis
+    try {
+      const { default: ResumeAnalysis } = await import('../models/ResumeAnalysis.js');
+      const latestAnalysis = await ResumeAnalysis.findOne({ userId: req.user._id, isCurrent: true });
+      if (latestAnalysis) {
+        profileData.resumeAnalysis = {
+          atsScore: latestAnalysis.atsScore,
+          overallScore: latestAnalysis.overallScore,
+          strengths: latestAnalysis.strengths,
+          improvements: latestAnalysis.improvements,
+          recommendedRoles: latestAnalysis.recommendedRoles
+        };
+      }
+    } catch (err) {
+      console.warn('[profile] Failed to fetch latest resume analysis for /me:', err.message);
+    }
+
     if (req.user.role === 'faculty') {
       delete profileData.developerScore;
       delete profileData.githubScore;
@@ -61,6 +79,23 @@ export const getProfileByUserId = async (req, res) => {
     }
 
     let profileData = profile.toObject();
+
+    // Fetch latest resume analysis
+    try {
+      const { default: ResumeAnalysis } = await import('../models/ResumeAnalysis.js');
+      const latestAnalysis = await ResumeAnalysis.findOne({ userId, isCurrent: true });
+      if (latestAnalysis) {
+        profileData.resumeAnalysis = {
+          atsScore: latestAnalysis.atsScore,
+          overallScore: latestAnalysis.overallScore,
+          strengths: latestAnalysis.strengths,
+          improvements: latestAnalysis.improvements,
+          recommendedRoles: latestAnalysis.recommendedRoles
+        };
+      }
+    } catch (err) {
+      console.warn('[profile] Failed to fetch latest resume analysis for user:', err.message);
+    }
 
     // Faculty can only view student profiles in their own department
     if (req.user.role === 'faculty') {
