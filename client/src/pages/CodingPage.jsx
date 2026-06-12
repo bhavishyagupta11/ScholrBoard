@@ -2,6 +2,7 @@
  * CodingPage.jsx — Dynamic coding profile visualization
  */
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { RefreshCw, Link as LinkIcon, AlertCircle } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { useProfile } from '../contexts/ProfileContext.jsx';
@@ -109,6 +110,9 @@ export function CodingPage() {
     }
   };
 
+  const devScore = profile.developerScore || 0;
+  const devTier = devScore >= 75 ? 'Elite Tier' : devScore >= 50 ? 'Advanced Tier' : 'Developing';
+
   return (
     <div className="space-y-6">
       <h1 ref={headerRef} className="headline gpu-accelerated">Coding Profiles</h1>
@@ -118,6 +122,42 @@ export function CodingPage() {
           <AlertCircle size={16} /> {error}
         </div>
       )}
+
+      {/* Developer Score CTA Banner */}
+      <div className="card p-6 relative overflow-hidden bg-gradient-to-r from-blue-900/40 to-indigo-900/40 border border-blue-500/30 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-lg shadow-blue-950/20">
+        <div className="flex flex-col md:flex-row md:items-center gap-6">
+          <div className="flex items-center justify-center w-20 h-20 rounded-full border-4 border-blue-500/20 bg-blue-950/40 relative shrink-0">
+            <span className="text-3xl font-extrabold text-white">{devScore}</span>
+            <div className="absolute -bottom-1 bg-blue-500 text-[10px] font-bold text-white px-2 py-0.5 rounded-full uppercase tracking-wider">Score</div>
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-xl font-bold text-white">Developer Intelligence Dashboard</h2>
+            <p className="text-sm text-slate-350 max-w-xl">
+              Track your unified developer metrics, algorithm proficiency, and platform synchronization cooldowns.
+            </p>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-xs text-slate-400">Current Standing:</span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                devScore >= 75 
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                  : devScore >= 50 
+                    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' 
+                    : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+              }`}>
+                {devTier}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <Link 
+            to="/student/developer" 
+            className="btn btn-primary whitespace-nowrap shadow-lg shadow-blue-500/20 flex items-center gap-2 hover:translate-x-0.5 transition-transform"
+          >
+            View Developer Dashboard
+          </Link>
+        </div>
+      </div>
 
       <div ref={platformsContainerRef} className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
         {platforms.map((p, index) => (

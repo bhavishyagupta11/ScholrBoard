@@ -60,7 +60,7 @@ export function FacultyStudent360() {
 
       {/* Student Selector */}
       <div className="card p-6">
-        <h3 className="text-lg font-semibold mb-4" style={{color:'var(--text-primary)'}}>Select Student</h3>
+        <h2 className="text-lg font-semibold mb-4" style={{color:'var(--text-primary)'}}>Select Student</h2>
         {loadingList ? (
           <div className="flex gap-4 overflow-x-auto pb-2">
             {[1, 2, 3].map(i => <div key={i} className="skeleton h-20 w-64 rounded-lg flex-shrink-0" />)}
@@ -100,7 +100,7 @@ export function FacultyStudent360() {
                   alt={selectedStudent.name} 
                   className="w-20 h-20 rounded-full mb-3 object-cover"
                 />
-                <h3 className="text-lg font-semibold leading-tight" style={{color:'var(--text-primary)'}}>{selectedStudent.name}</h3>
+                <h2 className="text-lg font-semibold leading-tight" style={{color:'var(--text-primary)'}}>{selectedStudent.name}</h2>
                 <div className="text-sm subtle">{selectedStudent.studentId || 'No ID'}</div>
               </div>
               <div className="space-y-3 text-sm border-t pt-4" style={{borderColor:'var(--border-color)'}}>
