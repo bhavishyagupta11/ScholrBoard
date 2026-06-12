@@ -64,15 +64,18 @@ export function AdminDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { title: '📊 Analytics & Reports', desc: 'Generate NAAC/NIRF reports and view analytics', path: '/admin/analytics', btn: 'View Analytics' },
           { title: '💼 Placements & Internships', desc: 'Manage job postings and internship opportunities', path: '/admin/placements', btn: 'Manage Placements' },
           { title: '📅 Events Management', desc: 'Organize and manage university events', path: '/admin/events', btn: 'Manage Events' },
+          { title: '🔍 Talent Discovery', desc: 'Search and filter student profiles by developer score, skills, and resume ATS', path: '/admin/talent-discovery', btn: 'Discover Talent' },
         ].map((card) => (
-          <div key={card.title} className="card p-6 cursor-pointer hover:bg-white/5 transition-colors" onClick={() => navigate(card.path)}>
-            <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>{card.title}</h3>
-            <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>{card.desc}</p>
+          <div key={card.title} className="card p-6 cursor-pointer hover:bg-white/5 transition-colors flex flex-col justify-between" onClick={() => navigate(card.path)}>
+            <div>
+              <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>{card.title}</h3>
+              <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>{card.desc}</p>
+            </div>
             <button className="btn btn-outline w-full">{card.btn}</button>
           </div>
         ))}
