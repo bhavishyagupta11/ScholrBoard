@@ -430,8 +430,8 @@ async function main() {
       { userId: studentUserId },
       {
         $set: {
-          'codingStats.rawMetrics.github': { publicRepos: 10, followers: 2, stars: 10, forks: 4, topics: ['react', 'node'] }, // GithubScore: 51
-          'codingStats.rawMetrics.leetcode': { totalSolved: 120, easySolved: 50, mediumSolved: 50, hardSolved: 20, contestRating: 1500 } // DsaScore: 40
+          'codingStats.rawMetrics.github': { publicRepos: 10, effectiveRepositoryCount: 10, followers: 2, stars: 10, forks: 4, topics: ['react', 'node'] }, // GithubScore: 51
+          'codingStats.rawMetrics.leetcode': { totalSolved: 170, easySolved: 50, mediumSolved: 100, hardSolved: 20, contestRating: 1000 } // DsaScore: 40
         }
       }
     );

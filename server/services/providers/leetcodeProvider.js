@@ -29,6 +29,59 @@ const fetchJson = async (url, retries = 2) => {
   }
 };
 
+const calculateLongestStreak = (submissionCalendarStr) => {
+  if (!submissionCalendarStr) return 0;
+  try {
+    const calendar = JSON.parse(submissionCalendarStr);
+    const timestamps = Object.keys(calendar)
+      .map(t => Number(t))
+      .filter(t => calendar[t] > 0);
+
+    if (timestamps.length === 0) return 0;
+
+    const uniqueDays = new Set(
+      timestamps.map(ts => {
+        const d = new Date(ts * 1000);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      })
+    );
+
+    const sortedDays = Array.from(uniqueDays).sort();
+
+    let maxStreak = 0;
+    let currentStreak = 0;
+    let prevDate = null;
+
+    for (const dayStr of sortedDays) {
+      const currentDate = new Date(dayStr);
+      if (prevDate === null) {
+        currentStreak = 1;
+      } else {
+        const diffTime = Math.abs(currentDate - prevDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays === 1) {
+          currentStreak++;
+        } else if (diffDays > 1) {
+          if (currentStreak > maxStreak) {
+            maxStreak = currentStreak;
+          }
+          currentStreak = 1;
+        }
+      }
+      prevDate = currentDate;
+    }
+
+    if (currentStreak > maxStreak) {
+      maxStreak = currentStreak;
+    }
+
+    return maxStreak;
+  } catch (err) {
+    console.error('Error calculating longest streak:', err);
+    return 0;
+  }
+};
+
 /**
  * Fetches and normalizes LeetCode user metrics.
  */
@@ -42,11 +95,13 @@ export const fetchLeetcodeMetrics = async (username) => {
 
   const solvedUrl = `${base}/${encodeURIComponent(cleanUsername)}/solved`;
   const contestUrl = `${base}/${encodeURIComponent(cleanUsername)}/contest`;
+  const calendarUrl = `${base}/${encodeURIComponent(cleanUsername)}/calendar`;
 
   try {
-    const [solvedData, contestData] = await Promise.allSettled([
+    const [solvedData, contestData, calendarData] = await Promise.allSettled([
       fetchJson(solvedUrl),
-      fetchJson(contestUrl)
+      fetchJson(contestUrl),
+      fetchJson(calendarUrl)
     ]);
 
     if (solvedData.status === 'rejected') {
@@ -55,6 +110,7 @@ export const fetchLeetcodeMetrics = async (username) => {
 
     const solved = solvedData.value || {};
     const contest = contestData.status === 'fulfilled' ? contestData.value : {};
+    const calendar = calendarData.status === 'fulfilled' ? calendarData.value : {};
 
     const totalSolved = Number(solved.solvedProblem || solved.totalSolved || 0);
     const easySolved = Number(solved.easySolved || 0);
@@ -65,6 +121,10 @@ export const fetchLeetcodeMetrics = async (username) => {
     const contestGlobalRanking = contest.contestGlobalRanking || null;
     const attendedContestsCount = Number(contest.attendedContestsCount || 0);
 
+    const streak = Number(calendar.streak || 0);
+    const submissionCalendar = calendar.submissionCalendar || '{}';
+    const longestStreak = calculateLongestStreak(submissionCalendar);
+
     return {
       totalSolved,
       easySolved,
@@ -72,7 +132,9 @@ export const fetchLeetcodeMetrics = async (username) => {
       hardSolved,
       contestRating,
       contestGlobalRanking,
-      attendedContestsCount
+      attendedContestsCount,
+      streak,
+      longestStreak
     };
   } catch (err) {
     if (err.message === 'profile not found') {

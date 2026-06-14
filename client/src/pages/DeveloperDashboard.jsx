@@ -308,7 +308,7 @@ export function DeveloperDashboard() {
         <StatCard 
           label="LeetCode Problems"
           value={codingStats?.leetcodeProblemsSolved || 0}
-          sub={`Streak: ${codingStats?.leetcodeStreak || 0} days`}
+          sub={codingStats?.leetcodeStreak !== undefined && codingStats?.leetcodeStreak !== null ? `Streak: ${codingStats.leetcodeStreak} days` : 'Streak: Not Available'}
           color="var(--primary-blue)"
         />
         <StatCard 

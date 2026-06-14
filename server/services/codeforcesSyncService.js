@@ -25,6 +25,9 @@ export const syncCodeforcesProfile = async (userId) => {
 
     const now = new Date();
     profile.codingStats.rawMetrics.codeforces = metrics;
+    profile.codingStats.codeforcesRating = metrics.rating ?? 0;
+    profile.codingStats.codeforcesMaxRating = metrics.maxRating ?? 0;
+    profile.codingStats.codeforcesRank = metrics.rank ?? '';
     profile.codingStats.codeforcesLastSyncedAt = now;
     profile.codingStats.lastSyncedAt = now;
     

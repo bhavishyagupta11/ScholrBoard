@@ -25,6 +25,10 @@ export const syncLeetcodeProfile = async (userId) => {
 
     const now = new Date();
     profile.codingStats.rawMetrics.leetcode = metrics;
+    profile.codingStats.leetcodeProblemsSolved = metrics.totalSolved ?? 0;
+    profile.codingStats.leetcodeContestRating = metrics.contestRating ?? 0;
+    profile.codingStats.leetcodeStreak = metrics.streak ?? 0;
+    profile.codingStats.leetcodeLongestStreak = metrics.longestStreak ?? 0;
     profile.codingStats.leetcodeLastSyncedAt = now;
     profile.codingStats.lastSyncedAt = now;
     

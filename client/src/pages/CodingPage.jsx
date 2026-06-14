@@ -61,7 +61,7 @@ export function CodingPage() {
       key: 'hackerrank',
       solved: profile.codingStats?.hackerrankBadges || 0,
       rating: 0, 
-      action: (username) => codingApi.linkProfile('hackerrank', username),
+      action: null, 
       color: '#22c55e' 
     },
     {
@@ -69,19 +69,19 @@ export function CodingPage() {
       key: 'geeksforgeeks',
       solved: profile.codingStats?.geeksforgeeksScore || 0,
       rating: 0,
-      action: (username) => codingApi.linkProfile('geeksforgeeks', username),
+      action: null,
       color: '#14b8a6'
     },
-    {
-      name: 'CodeChef',
+    { 
+      name: 'CodeChef', 
       key: 'codechef',
-      solved: profile.codingStats?.codechefRating || 0,
-      rating: profile.codingStats?.codechefRating || 0,
-      action: (username) => codingApi.linkProfile('codechef', username),
+      solved: 0,
+      rating: 0,
+      action: null,
       color: '#a16207'
     },
-    {
-      name: 'LinkedIn',
+    { 
+      name: 'LinkedIn', 
       key: 'linkedin',
       solved: profile.codingStats?.linkedInConnected ? 1 : 0,
       rating: 0,
@@ -91,8 +91,12 @@ export function CodingPage() {
   ];
 
   const syncPlatform = async (platform) => {
-    const username = (handles[platform.key] || savedProfiles[platform.key] || '').trim();
-    if (!username) {
+    const inputVal = (handles[platform.key] || '').trim();
+    const savedVal = (savedProfiles[platform.key] || '').trim();
+    const username = inputVal || savedVal;
+    const isLinked = !!savedVal;
+
+    if (!isLinked && !inputVal) {
       setError(`Enter a ${platform.name} username or profile URL first.`);
       return;
     }
@@ -100,7 +104,14 @@ export function CodingPage() {
     setSyncing(platform.key);
     setError(null);
     try {
-      await platform.action(username);
+      if (!isLinked || inputVal) {
+        await codingApi.linkProfile(platform.key, username);
+      }
+      
+      if (platform.action) {
+        await platform.action();
+      }
+      
       await refreshProfile();
       setHandles((prev) => ({ ...prev, [platform.key]: '' }));
     } catch (err) {
@@ -160,52 +171,94 @@ export function CodingPage() {
       </div>
 
       <div ref={platformsContainerRef} className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {platforms.map((p, index) => (
-          <div key={p.name} ref={setPlatformRef(index)} className="card p-4 gpu-accelerated">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="font-semibold">{p.name}</div>
-                <div className="text-sm subtle">{savedProfiles[p.key] ? `@${savedProfiles[p.key]}` : 'Not connected'}</div>
-              </div>
-              {savedProfiles[p.key] && <LinkIcon size={18} style={{color:p.color}} />}
-            </div>
+        {platforms.map((p, index) => {
+          const isStaticLinkOnly = p.key === 'geeksforgeeks' || p.key === 'hackerrank' || p.key === 'codechef';
+          const isLinkedIn = p.key === 'linkedin';
 
-            <div className="grid grid-cols-2 gap-3 my-4">
+          return (
+            <div key={p.name} ref={setPlatformRef(index)} className="card p-4 gpu-accelerated flex flex-col justify-between">
               <div>
-                <div className="text-sm subtle">{p.key === 'github' ? 'Impact' : p.key === 'linkedin' ? 'Linked' : 'Score'}</div>
-                <div className="text-2xl font-bold text-brand-blue">{p.solved}</div>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-semibold">{p.name}</div>
+                    <div className="text-sm subtle">{savedProfiles[p.key] ? `@${savedProfiles[p.key]}` : 'Not connected'}</div>
+                  </div>
+                  {savedProfiles[p.key] && <LinkIcon size={18} style={{color:p.color}} />}
+                </div>
+
+                {isStaticLinkOnly ? (
+                  <div className="my-4 space-y-2 text-xs">
+                    <div className="flex justify-between border-b pb-1.5" style={{ borderColor: 'var(--border-color)' }}>
+                      <span className="subtle">Profile Link Status</span>
+                      <span className="font-semibold text-emerald-500">{savedProfiles[p.key] ? 'Linked' : 'Not Linked'}</span>
+                    </div>
+                    {savedProfiles[p.key] && (
+                      <div className="flex justify-between border-b pb-1.5" style={{ borderColor: 'var(--border-color)' }}>
+                        <span className="subtle">Username / URL</span>
+                        <span className="font-semibold truncate max-w-[150px]">{savedProfiles[p.key]}</span>
+                      </div>
+                    )}
+                    <div className="text-[10px] subtle italic" style={{ color: 'var(--text-muted)' }}>
+                      Live sync is not currently supported.
+                    </div>
+                  </div>
+                ) : isLinkedIn ? (
+                  <div className="my-4 space-y-2 text-xs">
+                    <div className="flex justify-between border-b pb-1.5" style={{ borderColor: 'var(--border-color)' }}>
+                      <span className="subtle">Profile Status</span>
+                      <span className="font-semibold" style={{ color: savedProfiles[p.key] ? 'var(--primary-cyan)' : 'var(--text-muted)' }}>
+                        {savedProfiles[p.key] ? 'Connected' : 'Not Connected'}
+                      </span>
+                    </div>
+                    {savedProfiles[p.key] && (
+                      <div className="flex justify-between" style={{ borderColor: 'var(--border-color)' }}>
+                        <span className="subtle">LinkedIn Username</span>
+                        <span className="font-semibold truncate max-w-[150px]">{savedProfiles[p.key]}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3 my-4">
+                    <div>
+                      <div className="text-sm subtle">{p.key === 'github' ? 'Impact' : 'Score'}</div>
+                      <div className="text-2xl font-bold text-brand-blue">{p.solved}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm subtle">{p.key === 'github' ? 'Repos' : 'Rating'}</div>
+                      <div className="text-2xl font-bold" style={{color:p.color}}>{p.rating || '—'}</div>
+                    </div>
+                  </div>
+                )}
               </div>
+
               <div>
-                <div className="text-sm subtle">{p.key === 'github' ? 'Repos' : 'Rating'}</div>
-                <div className="text-2xl font-bold" style={{color:p.color}}>{p.rating || '—'}</div>
+                <div className="flex gap-2">
+                  <input
+                    className="input-dark px-3 py-2 w-full"
+                    placeholder={savedProfiles[p.key] || `${p.name} username`}
+                    value={handles[p.key] || ''}
+                    onChange={(e) => setHandles((prev) => ({ ...prev, [p.key]: e.target.value }))}
+                  />
+                  <button
+                    className="btn btn-primary px-3"
+                    type="button"
+                    disabled={syncing === p.key}
+                    onClick={() => syncPlatform(p)}
+                    title={savedProfiles[p.key] ? `Sync ${p.name}` : `Link ${p.name}`}
+                  >
+                    <RefreshCw size={18} className={syncing === p.key ? 'animate-spin' : ''} />
+                  </button>
+                </div>
+
+                {platformDetails[p.key]?.syncedAt && (
+                  <div className="text-xs subtle mt-3">
+                    {isStaticLinkOnly || isLinkedIn ? 'Linked' : 'Synced'} {new Date(platformDetails[p.key].syncedAt).toLocaleString()}
+                  </div>
+                )}
               </div>
             </div>
-
-            <div className="flex gap-2">
-              <input
-                className="input-dark px-3 py-2 w-full"
-                placeholder={savedProfiles[p.key] || `${p.name} username`}
-                value={handles[p.key] || ''}
-                onChange={(e) => setHandles((prev) => ({ ...prev, [p.key]: e.target.value }))}
-              />
-              <button
-                className="btn btn-primary px-3"
-                type="button"
-                disabled={syncing === p.key}
-                onClick={() => syncPlatform(p)}
-                title={`Sync ${p.name}`}
-              >
-                <RefreshCw size={18} className={syncing === p.key ? 'animate-spin' : ''} />
-              </button>
-            </div>
-
-            {platformDetails[p.key]?.syncedAt && (
-              <div className="text-xs subtle mt-3">
-                Synced {new Date(platformDetails[p.key].syncedAt).toLocaleString()}
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div ref={chartRef} className="card p-6 gpu-accelerated hover:scale-[1.01] transition-transform">

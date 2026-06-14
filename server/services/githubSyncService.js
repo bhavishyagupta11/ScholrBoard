@@ -27,6 +27,8 @@ export const syncGithubProfile = async (userId) => {
     // 2. Update profile metrics and caching metadata
     const now = new Date();
     profile.codingStats.rawMetrics.github = metrics;
+    profile.codingStats.githubRepos = metrics.publicRepos ?? 0;
+    profile.codingStats.githubFollowers = metrics.followers ?? 0;
     profile.codingStats.githubLastSyncedAt = now;
     profile.codingStats.lastSyncedAt = now;
     

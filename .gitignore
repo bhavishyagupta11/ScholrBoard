@@ -9,10 +9,19 @@ build/
 
 # Local environment and secrets
 .env
+.env.local
+.env.production.local
 .env.*
 !.env.example
 firebase-service-account.json
+server/uploads/
 
 # Logs
 *.log
 npm-debug.log*
+
+# Test output and cache
+coverage/
+playwright-report/
+test-results/
+.cache/

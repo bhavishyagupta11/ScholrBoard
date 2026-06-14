@@ -104,6 +104,7 @@ const codingStatsSchema = new mongoose.Schema({
   leetcodeProblemsSolved: { type: Number, default: 0, min: 0 },
   leetcodeContestRating:  { type: Number, default: 0, min: 0 },
   leetcodeStreak:         { type: Number, default: 0, min: 0 }, // days
+  leetcodeLongestStreak:  { type: Number, default: 0, min: 0 },
   githubContributions:    { type: Number, default: 0, min: 0 }, // last 365 days
   githubRepos:            { type: Number, default: 0, min: 0 },
   githubFollowers:        { type: Number, default: 0, min: 0 },

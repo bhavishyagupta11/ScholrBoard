@@ -1,9 +1,9 @@
 import api from './index.js';
 
 export const codingApi = {
-  syncGithub: (username) => api.post('/coding/sync-github', { username }),
-  syncLeetcode: (username) => api.post('/coding/sync-leetcode', { username }),
-  syncCodeforces: (username) => api.post('/coding/sync-codeforces', { username }),
+  syncGithub: () => api.post('/developer/sync/github'),
+  syncLeetcode: () => api.post('/developer/sync/leetcode'),
+  syncCodeforces: () => api.post('/developer/sync/codeforces'),
   linkProfile: (platform, username) => api.post(`/coding/link/${platform}`, { username }),
 };
 
