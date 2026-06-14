@@ -176,7 +176,7 @@ export function AdminPlacements() {
                         <span className="font-medium">{placement.appliedStudents?.length || 0}</span>
                       </td>
                       <td className="py-4 px-6">
-                        <span className={`badge ${status === 'Active' ? 'badge-success' : 'badge-error'}`}> 
+                        <span className={`badge ${status === 'Active' ? 'badge-green' : 'badge-red'}`}> 
                           {status}
                         </span>
                       </td>

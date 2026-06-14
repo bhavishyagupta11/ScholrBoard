@@ -122,7 +122,18 @@ notificationSchema.index({ userId: 1, isRead: 1, createdAt: -1 });
 notificationSchema.index({ relatedId: 1, relatedModel: 1 });
 notificationSchema.index({ userId: 1, type: 1, createdAt: -1 });
 
-// Note: TTL index is removed to retain notification history indefinitely for audit and compliance reporting.
+// TTL index: auto-delete READ notifications older than 180 days to control collection growth.
+// Unread notifications are never auto-deleted (readAt is null until explicitly read).
+// Change 180 days to match your retention policy before deploying.
+notificationSchema.index(
+  { readAt: 1 },
+  {
+    expireAfterSeconds: 180 * 24 * 60 * 60,  // 180 days
+    partialFilterExpression: { isRead: true }, // only delete already-read notifications
+    name: 'notification_read_ttl',
+  }
+);
 
 const Notification = mongoose.model('Notification', notificationSchema);
 export default Notification;
+

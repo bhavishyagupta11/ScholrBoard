@@ -73,7 +73,7 @@ export function AdminDashboard() {
         ].map((card) => (
           <div key={card.title} className="card p-6 cursor-pointer hover:bg-white/5 transition-colors flex flex-col justify-between" onClick={() => navigate(card.path)}>
             <div>
-              <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>{card.title}</h3>
+              <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>{card.title}</h2>
               <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>{card.desc}</p>
             </div>
             <button className="btn btn-outline w-full">{card.btn}</button>
@@ -83,7 +83,7 @@ export function AdminDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="card p-6 cursor-pointer hover:bg-white/5 transition-colors" onClick={() => navigate('/admin/approvals')}>
-          <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>📋 Activity Approvals</h3>
+          <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>📋 Activity Approvals</h2>
           {!loading && data?.activitySummary?.Pending > 0 && (
             <div className="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold" style={{ background: 'rgba(234,179,8,0.2)', color: 'var(--warning-color)' }}>
               {data.activitySummary.Pending} pending review
@@ -93,7 +93,7 @@ export function AdminDashboard() {
           <button className="btn btn-outline w-full">Review Approvals</button>
         </div>
         <div className="card p-6">
-          <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>📋 Recent Pending Activities</h3>
+          <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>📋 Recent Pending Activities</h2>
           {loading ? (
             <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="skeleton h-10 w-full" />)}</div>
           ) : (data?.recentPendingActivities || []).length === 0 ? (

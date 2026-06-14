@@ -24,11 +24,30 @@ import { saveAs } from 'file-saver';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Map score to color badge */
-function getScoreBadgeClass(score) {
-  if (score >= 75) return 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20';
-  if (score >= 50) return 'bg-amber-500/10 text-amber-500 border border-amber-500/20';
-  return 'bg-neutral-500/10 text-neutral-400 border border-neutral-500/20';
+/** Map score to adaptive high-contrast color badge style */
+function getScoreBadgeStyle(score) {
+  if (score >= 75) {
+    return {
+      backgroundColor: 'color-mix(in srgb, var(--success) 8%, transparent)',
+      color: 'var(--success)',
+      borderColor: 'color-mix(in srgb, var(--success) 16%, transparent)',
+      borderWidth: '1px'
+    };
+  }
+  if (score >= 50) {
+    return {
+      backgroundColor: 'color-mix(in srgb, var(--warning) 6%, transparent)',
+      color: 'var(--warning)',
+      borderColor: 'color-mix(in srgb, var(--warning) 16%, transparent)',
+      borderWidth: '1px'
+    };
+  }
+  return {
+    backgroundColor: 'color-mix(in srgb, var(--text-muted) 6%, transparent)',
+    color: 'var(--text-muted)',
+    borderColor: 'color-mix(in srgb, var(--text-muted) 16%, transparent)',
+    borderWidth: '1px'
+  };
 }
 
 export function AdminTalentDiscovery() {
@@ -207,23 +226,23 @@ export function AdminTalentDiscovery() {
       {/* Discovery metrics widgets */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="card p-4">
-          <div className="text-[10px] uppercase font-bold text-neutral-400">Results Found</div>
-          <div className="text-2xl font-extrabold text-white mt-1">{pagination.total}</div>
+          <div className="text-[10px] uppercase font-bold" style={{ color: 'var(--text-muted)' }}>Results Found</div>
+          <div className="text-2xl font-extrabold mt-1">{pagination.total}</div>
           <div className="text-[10px] subtle mt-0.5">Matching current filters</div>
         </div>
         <div className="card p-4">
-          <div className="text-[10px] uppercase font-bold text-neutral-400">Active Shortlist</div>
+          <div className="text-[10px] uppercase font-bold" style={{ color: 'var(--text-muted)' }}>Active Shortlist</div>
           <div className="text-2xl font-extrabold text-blue-400 mt-1">{shortlistedIds.length}</div>
           <div className="text-[10px] subtle mt-0.5">Cached in local storage</div>
         </div>
         <div className="card p-4">
-          <div className="text-[10px] uppercase font-bold text-neutral-400">Current Page</div>
-          <div className="text-2xl font-extrabold text-white mt-1">{pagination.page}</div>
+          <div className="text-[10px] uppercase font-bold" style={{ color: 'var(--text-muted)' }}>Current Page</div>
+          <div className="text-2xl font-extrabold mt-1">{pagination.page}</div>
           <div className="text-[10px] subtle mt-0.5">of {pagination.totalPages} pages</div>
         </div>
         <div className="card p-4">
-          <div className="text-[10px] uppercase font-bold text-neutral-400">Page Limit</div>
-          <div className="text-2xl font-extrabold text-neutral-300 mt-1">{pagination.limit}</div>
+          <div className="text-[10px] uppercase font-bold" style={{ color: 'var(--text-muted)' }}>Page Limit</div>
+          <div className="text-2xl font-extrabold mt-1" style={{ color: 'var(--text-primary)' }}>{pagination.limit}</div>
           <div className="text-[10px] subtle mt-0.5">Rows per query</div>
         </div>
       </div>
@@ -234,7 +253,7 @@ export function AdminTalentDiscovery() {
         {/* Left Side: Filter Sidebar Panel */}
         <div className="card p-5 space-y-5 h-fit lg:sticky lg:top-4">
           <div className="flex items-center justify-between border-b pb-2" style={{ borderColor: 'var(--border-color)' }}>
-            <span className="font-bold text-xs uppercase tracking-wider text-white flex items-center gap-1.5">
+            <span className="font-bold text-xs uppercase tracking-wider flex items-center gap-1.5">
               <Sliders size={14} className="text-blue-400" />
               Search Filters
             </span>
@@ -251,7 +270,7 @@ export function AdminTalentDiscovery() {
             
             {/* GPA Ranges */}
             <div className="space-y-2">
-              <span className="font-bold text-neutral-400 block">GPA Range</span>
+              <span className="font-bold block" style={{ color: 'var(--text-muted)' }}>GPA Range</span>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] subtle" htmlFor="gpa-min-input">Min GPA</label>
@@ -282,7 +301,7 @@ export function AdminTalentDiscovery() {
 
             {/* Backlogs */}
             <div className="space-y-1">
-              <label className="font-bold text-neutral-400 block" htmlFor="backlogs-max-select">Max Active Backlogs</label>
+              <label className="font-bold block" htmlFor="backlogs-max-select" style={{ color: 'var(--text-muted)' }}>Max Active Backlogs</label>
               <select
                 id="backlogs-max-select"
                 className="input-dark w-full px-2 py-1.5 text-xs"
@@ -298,7 +317,7 @@ export function AdminTalentDiscovery() {
 
             {/* Developer score range */}
             <div className="space-y-2">
-              <span className="font-bold text-neutral-400 block">Minimum Developer Score</span>
+              <span className="font-bold block" style={{ color: 'var(--text-muted)' }}>Minimum Developer Score</span>
               <div className="flex items-center gap-3">
                 <input
                   type="range"
@@ -314,7 +333,7 @@ export function AdminTalentDiscovery() {
 
             {/* Subscore minimum filters */}
             <div className="space-y-1.5">
-              <span className="font-bold text-neutral-400 block">Subscore Minimums</span>
+              <span className="font-bold block" style={{ color: 'var(--text-muted)' }}>Subscore Minimums</span>
               <div className="grid grid-cols-3 gap-1.5 text-[10px]">
                 <div>
                   <label className="subtle block" htmlFor="git-score-min">Git score</label>
@@ -357,7 +376,7 @@ export function AdminTalentDiscovery() {
 
             {/* Skills keyword list */}
             <div className="space-y-1">
-              <label className="font-bold text-neutral-400 block" htmlFor="skills-keyword-input">Required Skills</label>
+              <label className="font-bold block" htmlFor="skills-keyword-input" style={{ color: 'var(--text-muted)' }}>Required Skills</label>
               <input
                 id="skills-keyword-input"
                 type="text"
@@ -371,7 +390,7 @@ export function AdminTalentDiscovery() {
 
             {/* Connection settings */}
             <div className="space-y-2 pt-1 border-t border-neutral-800">
-              <span className="font-bold text-neutral-400 block">Integration Connections</span>
+              <span className="font-bold block" style={{ color: 'var(--text-muted)' }}>Integration Connections</span>
               
               <div className="space-y-1">
                 <label className="subtle block" htmlFor="git-connected-select">GitHub Connected</label>
@@ -418,7 +437,7 @@ export function AdminTalentDiscovery() {
 
             {/* Academic details */}
             <div className="space-y-2 pt-1 border-t border-neutral-800">
-              <span className="font-bold text-neutral-400 block">Academic Semesters</span>
+              <span className="font-bold block" style={{ color: 'var(--text-muted)' }}>Academic Semesters</span>
               
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -456,7 +475,7 @@ export function AdminTalentDiscovery() {
 
             {/* Resume Filters */}
             <div className="space-y-2 pt-1 border-t border-neutral-800">
-              <span className="font-bold text-neutral-400 block">Resume Intelligence</span>
+              <span className="font-bold block" style={{ color: 'var(--text-muted)' }}>Resume Analysis</span>
               
               <div className="space-y-1">
                 <label className="subtle block" htmlFor="has-resume-select">Resume Analysis</label>
@@ -501,11 +520,11 @@ export function AdminTalentDiscovery() {
         </div>
 
         {/* Right Side: Search and Results table area */}
-        <div className="lg:col-span-3 space-y-4">
+        <div className="lg:col-span-3 space-y-4 min-w-0">
           
           {/* Search form bar */}
           <form onSubmit={handleSearchSubmit} className="flex gap-2">
-            <div className="relative flex-1">
+            <div className="relative flex-1 min-w-0">
               <Search size={16} className="absolute left-3.5 top-3 text-neutral-400" />
               <input
                 type="text"
@@ -530,7 +549,7 @@ export function AdminTalentDiscovery() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs table-fixed">
                 <thead>
-                  <tr className="bg-neutral-950 text-neutral-400 font-semibold border-b" style={{ borderColor: 'var(--border-color)' }}>
+                  <tr className="font-semibold border-b" style={{ background: 'var(--bg-medium)', color: 'var(--text-secondary)', borderColor: 'var(--border-color)' }}>
                     <th className="p-3.5 w-[130px] select-none">Name</th>
                     <th className="p-3.5 w-[110px] select-none">Department</th>
                     <th className="p-3.5 w-[65px] select-none">Sem</th>
@@ -538,7 +557,7 @@ export function AdminTalentDiscovery() {
                     {/* Sortable headers */}
                     <th 
                       onClick={() => handleSort('developerScore')}
-                      className="p-3.5 w-[110px] cursor-pointer hover:bg-neutral-900 transition-colors select-none"
+                      className="p-3.5 w-[110px] cursor-pointer table-header-sortable transition-colors select-none"
                       aria-sort={(filters.sortBy === 'developerScore') ? (filters.sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
                     >
                       <div className="flex items-center gap-1.5">
@@ -551,7 +570,7 @@ export function AdminTalentDiscovery() {
 
                     <th 
                       onClick={() => handleSort('gpa')}
-                      className="p-3.5 w-[75px] cursor-pointer hover:bg-neutral-900 transition-colors select-none"
+                      className="p-3.5 w-[75px] cursor-pointer table-header-sortable transition-colors select-none"
                       aria-sort={(filters.sortBy === 'gpa') ? (filters.sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
                     >
                       <div className="flex items-center gap-1.5">
@@ -572,16 +591,16 @@ export function AdminTalentDiscovery() {
                   {loading ? (
                     // Skeleton Table Rows
                     Array.from({ length: 5 }).map((_, i) => (
-                      <tr key={`skeleton-${i}`} className="animate-pulse">
-                        <td className="p-4"><div className="h-3 bg-neutral-800 rounded w-2/3" /></td>
-                        <td className="p-4"><div className="h-3 bg-neutral-800 rounded w-3/4" /></td>
-                        <td className="p-4"><div className="h-3 bg-neutral-800 rounded w-1/2" /></td>
-                        <td className="p-4"><div className="h-3 bg-neutral-800 rounded w-1/3" /></td>
-                        <td className="p-4"><div className="h-3 bg-neutral-800 rounded w-1/3" /></td>
-                        <td className="p-4"><div className="h-3 bg-neutral-800 rounded w-1/3" /></td>
-                        <td className="p-4"><div className="h-3 bg-neutral-800 rounded w-1/2" /></td>
-                        <td className="p-4"><div className="h-3 bg-neutral-800 rounded w-3/4" /></td>
-                        <td className="p-4 text-right"><div className="h-6 bg-neutral-800 rounded w-1/2 ml-auto" /></td>
+                      <tr key={`skeleton-${i}`}>
+                        <td className="p-4"><div className="skeleton h-3 w-2/3" /></td>
+                        <td className="p-4"><div className="skeleton h-3 w-3/4" /></td>
+                        <td className="p-4"><div className="skeleton h-3 w-1/2" /></td>
+                        <td className="p-4"><div className="skeleton h-3 w-1/3" /></td>
+                        <td className="p-4"><div className="skeleton h-3 w-1/3" /></td>
+                        <td className="p-4"><div className="skeleton h-3 w-1/3" /></td>
+                        <td className="p-4"><div className="skeleton h-3 w-1/2" /></td>
+                        <td className="p-4"><div className="skeleton h-3 w-3/4" /></td>
+                        <td className="p-4 text-right"><div className="skeleton h-6 w-1/2 ml-auto" /></td>
                       </tr>
                     ))
                   ) : error ? (
@@ -598,7 +617,7 @@ export function AdminTalentDiscovery() {
                     // Empty Results State
                     <tr>
                       <td colSpan="9" className="p-8 text-center border-none">
-                        <div className="text-neutral-400 flex flex-col items-center justify-center gap-1.5 py-4">
+                        <div className="flex flex-col items-center justify-center gap-1.5 py-4" style={{ color: 'var(--text-secondary)' }}>
                           <Sliders size={24} />
                           <span className="font-semibold text-xs mt-1">No candidate records match your search criteria.</span>
                           <span className="text-[10px] subtle">Try resetting some filters or queries.</span>
@@ -612,12 +631,12 @@ export function AdminTalentDiscovery() {
                       return (
                         <tr 
                           key={row._id} 
-                          className={`hover:bg-neutral-950/30 transition-colors ${
+                          className={`table-row-hover transition-colors ${
                             isShortlisted ? 'bg-blue-500/2 border-l border-l-blue-500' : ''
                           }`}
                         >
                           {/* Name (clickable) */}
-                          <td className="p-3.5 font-bold text-white truncate">
+                          <td className="p-3.5 font-bold truncate">
                             <button 
                               onClick={() => openCandidateDrawer(row._id)}
                               className="hover:underline text-left cursor-pointer truncate w-full"
@@ -629,25 +648,28 @@ export function AdminTalentDiscovery() {
                           </td>
                           
                           {/* Department */}
-                          <td className="p-3.5 text-neutral-300 truncate" title={row.department}>
+                          <td className="p-3.5 truncate" title={row.department} style={{ color: 'var(--text-secondary)' }}>
                             {row.department || '—'}
                           </td>
 
                           {/* Semester */}
-                          <td className="p-3.5 text-neutral-300">{row.semester || '—'}</td>
+                          <td className="p-3.5" style={{ color: 'var(--text-secondary)' }}>{row.semester || '—'}</td>
                           
                           {/* Developer Score pill */}
                           <td className="p-3.5">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${getScoreBadgeClass(row.developerScore)}`}>
+                            <span 
+                              className="px-2 py-0.5 rounded text-[10px] font-bold border" 
+                              style={getScoreBadgeStyle(row.developerScore)}
+                            >
                               {row.developerScore}
                             </span>
                           </td>
 
                           {/* GPA */}
-                          <td className="p-3.5 text-white font-bold">{row.gpa}</td>
+                          <td className="p-3.5 font-bold">{row.gpa}</td>
                           
                           {/* ATS Score (nullable ATS contract rule) */}
-                          <td className="p-3.5 text-neutral-300">
+                          <td className="p-3.5" style={{ color: 'var(--text-secondary)' }}>
                             {row.atsScore !== null ? (
                               <span className="font-semibold">{row.atsScore}</span>
                             ) : (
@@ -657,7 +679,7 @@ export function AdminTalentDiscovery() {
                           
                           {/* Connection Flags */}
                           <td className="p-3.5">
-                            <div className="flex items-center gap-1.5 text-neutral-400">
+                            <div className="flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
                               <Github 
                                 size={14} 
                                 className={row.githubConnected ? 'text-cyan-400' : 'opacity-20'} 
@@ -682,7 +704,8 @@ export function AdminTalentDiscovery() {
                               {(row.skills || []).slice(0, 3).map((sk, idx) => (
                                 <span 
                                   key={`table-skill-${sk}-${idx}`}
-                                  className="text-[9px] px-1.5 py-0.5 rounded bg-neutral-900 border border-neutral-800 text-neutral-400 truncate max-w-[70px]"
+                                  className="text-[9px] px-1.5 py-0.5 rounded border truncate max-w-[70px]"
+                                  style={{ background: 'var(--bg-soft)', borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
                                 >
                                   {sk}
                                 </span>
@@ -697,11 +720,12 @@ export function AdminTalentDiscovery() {
                           <td className="p-3.5 text-right space-x-2">
                             <button
                               onClick={() => toggleShortlist(row._id)}
-                              className={`p-1.5 rounded-lg border transition-all cursor-pointer inline-flex items-center justify-center ${
-                                isShortlisted
-                                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-500'
-                                  : 'border-neutral-800 hover:bg-neutral-800 text-neutral-400 hover:text-white'
-                              }`}
+                              className="p-1.5 rounded-lg border transition-all cursor-pointer inline-flex items-center justify-center"
+                              style={{ 
+                                borderColor: isShortlisted ? 'var(--warning)' : 'var(--border-color)',
+                                backgroundColor: isShortlisted ? 'var(--accent-soft)' : 'transparent',
+                                color: isShortlisted ? 'var(--warning)' : 'var(--text-secondary)'
+                              }}
                               type="button"
                               title={isShortlisted ? 'Remove from Shortlist' : 'Add to Shortlist'}
                             >
@@ -710,7 +734,7 @@ export function AdminTalentDiscovery() {
                             
                             <button
                               onClick={() => openCandidateDrawer(row._id)}
-                              className="btn px-2.5 py-1.5 text-[10px] font-semibold rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white cursor-pointer inline-flex"
+                              className="btn btn-outline px-2.5 py-1.5 text-[10px] font-semibold rounded-lg cursor-pointer inline-flex"
                               type="button"
                             >
                               View Profile
@@ -727,10 +751,10 @@ export function AdminTalentDiscovery() {
             {/* Pagination Controls */}
             {pagination.totalPages > 1 && !loading && !error && (
               <div 
-                className="flex items-center justify-between p-3.5 bg-neutral-950 border-t text-xs"
-                style={{ borderColor: 'var(--border-color)' }}
+                className="flex items-center justify-between p-3.5 border-t text-xs"
+                style={{ background: 'var(--bg-medium)', borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
               >
-                <div className="text-neutral-400">
+                <div>
                   Showing Page {pagination.page} of {pagination.totalPages} ({pagination.total} records total)
                 </div>
                 
@@ -738,7 +762,7 @@ export function AdminTalentDiscovery() {
                   <button
                     disabled={pagination.page <= 1}
                     onClick={() => updateFilters({ page: pagination.page - 1 })}
-                    className="btn px-3 py-1.5 rounded bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-neutral-700 text-white font-semibold cursor-pointer"
+                    className="btn btn-outline px-3 py-1.5 rounded disabled:opacity-30 disabled:cursor-not-allowed font-semibold cursor-pointer"
                     type="button"
                   >
                     Previous
@@ -746,7 +770,7 @@ export function AdminTalentDiscovery() {
                   <button
                     disabled={pagination.page >= pagination.totalPages}
                     onClick={() => updateFilters({ page: pagination.page + 1 })}
-                    className="btn px-3 py-1.5 rounded bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-neutral-700 text-white font-semibold cursor-pointer"
+                    className="btn btn-outline px-3 py-1.5 rounded disabled:opacity-30 disabled:cursor-not-allowed font-semibold cursor-pointer"
                     type="button"
                   >
                     Next

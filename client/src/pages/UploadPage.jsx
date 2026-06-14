@@ -1,8 +1,8 @@
 /**
  * UploadPage.jsx — Submit new student activities
  */
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Upload, AlertCircle, FileText, Check } from 'lucide-react';
 import activitiesApi from '../api/activities.api.js';
 import uploadApi from '../api/upload.api.js';
@@ -24,6 +24,8 @@ const CATEGORIES = {
 
 export function UploadPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get('id');
   
   const [formData, setFormData] = useState({
     title: '',
@@ -43,6 +45,40 @@ export function UploadPage() {
   const [uploadedCertificate, setUploadedCertificate] = useState(null);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (editId) {
+      setLoading(true);
+      activitiesApi.getById(editId)
+        .then(res => {
+          const act = res.activity || res;
+          setFormData({
+            title: act.title || '',
+            category: act.category || 'Technical',
+            subCategory: act.subCategory || '',
+            activityDate: act.activityDate ? act.activityDate.slice(0, 10) : '',
+            description: act.description || '',
+            duration: act.duration || '',
+            externalLink: act.externalLink || ''
+          });
+          if (act.proofUrl) {
+            setUploadedCertificate({
+              proofUrl: act.proofUrl,
+              title: act.title
+            });
+            if (act.proofUrl.toLowerCase().match(/\.(jpg|jpeg|png|webp)/)) {
+              setPreviewUrl(act.proofUrl);
+            }
+          }
+        })
+        .catch(err => {
+          setError(err.message || 'Failed to fetch activity details');
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
+  }, [editId]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -117,11 +153,18 @@ export function UploadPage() {
         proofUrl = uploadRes.proofUrl || uploadRes.url;
       }
 
-      // 2. Submit activity
-      await activitiesApi.create({
-        ...formData,
-        proofUrl
-      });
+      // 2. Submit or Update activity
+      if (editId) {
+        await activitiesApi.update(editId, {
+          ...formData,
+          proofUrl
+        });
+      } else {
+        await activitiesApi.create({
+          ...formData,
+          proofUrl
+        });
+      }
 
       setSuccess(true);
       setTimeout(() => {
@@ -130,9 +173,9 @@ export function UploadPage() {
 
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Failed to submit activity');
+      setError(err.message || (editId ? 'Failed to update activity' : 'Failed to submit activity'));
     } finally {
-      setLoading(false);
+      loading && setLoading(false);
     }
   };
 
@@ -142,8 +185,8 @@ export function UploadPage() {
         <div className="w-16 h-16 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mb-4">
           <Check size={32} />
         </div>
-        <h2 className="text-2xl font-bold">Activity Submitted!</h2>
-        <p className="subtle">Your activity has been sent for faculty review.</p>
+        <h2 className="text-2xl font-bold">{editId ? 'Activity Updated!' : 'Activity Submitted!'}</h2>
+        <p className="subtle">{editId ? 'Your activity details have been updated.' : 'Your activity has been sent for faculty review.'}</p>
         <p className="text-sm text-blue-400">Redirecting to your activities...</p>
       </div>
     );
@@ -152,8 +195,8 @@ export function UploadPage() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div>
-        <h1 className="text-3xl font-bold" style={{color:'var(--text-primary)'}}>Submit Activity</h1>
-        <p className="mt-2" style={{color:'var(--text-secondary)'}}>Add a new achievement, certification, or extracurricular activity to your profile.</p>
+        <h1 className="text-3xl font-bold" style={{color:'var(--text-primary)'}}>{editId ? 'Edit Activity' : 'Submit Activity'}</h1>
+        <p className="mt-2" style={{color:'var(--text-secondary)'}}>{editId ? 'Update your submitted activity details.' : 'Add a new achievement, certification, or extracurricular activity to your profile.'}</p>
       </div>
 
       {error && (
@@ -285,7 +328,7 @@ export function UploadPage() {
             disabled={loading}
             className="btn btn-primary w-full md:w-auto px-8"
           >
-            {loading ? 'Submitting...' : 'Submit Activity'}
+            {loading ? (editId ? 'Updating...' : 'Submitting...') : (editId ? 'Update Activity' : 'Submit Activity')}
           </button>
         </div>
       </form>

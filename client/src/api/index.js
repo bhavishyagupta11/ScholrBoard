@@ -53,24 +53,27 @@ export const apiRequest = async (endpoint, options = {}) => {
   }
 
   if (!response.ok) {
-    // Handle specific error codes from our API
     const code = data?.code;
 
-    if (response.status === 401) {
-      if (code === 'TOKEN_EXPIRED') {
-        // Try to refresh the token
-        const refreshed = await tryRefreshToken();
-        if (refreshed) {
-          // Retry the original request with the new token
+    if (response.status === 401 || response.status === 403) {
+      if (response.status === 401 && code === 'TOKEN_EXPIRED') {
+        const refreshResult = await tryRefreshToken();
+        if (refreshResult.success) {
           return apiRequest(endpoint, options);
+        } else if (refreshResult.isNetworkError || (refreshResult.status && refreshResult.status !== 401 && refreshResult.status !== 403)) {
+          console.warn('[API Interceptor] Token refresh failed due to infrastructure error. Preserving session.');
+          throw Object.assign(new Error('Token refresh failed due to server/network issue'), {
+            status: refreshResult.status || 503,
+            code: 'REFRESH_TEMPORARY_FAILURE',
+          });
         }
       }
-      // Token invalid / refresh failed — clear session
+
+      console.warn(`[API Interceptor] Session cleared due to genuine auth failure (${response.status})`);
       clearToken();
       localStorage.removeItem('scholrboardUser');
       localStorage.removeItem('role');
       localStorage.removeItem('isAuthenticated');
-      // Dispatch event so AuthContext can react
       window.dispatchEvent(new CustomEvent('auth:session-expired'));
     }
 
@@ -102,11 +105,11 @@ const tryRefreshToken = async () => {
       if (res.ok) {
         const { token } = await res.json();
         setToken(token);
-        return true;
+        return { success: true };
       }
-      return false;
-    } catch {
-      return false;
+      return { success: false, status: res.status };
+    } catch (err) {
+      return { success: false, isNetworkError: true, error: err };
     } finally {
       isRefreshing = false;
       refreshPromise = null;

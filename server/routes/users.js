@@ -186,8 +186,8 @@ router.get('/:id', requireRole('admin', 'faculty'), async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    // Faculty can only view users from their own department
-    if (req.user.role === 'faculty' && user.department !== req.user.department) {
+    // Faculty can only view users from their own department or their own advisees
+    if (req.user.role === 'faculty' && user.department !== req.user.department && String(user.advisorId) !== String(req.user._id)) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 

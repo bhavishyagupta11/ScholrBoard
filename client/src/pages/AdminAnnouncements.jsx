@@ -238,13 +238,22 @@ export function AdminAnnouncements() {
                   <div className="space-y-3">
                     <div>
                       <label className="block text-xs subtle mb-1">Target Department</label>
-                      <input
-                        type="text"
+                      <select
+                        name="department"
                         value={deptFilter}
                         onChange={e => setDeptFilter(e.target.value)}
-                        placeholder="e.g. CSE"
                         className="w-full input-dark py-1.5 px-3 text-xs"
-                      />
+                      >
+                        <option value="">All Departments</option>
+                        <option value="CSE">CSE</option>
+                        <option value="IT">IT</option>
+                        <option value="EE">EE</option>
+                        <option value="ECE">ECE</option>
+                        <option value="ME">ME</option>
+                        <option value="CE">CE</option>
+                        <option value="CHE">CHE</option>
+                        <option value="BT">BT</option>
+                      </select>
                     </div>
                     <div>
                       <label className="block text-xs subtle mb-1">Target Year</label>
@@ -326,7 +335,7 @@ export function AdminAnnouncements() {
                       <div className="flex justify-between items-start">
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-white text-base">{ann.title}</span>
+                            <span className="font-bold text-base">{ann.title}</span>
                             <span className={`text-[10px] px-2 py-0.5 rounded font-semibold uppercase ${
                               ann.category === 'Placement' ? 'bg-blue-500/20 text-blue-400' :
                               ann.category === 'Scholarship' ? 'bg-green-500/20 text-green-400' :
@@ -368,7 +377,7 @@ export function AdminAnnouncements() {
           <div className="card p-6 space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold text-white">College OD Requests Audit Log</h2>
+                <h2 className="text-lg font-semibold">College OD Requests Audit Log</h2>
                 <p className="text-xs subtle mt-0.5">Read-only system-wide log for academic and NAAC accreditation audits.</p>
               </div>
 
@@ -420,12 +429,12 @@ export function AdminAnnouncements() {
                         return (
                           <tr key={od._id} className="hover:bg-white/5 transition-colors">
                             <td className="p-3">
-                              <div className="font-semibold text-white">{student.name || 'N/A'}</div>
+                              <div className="font-semibold">{student.name || 'N/A'}</div>
                               <div className="subtle mt-0.5">{student.studentId || 'N/A'}</div>
                               <div className="subtle">{student.department || 'N/A'} · Sem {student.semester || 'N/A'}</div>
                             </td>
                             <td className="p-3">
-                              <div className="font-semibold text-white">{od.eventName}</div>
+                              <div className="font-semibold">{od.eventName}</div>
                               <div className="subtle mt-0.5">Event Date: {new Date(od.eventDate).toLocaleDateString()}</div>
                               {od.proofUrl && (
                                 <a href={od.proofUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline flex items-center gap-0.5 mt-1">
@@ -450,7 +459,7 @@ export function AdminAnnouncements() {
                             <td className="p-3">
                               {od.reviewedBy ? (
                                 <>
-                                  <div className="font-medium text-white">{reviewer.name || 'Advisor'}</div>
+                                  <div className="font-medium">{reviewer.name || 'Advisor'}</div>
                                   <div className="subtle">{reviewer.email || ''}</div>
                                 </>
                               ) : (

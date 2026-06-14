@@ -104,6 +104,12 @@ test.describe('Admin workflows', () => {
       }),
     });
 
+    await fetch(`${apiUrl()}/applications/${appId}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({ status: 'Interviewed', remarks: 'E2E interviewed' }),
+    });
+
     const selectRes = await fetch(`${apiUrl()}/applications/${appId}/status`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },

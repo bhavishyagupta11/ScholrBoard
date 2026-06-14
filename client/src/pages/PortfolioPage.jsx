@@ -163,7 +163,15 @@ export function PortfolioPage() {
                 <BarChart data={codingData}>
                   <XAxis dataKey="lang" stroke="var(--text-secondary)" fontSize={12} />
                   <YAxis stroke="var(--text-secondary)" fontSize={12} />
-                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: 'var(--surface-card)', border: 'none', borderRadius: '8px' }} />
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }} 
+                    contentStyle={{ 
+                      backgroundColor: 'var(--bg-medium)', 
+                      border: '1px solid var(--border-color)', 
+                      borderRadius: '8px',
+                      color: 'var(--text-primary)'
+                    }} 
+                  />
                   <Bar dataKey="solved" fill="var(--primary-blue)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>

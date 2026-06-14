@@ -26,7 +26,14 @@ export function AcademicActivityChart() {
 						<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
 					))}
 				</Pie>
-				<Tooltip />
+				<Tooltip 
+					contentStyle={{ 
+						backgroundColor: 'var(--bg-medium)', 
+						border: '1px solid var(--border-color)', 
+						borderRadius: '8px',
+						color: 'var(--text-primary)'
+					}} 
+				/>
 				<Legend />
 			</PieChart>
 		</ResponsiveContainer>
@@ -39,7 +46,14 @@ export function ContributionsChart({ contributions }) {
 			<BarChart data={contributions}>
 				<CartesianGrid strokeDasharray="3 3" stroke="rgba(122, 102, 80, 0.35)" />
 				<XAxis dataKey="d" stroke="var(--text-secondary)" tick={{ fontSize: 12 }} />
-				<Tooltip />
+				<Tooltip 
+					contentStyle={{ 
+						backgroundColor: 'var(--bg-medium)', 
+						border: '1px solid var(--border-color)', 
+						borderRadius: '8px',
+						color: 'var(--text-primary)'
+					}} 
+				/>
 				<Bar dataKey="c" fill="var(--primary-blue)" />
 			</BarChart>
 		</ResponsiveContainer>

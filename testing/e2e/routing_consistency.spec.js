@@ -36,7 +36,8 @@ test.describe('Phase 4.5 Routing Consistency & Integrity Tests', () => {
       { path: '/student', expected: '/admin' },
       { path: '/student/dashboard', expected: '/admin' },
       { path: '/student/developer', expected: '/admin' },
-      { path: '/student/resume-intelligence', expected: '/admin' },
+      { path: '/student/resume', expected: '/admin' },
+      { path: '/student/resume-analyzer', expected: '/admin' },
       { path: '/faculty', expected: '/admin' },
       { path: '/faculty/dashboard', expected: '/' }
     ]

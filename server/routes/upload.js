@@ -18,6 +18,7 @@ import {
   uploadCertificate,
   getMyResumeAnalyses,
   getResumeAnalysis,
+  viewResumeFile,
 } from '../controllers/uploadController.js';
 
 const router = express.Router();
@@ -64,5 +65,9 @@ router.get('/resume/analyses', getMyResumeAnalyses);
 // @route   GET /api/upload/resume/analyses/:id
 // @desc    Get a specific resume analysis
 router.get('/resume/analyses/:id', validateObjectId('id'), getResumeAnalysis);
+
+// @route   GET /api/upload/resume/view/:id
+// @desc    Get a specific resume as an inline PDF stream
+router.get('/resume/view/:id', validateObjectId('id'), viewResumeFile);
 
 export default router;

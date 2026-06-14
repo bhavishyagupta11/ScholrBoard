@@ -49,9 +49,9 @@ test.describe('Phase 4.4 Security Penetration Route Authorization Tests', () => 
     },
     {
       role: 'admin',
-      targetPath: '/student/resume-intelligence',
+      targetPath: '/student/resume-analyzer',
       expectedRedirect: '/admin',
-      name: 'Admin_to_StudentResumeIntel'
+      name: 'Admin_to_StudentResumeAnalyzer'
     },
     {
       role: 'student',

@@ -86,7 +86,7 @@ export function FacultyDashboard() {
           className="card p-6 cursor-pointer hover:bg-white/5 transition-colors"
           onClick={() => navigate('/faculty/approvals')}
         >
-          <h3 className="text-lg font-semibold mb-3" style={{color:'var(--text-primary)'}}>📋 Review Approvals</h3>
+          <h2 className="text-lg font-semibold mb-3" style={{color:'var(--text-primary)'}}>📋 Review Approvals</h2>
           <p className="text-sm mb-4" style={{color:'var(--text-secondary)'}}>
             {!loading && data?.activitySummary?.Pending > 0 ? `${data.activitySummary.Pending} activities waiting for your approval` : 'Review pending student activities'}
           </p>
@@ -97,7 +97,7 @@ export function FacultyDashboard() {
           className="card p-6 cursor-pointer hover:bg-white/5 transition-colors"
           onClick={() => navigate('/faculty/students')}
         >
-          <h3 className="text-lg font-semibold mb-3" style={{color:'var(--text-primary)'}}>👥 Student Tracker</h3>
+          <h2 className="text-lg font-semibold mb-3" style={{color:'var(--text-primary)'}}>👥 Student Tracker</h2>
           <p className="text-sm mb-4" style={{color:'var(--text-secondary)'}}>Monitor student progress and activities</p>
           <button className="btn btn-outline w-full">View Students</button>
         </div>
@@ -106,7 +106,7 @@ export function FacultyDashboard() {
           className="card p-6 cursor-pointer hover:bg-white/5 transition-colors"
           onClick={() => navigate('/faculty/mentor')}
         >
-          <h3 className="text-lg font-semibold mb-3" style={{color:'var(--text-primary)'}}>🎯 Student 360°</h3>
+          <h2 className="text-lg font-semibold mb-3" style={{color:'var(--text-primary)'}}>🎯 Student 360°</h2>
           <p className="text-sm mb-4" style={{color:'var(--text-secondary)'}}>Comprehensive student progress view</p>
           <button className="btn btn-outline w-full">View 360°</button>
         </div>

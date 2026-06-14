@@ -182,35 +182,35 @@ export function StudentPlacementDashboard() {
         {/* Left Side: Eligibility Snapshot Checklist & Live stats */}
         <div className="space-y-6 lg:col-span-1">
           <div className="card p-5 space-y-4">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
               <ShieldCheck size={20} className="text-blue-400" />
               Eligibility Checklist
             </h2>
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="subtle">Current CGPA</span>
-                <span className="font-bold text-white flex items-center gap-1.5">
+                <span className="font-bold flex items-center gap-1.5">
                   {cgpa >= 6.0 ? <CheckCircle2 size={14} className="text-green-400" /> : <AlertCircle size={14} className="text-red-400" />}
                   {cgpa.toFixed(2)} / 10
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="subtle">Active Backlogs</span>
-                <span className="font-bold text-white flex items-center gap-1.5">
+                <span className="font-bold flex items-center gap-1.5">
                   {backlogs === 0 ? <CheckCircle2 size={14} className="text-green-400" /> : <AlertCircle size={14} className="text-yellow-400" />}
                   {backlogs} Active
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="subtle">Placement Readiness</span>
-                <span className="font-bold text-white flex items-center gap-1.5">
+                <span className="font-bold flex items-center gap-1.5">
                   {readinessScore >= 75 ? <CheckCircle2 size={14} className="text-green-400" /> : <Info size={14} className="text-orange-400" />}
                   {readinessScore}% Score
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="subtle">Achievement Points</span>
-                <span className="font-bold text-white flex items-center gap-1.5">
+                <span className="font-bold flex items-center gap-1.5">
                   <Award size={14} className="text-yellow-400" />
                   {achievementPoints} Points
                 </span>
@@ -223,19 +223,19 @@ export function StudentPlacementDashboard() {
 
           {/* Interview schedules & Active Application Funnel */}
           <div className="card p-5 space-y-4">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
               <Calendar size={20} className="text-purple-400" />
               Interview Schedules
             </h2>
             {loadingApps ? (
               <div className="skeleton h-14 w-full" />
-            ) : myApps.filter(a => a.status === 'Interviewed').length === 0 ? (
+            ) : myApps.filter(a => ['Interview Scheduled', 'Interviewed'].includes(a.status)).length === 0 ? (
               <p className="text-sm subtle py-2">No upcoming interviews scheduled.</p>
             ) : (
               <div className="space-y-3">
-                {myApps.filter(a => a.status === 'Interviewed').map(app => (
+                {myApps.filter(a => ['Interview Scheduled', 'Interviewed'].includes(a.status)).map(app => (
                   <div key={app._id} className="p-3 rounded bg-white/5 border border-purple-500/20 space-y-2">
-                    <div className="font-bold text-sm text-white">{app.opportunityId?.company}</div>
+                    <div className="font-bold text-sm">{app.opportunityId?.company}</div>
                     <div className="text-xs text-purple-400 flex items-center gap-1">
                       <Clock size={12} /> {new Date(app.interviewDetails?.dateTime).toLocaleString()}
                     </div>
@@ -260,7 +260,7 @@ export function StudentPlacementDashboard() {
           
           {/* Tab Content: Placements list */}
           <div className="card p-6 space-y-4">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <h2 className="text-xl font-bold flex items-center gap-2">
               <Briefcase size={22} className="text-blue-400" />
               Matching Placements &amp; Internships
             </h2>
@@ -282,7 +282,7 @@ export function StudentPlacementDashboard() {
                     >
                       <div className="space-y-1.5 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-bold text-base text-white">{op.company}</span>
+                          <span className="font-bold text-base">{op.company}</span>
                           <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
                             {op.driveCode}
                           </span>
@@ -317,9 +317,11 @@ export function StudentPlacementDashboard() {
                           <span className={`badge ${
                             applied.status === 'Selected' ? 'badge-green' :
                             applied.status === 'Rejected' ? 'badge-red' :
-                            applied.status === 'Withdrawn' ? 'badge-red' : 'badge-yellow'
+                            applied.status === 'Withdrawn' ? 'badge-red' :
+                            applied.status === 'Interview Scheduled' ? 'badge-purple' :
+                            applied.status === 'Interviewed' ? 'badge-orange' : 'badge-yellow'
                           }`}>
-                            Applied ({applied.status})
+                            {applied.status}
                           </span>
                         ) : (
                           <button
@@ -331,7 +333,7 @@ export function StudentPlacementDashboard() {
                           </button>
                         )}
 
-                        {applied && ['Applied', 'Shortlisted', 'Interviewed'].includes(applied.status) && (
+                        {applied && ['Applied', 'Shortlisted', 'Interview Scheduled', 'Interviewed'].includes(applied.status) && (
                           <button
                             onClick={() => handleWithdrawPlacement(applied._id, op.company)}
                             className="text-xs text-red-400 hover:underline mt-auto"
@@ -350,7 +352,7 @@ export function StudentPlacementDashboard() {
           {/* Scholarship composition matching */}
           <div className="card p-6 space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <h2 className="text-xl font-bold flex items-center gap-2">
                 <Award size={22} className="text-yellow-400" />
                 Matching Scholarships
               </h2>
@@ -385,7 +387,7 @@ export function StudentPlacementDashboard() {
                     >
                       <div className="space-y-1.5 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-base text-white">{s.title}</span>
+                          <span className="font-bold text-base">{s.title}</span>
                           <span className="text-green-400 font-semibold text-xs bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">
                             ₹{s.amount.toLocaleString()} / Yr
                           </span>
@@ -414,7 +416,7 @@ export function StudentPlacementDashboard() {
                             applied.status === 'Selected' ? 'badge-green' :
                             applied.status === 'Rejected' ? 'badge-red' : 'badge-yellow'
                           }`}>
-                            Applied ({applied.status})
+                            {applied.status}
                           </span>
                         ) : (
                           <button
@@ -435,7 +437,7 @@ export function StudentPlacementDashboard() {
 
           {/* History details table */}
           <div className="card p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-white">Application Pipeline Log</h2>
+            <h2 className="text-lg font-semibold">Application Pipeline Log</h2>
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
                 <thead>
@@ -457,7 +459,7 @@ export function StudentPlacementDashboard() {
                       {myApps.map(app => (
                         <tr key={app._id} className="hover:bg-white/5">
                           <td className="p-3">
-                            <div className="font-semibold text-white">{app.opportunityId?.company}</div>
+                            <div className="font-semibold">{app.opportunityId?.company}</div>
                             <div className="subtle">{app.opportunityId?.title}</div>
                           </td>
                           <td className="p-3">Placement</td>
@@ -467,6 +469,7 @@ export function StudentPlacementDashboard() {
                               app.status === 'Selected' ? 'badge-green' :
                               app.status === 'Rejected' ? 'badge-red' :
                               app.status === 'Withdrawn' ? 'badge-red' :
+                              app.status === 'Interview Scheduled' ? 'badge-purple' :
                               app.status === 'Interviewed' ? 'badge-orange' : 'badge-yellow'
                             }`}>{app.status}</span>
                           </td>
@@ -476,7 +479,7 @@ export function StudentPlacementDashboard() {
                       {myScholarshipHistory.map(app => (
                         <tr key={app._id} className="hover:bg-white/5">
                           <td className="p-3">
-                            <div className="font-semibold text-white">{app.scholarshipId?.title}</div>
+                            <div className="font-semibold">{app.scholarshipId?.title}</div>
                             <div className="subtle">{app.scholarshipId?.provider}</div>
                           </td>
                           <td className="p-3">Scholarship</td>
@@ -504,7 +507,7 @@ export function StudentPlacementDashboard() {
       {applyingOp && (
         <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
           <div className="card max-w-md w-full p-6 space-y-4">
-            <h3 className="text-lg font-bold text-white">Apply to {applyingOp.company}</h3>
+            <h3 className="text-lg font-bold">Apply to {applyingOp.company}</h3>
             <p className="text-xs subtle">Verify your resume URL file link for the recruitment drive application snapshot.</p>
             
             <form onSubmit={handleApplyPlacement} className="space-y-4">
@@ -538,7 +541,7 @@ export function StudentPlacementDashboard() {
       {applyingScholarship && (
         <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
           <div className="card max-w-md w-full p-6 space-y-4">
-            <h3 className="text-lg font-bold text-white">Apply for {applyingScholarship.title}</h3>
+            <h3 className="text-lg font-bold">Apply for {applyingScholarship.title}</h3>
             <p className="text-xs subtle">Upload certificate links as academic and socio-economic income proof for evaluation.</p>
 
             <form onSubmit={handleApplyScholarship} className="space-y-4">

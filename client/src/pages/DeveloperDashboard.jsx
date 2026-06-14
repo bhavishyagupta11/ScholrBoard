@@ -336,7 +336,7 @@ export function DeveloperDashboard() {
         </div>
       ) : (
         /* ─── Platform details and Recharts charts ─────────────────────────────── */
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid lg:grid-cols-2 gap-6">
           {/* Recharts chart */}
           {chartData.length > 0 && (
             <div className="card p-5 space-y-4">
@@ -374,30 +374,30 @@ export function DeveloperDashboard() {
                   <Github size={16} style={{ color: 'var(--primary-cyan)' }} />
                   <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>GitHub Analytics</span>
                 </div>
-                <span className="text-[10px] subtle px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800">
+                <span className="text-[10px] subtle px-2 py-0.5 rounded border" style={{ backgroundColor: 'var(--bg-soft)', borderColor: 'var(--border-color)' }}>
                   @{githubUser}
                 </span>
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                <div className="p-2 rounded bg-neutral-50 dark:bg-neutral-900 border" style={{ borderColor: 'var(--border-color)' }}>
-                  <div className="subtle font-semibold">Repositories</div>
-                  <div className="text-sm font-bold mt-0.5">{rawMetrics.github?.publicRepos || codingStats.githubRepos || 0}</div>
+                <div className="p-2 rounded border" style={{ backgroundColor: 'var(--bg-medium)', borderColor: 'var(--border-color)' }}>
+                  <div className="subtle font-semibold" style={{ color: 'var(--text-secondary)' }}>Repositories</div>
+                  <div className="text-sm font-bold mt-0.5" style={{ color: 'var(--text-primary)' }}>{rawMetrics.github?.publicRepos || codingStats.githubRepos || 0}</div>
                 </div>
-                <div className="p-2 rounded bg-neutral-50 dark:bg-neutral-900 border" style={{ borderColor: 'var(--border-color)' }}>
-                  <div className="subtle font-semibold">Stars</div>
-                  <div className="text-sm font-bold mt-0.5">{rawMetrics.github?.stars || 0}</div>
+                <div className="p-2 rounded border" style={{ backgroundColor: 'var(--bg-medium)', borderColor: 'var(--border-color)' }}>
+                  <div className="subtle font-semibold" style={{ color: 'var(--text-secondary)' }}>Stars</div>
+                  <div className="text-sm font-bold mt-0.5" style={{ color: 'var(--text-primary)' }}>{rawMetrics.github?.stars || 0}</div>
                 </div>
-                <div className="p-2 rounded bg-neutral-50 dark:bg-neutral-900 border" style={{ borderColor: 'var(--border-color)' }}>
-                  <div className="subtle font-semibold">Followers</div>
-                  <div className="text-sm font-bold mt-0.5">{rawMetrics.github?.followers || codingStats.githubFollowers || 0}</div>
+                <div className="p-2 rounded border" style={{ backgroundColor: 'var(--bg-medium)', borderColor: 'var(--border-color)' }}>
+                  <div className="subtle font-semibold" style={{ color: 'var(--text-secondary)' }}>Followers</div>
+                  <div className="text-sm font-bold mt-0.5" style={{ color: 'var(--text-primary)' }}>{rawMetrics.github?.followers || codingStats.githubFollowers || 0}</div>
                 </div>
               </div>
 
               {/* Language Distribution Bar */}
               {githubLanguages.length > 0 && (
                 <div className="space-y-2">
-                  <div className="text-xs font-semibold subtle">Language Stack</div>
+                  <div className="text-xs font-semibold subtle" style={{ color: 'var(--text-secondary)' }}>Language Stack</div>
                   <div className="h-2 w-full flex rounded-full overflow-hidden">
                     {githubLanguages.map((lang, idx) => {
                       // Palette of colors for languages
@@ -412,7 +412,7 @@ export function DeveloperDashboard() {
                       );
                     })}
                   </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] subtle">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] subtle" style={{ color: 'var(--text-muted)' }}>
                     {githubLanguages.slice(0, 5).map((lang, idx) => {
                       const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
                       return (
@@ -437,7 +437,7 @@ export function DeveloperDashboard() {
                   <Activity size={16} style={{ color: 'var(--primary-blue)' }} />
                   <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>LeetCode Metrics</span>
                 </div>
-                <span className="text-[10px] subtle px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800">
+                <span className="text-[10px] subtle px-2 py-0.5 rounded border" style={{ backgroundColor: 'var(--bg-soft)', borderColor: 'var(--border-color)' }}>
                   @{leetcodeUser}
                 </span>
               </div>
@@ -445,19 +445,19 @@ export function DeveloperDashboard() {
               <div className="space-y-3">
                 {/* Solved metrics */}
                 <div className="space-y-1 text-xs">
-                  <div className="flex justify-between subtle font-semibold">
+                  <div className="flex justify-between subtle font-semibold" style={{ color: 'var(--text-secondary)' }}>
                     <span>Solved Problems</span>
-                    <span>{rawMetrics.leetcode?.totalSolved || codingStats.leetcodeProblemsSolved || 0}</span>
+                    <span style={{ color: 'var(--text-primary)' }}>{rawMetrics.leetcode?.totalSolved || codingStats.leetcodeProblemsSolved || 0}</span>
                   </div>
                   
                   {/* Progress segment bars */}
                   <div className="space-y-1.5 pt-1">
                     <div>
-                      <div className="flex justify-between text-[10px] subtle">
+                      <div className="flex justify-between text-[10px] subtle" style={{ color: 'var(--text-muted)' }}>
                         <span>Easy</span>
                         <span>{rawMetrics.leetcode?.easySolved || 0}</span>
                       </div>
-                      <div className="h-1.5 w-full bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                      <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-soft)' }}>
                         <div 
                           className="h-full bg-emerald-500 rounded-full" 
                           style={{ width: `${Math.min(100, ((rawMetrics.leetcode?.easySolved || 0) / Math.max(1, rawMetrics.leetcode?.totalSolved || 1)) * 100)}%` }} 
@@ -466,11 +466,11 @@ export function DeveloperDashboard() {
                     </div>
                     
                     <div>
-                      <div className="flex justify-between text-[10px] subtle">
+                      <div className="flex justify-between text-[10px] subtle" style={{ color: 'var(--text-muted)' }}>
                         <span>Medium</span>
                         <span>{rawMetrics.leetcode?.mediumSolved || 0}</span>
                       </div>
-                      <div className="h-1.5 w-full bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                      <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-soft)' }}>
                         <div 
                           className="h-full bg-blue-500 rounded-full" 
                           style={{ width: `${Math.min(100, ((rawMetrics.leetcode?.mediumSolved || 0) / Math.max(1, rawMetrics.leetcode?.totalSolved || 1)) * 100)}%` }} 
@@ -479,11 +479,11 @@ export function DeveloperDashboard() {
                     </div>
 
                     <div>
-                      <div className="flex justify-between text-[10px] subtle">
+                      <div className="flex justify-between text-[10px] subtle" style={{ color: 'var(--text-muted)' }}>
                         <span>Hard</span>
                         <span>{rawMetrics.leetcode?.hardSolved || 0}</span>
                       </div>
-                      <div className="h-1.5 w-full bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                      <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-soft)' }}>
                         <div 
                           className="h-full bg-rose-500 rounded-full" 
                           style={{ width: `${Math.min(100, ((rawMetrics.leetcode?.hardSolved || 0) / Math.max(1, rawMetrics.leetcode?.totalSolved || 1)) * 100)}%` }} 
@@ -496,12 +496,12 @@ export function DeveloperDashboard() {
                 {rawMetrics.leetcode?.contestRating > 0 && (
                   <div className="flex justify-between text-xs border-t pt-3" style={{ borderColor: 'var(--border-color)' }}>
                     <div>
-                      <span className="subtle block">Contest Rating</span>
-                      <span className="font-bold text-sm">{rawMetrics.leetcode.contestRating}</span>
+                      <span className="subtle block" style={{ color: 'var(--text-secondary)' }}>Contest Rating</span>
+                      <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{rawMetrics.leetcode.contestRating}</span>
                     </div>
                     <div className="text-right">
-                      <span className="subtle block">Global Rank</span>
-                      <span className="font-bold text-sm">#{rawMetrics.leetcode.contestGlobalRanking || '—'}</span>
+                      <span className="subtle block" style={{ color: 'var(--text-secondary)' }}>Global Rank</span>
+                      <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>#{rawMetrics.leetcode.contestGlobalRanking || '—'}</span>
                     </div>
                   </div>
                 )}
@@ -517,7 +517,7 @@ export function DeveloperDashboard() {
                   <Globe size={16} style={{ color: 'var(--primary-orange)' }} />
                   <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>Codeforces Standings</span>
                 </div>
-                <span className="text-[10px] subtle px-2 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800">
+                <span className="text-[10px] subtle px-2 py-0.5 rounded border" style={{ backgroundColor: 'var(--bg-soft)', borderColor: 'var(--border-color)' }}>
                   @{codeforcesUser}
                 </span>
               </div>
@@ -525,14 +525,14 @@ export function DeveloperDashboard() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4 text-xs">
                   <div>
-                    <span className="subtle block">Rating</span>
+                    <span className="subtle block" style={{ color: 'var(--text-secondary)' }}>Rating</span>
                     <span className="font-bold text-base mt-0.5 block" style={{ color: 'var(--primary-orange)' }}>
                       {rawMetrics.codeforces?.rating || codingStats.codeforcesRating || 0}
                     </span>
                   </div>
                   <div>
-                    <span className="subtle block">Peak Rating</span>
-                    <span className="font-bold text-base mt-0.5 block text-neutral-400">
+                    <span className="subtle block" style={{ color: 'var(--text-secondary)' }}>Peak Rating</span>
+                    <span className="font-bold text-base mt-0.5 block" style={{ color: 'var(--text-muted)' }}>
                       {rawMetrics.codeforces?.maxRating || codingStats.codeforcesMaxRating || 0}
                     </span>
                   </div>
@@ -540,13 +540,13 @@ export function DeveloperDashboard() {
 
                 <div className="flex justify-between text-xs border-t pt-3" style={{ borderColor: 'var(--border-color)' }}>
                   <div>
-                    <span className="subtle">Tier Rank</span>
-                    <span className="font-semibold capitalize block mt-0.5">{rawMetrics.codeforces?.rank || codingStats.codeforcesRank || 'Unranked'}</span>
+                    <span className="subtle" style={{ color: 'var(--text-secondary)' }}>Tier Rank</span>
+                    <span className="font-semibold capitalize block mt-0.5" style={{ color: 'var(--text-primary)' }}>{rawMetrics.codeforces?.rank || codingStats.codeforcesRank || 'Unranked'}</span>
                   </div>
                   {rawMetrics.codeforces?.contribution !== undefined && (
                     <div className="text-right">
-                      <span className="subtle">Contribution</span>
-                      <span className="font-semibold block mt-0.5">{(rawMetrics.codeforces.contribution >= 0 ? '+' : '') + rawMetrics.codeforces.contribution}</span>
+                      <span className="subtle" style={{ color: 'var(--text-secondary)' }}>Contribution</span>
+                      <span className="font-semibold block mt-0.5" style={{ color: 'var(--text-primary)' }}>{(rawMetrics.codeforces.contribution >= 0 ? '+' : '') + rawMetrics.codeforces.contribution}</span>
                     </div>
                   )}
                 </div>
@@ -585,14 +585,14 @@ export function DeveloperDashboard() {
                 {githubUser ? (
                   <span className="w-2 h-2 rounded-full bg-emerald-500" title="Linked" />
                 ) : (
-                  <span className="w-2 h-2 rounded-full bg-neutral-300 dark:bg-neutral-700" title="Not connected" />
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--border-color)' }} title="Not connected" />
                 )}
               </div>
               <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                 {githubUser ? `@${githubUser}` : 'Not Linked'}
               </p>
               {profile?.codingStats?.githubLastSyncedAt && (
-                <span className="text-[10px] subtle block mt-1">
+                <span className="text-[10px] subtle block mt-1" style={{ color: 'var(--text-muted)' }}>
                   Synced: {new Date(profile.codingStats.githubLastSyncedAt).toLocaleDateString()}
                 </span>
               )}
@@ -605,7 +605,7 @@ export function DeveloperDashboard() {
                   cooldown={cooldowns.github}
                 />
               ) : (
-                <div className="text-[10px] subtle italic">Connect handle in profiles settings</div>
+                <div className="text-[10px] subtle italic" style={{ color: 'var(--text-muted)' }}>Connect handle in profiles settings</div>
               )}
             </div>
           </div>
@@ -621,14 +621,14 @@ export function DeveloperDashboard() {
                 {leetcodeUser ? (
                   <span className="w-2 h-2 rounded-full bg-emerald-500" title="Linked" />
                 ) : (
-                  <span className="w-2 h-2 rounded-full bg-neutral-300 dark:bg-neutral-700" title="Not connected" />
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--border-color)' }} title="Not connected" />
                 )}
               </div>
               <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                 {leetcodeUser ? `@${leetcodeUser}` : 'Not Linked'}
               </p>
               {profile?.codingStats?.leetcodeLastSyncedAt && (
-                <span className="text-[10px] subtle block mt-1">
+                <span className="text-[10px] subtle block mt-1" style={{ color: 'var(--text-muted)' }}>
                   Synced: {new Date(profile.codingStats.leetcodeLastSyncedAt).toLocaleDateString()}
                 </span>
               )}
@@ -641,7 +641,7 @@ export function DeveloperDashboard() {
                   cooldown={cooldowns.leetcode}
                 />
               ) : (
-                <div className="text-[10px] subtle italic">Connect handle in profiles settings</div>
+                <div className="text-[10px] subtle italic" style={{ color: 'var(--text-muted)' }}>Connect handle in profiles settings</div>
               )}
             </div>
           </div>
@@ -657,14 +657,14 @@ export function DeveloperDashboard() {
                 {codeforcesUser ? (
                   <span className="w-2 h-2 rounded-full bg-emerald-500" title="Linked" />
                 ) : (
-                  <span className="w-2 h-2 rounded-full bg-neutral-300 dark:bg-neutral-700" title="Not connected" />
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--border-color)' }} title="Not connected" />
                 )}
               </div>
               <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                 {codeforcesUser ? `@${codeforcesUser}` : 'Not Linked'}
               </p>
               {profile?.codingStats?.codeforcesLastSyncedAt && (
-                <span className="text-[10px] subtle block mt-1">
+                <span className="text-[10px] subtle block mt-1" style={{ color: 'var(--text-muted)' }}>
                   Synced: {new Date(profile.codingStats.codeforcesLastSyncedAt).toLocaleDateString()}
                 </span>
               )}
@@ -677,7 +677,7 @@ export function DeveloperDashboard() {
                   cooldown={cooldowns.codeforces}
                 />
               ) : (
-                <div className="text-[10px] subtle italic">Connect handle in profiles settings</div>
+                <div className="text-[10px] subtle italic" style={{ color: 'var(--text-muted)' }}>Connect handle in profiles settings</div>
               )}
             </div>
           </div>

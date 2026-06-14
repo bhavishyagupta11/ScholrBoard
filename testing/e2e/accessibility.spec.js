@@ -112,40 +112,17 @@ test.describe('Axe-Core Accessibility Audits', () => {
     });
 
     await loginViaUI(page, 'student');
-    await page.goto('/student/resume-intelligence');
+    await page.goto('/student/resume-analyzer');
     await page.waitForTimeout(2000);
 
     // Perform accessibility scan
     const results = await new AxeBuilder({ page }).analyze();
-    auditResults['Student Resume Intelligence'] = {
+    auditResults['Student Resume Analyzer'] = {
       url: page.url(),
       violationsCount: results.violations.length,
       passesCount: results.passes.length,
       violations: results.violations
     };
-
-    // Test comparison modal opening & trapping
-    console.log('Testing Resume Compare Modal trapping...');
-    const compareInputs = page.locator('input[aria-label*="Compare"]');
-    await expect(compareInputs).toHaveCount(2);
-    await compareInputs.nth(0).check();
-    await compareInputs.nth(1).check();
-
-    const triggerBtn = page.locator('button:has-text("Compare Selected")');
-    await expect(triggerBtn).toBeVisible();
-    await triggerBtn.click();
-
-    // Verify modal is open
-    const modal = page.locator('[role="dialog"]');
-    await expect(modal).toBeVisible();
-
-    // Press Escape to verify close
-    await page.keyboard.press('Escape');
-    await expect(modal).not.toBeVisible();
-
-    // Verify focus returned to trigger button
-    const isFocused = await triggerBtn.evaluate(el => document.activeElement === el);
-    console.log(`Compare modal trigger focus return: ${isFocused}`);
   });
 
   test('Admin Talent Discovery Accessibility & Drawer Trapping', async ({ page }) => {

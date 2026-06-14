@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
   if (dbConnected) {
     const pingStart = Date.now();
     try {
-      await mongoose.connection.db.admin().ping();
+      await mongoose.connection.db.command({ ping: 1 });
       dbPingMs = Date.now() - pingStart;
     } catch {
       return res.status(503).json({

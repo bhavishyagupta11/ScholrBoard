@@ -4,6 +4,7 @@
 import Profile from '../models/Profile.js';
 import User from '../models/User.js';
 import ResumeAnalysis from '../models/ResumeAnalysis.js';
+import Application from '../models/Application.js';
 
 // ─── Upload profile avatar ─────────────────────────────────────────────────────
 export const uploadAvatar = async (req, res) => {
@@ -143,5 +144,51 @@ export const getResumeAnalysis = async (req, res) => {
   } catch (error) {
     console.error('getResumeAnalysis error:', error);
     return res.status(500).json({ success: false, message: 'Failed to fetch analysis' });
+  }
+};
+
+// ─── GET resume file as inline stream (Issue 5 Proxy) ───────────────────────────
+export const viewResumeFile = async (req, res) => {
+  try {
+    const { id } = req.params; // Application ID
+    const application = await Application.findById(id);
+    if (!application) {
+      return res.status(404).send('Application not found');
+    }
+
+    const { resumeUrl } = application;
+    if (!resumeUrl) {
+      return res.status(404).send('Resume URL is empty');
+    }
+
+    if (resumeUrl.startsWith('http')) {
+      // Stream from Cloudinary
+      const response = await fetch(resumeUrl);
+      if (!response.ok) {
+        return res.status(response.status).send('Failed to fetch file from storage');
+      }
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'inline; filename="resume.pdf"');
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      return res.send(buffer);
+    } else {
+      // Local file
+      const path = await import('node:path');
+      const fs = await import('node:fs/promises');
+      const cleanUrl = resumeUrl.replace(/^\//, ''); // remove leading slash
+      const absolutePath = path.resolve(process.cwd(), cleanUrl);
+      try {
+        await fs.access(absolutePath);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline; filename="resume.pdf"');
+        return res.sendFile(absolutePath);
+      } catch {
+        return res.status(404).send('Local resume file not found');
+      }
+    }
+  } catch (error) {
+    console.error('viewResumeFile error:', error);
+    return res.status(500).send('Internal server error while viewing resume');
   }
 };

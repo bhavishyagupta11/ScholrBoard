@@ -103,12 +103,10 @@ export function LoginPage() {
 		}
 		
 		// If validation passes, proceed with login
-		console.log('Form submitted:', { email, password, role });
 		localStorage.setItem('role', role);
 		localStorage.setItem('isAuthenticated', 'true');
-		console.log('Login successful, redirecting to:', role === 'student' ? '/student' : '/verify');
 		
-		// Use window.location for more reliable navigation
+		// Navigate to role-specific dashboard
 		if (role === 'student') {
 			window.location.href = '/student';
 		} else if (role === 'faculty') {
@@ -121,11 +119,14 @@ export function LoginPage() {
 	return (
 		<div className="min-h-screen grid place-items-center p-6" style={{background:'var(--bg-dark)'}}>
 			<div ref={containerRef} className="w-full max-w-md card p-6 gpu-accelerated hover:scale-105 transition-transform">
-				<div className="flex items-center gap-3 mb-4">
-					<GraduationCap className="text-brand-blue" />
+				<div className="flex items-center gap-3 mb-6">
+					<img src="/assets/logo.png" alt="ScholrBoard Logo" className="w-8 h-8 object-contain transition-transform hover:scale-110 duration-200" />
 					<div>
-						<div className="text-lg font-semibold text-brand-blue">ScholrBoard</div>
-						<div className="text-sm" style={{color:'var(--text-secondary)'}}>ScholrBoard Platform</div>
+						<div className="text-lg font-extrabold tracking-tight" style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.04em' }}>
+							<span style={{ color: 'var(--accent)' }}>Scholr</span>
+							<span style={{ color: 'var(--text-primary)' }}>Board</span>
+						</div>
+						<div className="text-xs font-semibold uppercase tracking-wider text-amber-500 mt-0.5">Authentication Gate</div>
 					</div>
 				</div>
 				<form onSubmit={submit} className="space-y-4">

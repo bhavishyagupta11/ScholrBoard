@@ -13,8 +13,9 @@ import { PortfolioPage } from '../pages/PortfolioPage';
 import { CodingPage } from '../pages/CodingPage';
 import { ActivitiesPage } from '../pages/ActivitiesPage';
 import { UploadPage } from '../pages/UploadPage';
-import { ResumeImportPage } from '../pages/ResumeImportPage';
+import { ResumeAnalyzerPage } from '../pages/ResumeAnalyzerPage';
 import { VerifierPage } from '../pages/VerifierPage';
+import { StudentEvents } from '../pages/StudentEvents';
 
 // Layouts
 import { StudentLayout } from '../layouts/StudentLayout';
@@ -67,7 +68,9 @@ export function AppRoutes() {
         <Route path="portfolio" element={<PortfolioPage />} />
         <Route path="coding" element={<CodingPage />} />
         <Route path="activities" element={<ActivitiesPage />} />
-        <Route path="resume" element={<ResumeImportPage />} />
+        <Route path="resume" element={<ResumeAnalyzerPage />} />
+        <Route path="resume-analyzer" element={<ResumeAnalyzerPage />} />
+        <Route path="events" element={<StudentEvents />} />
       </Route>
 
       {/* Faculty Routes */}

@@ -2,7 +2,7 @@
  * FacultyOdApprovals.jsx — Faculty Advisor review dashboard for OD Requests
  */
 import { useState, useEffect, useCallback } from 'react';
-import { AlertCircle, CheckCircle2, Clock, XCircle, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, XCircle, FileText, ChevronDown, ChevronUp, X, ExternalLink } from 'lucide-react';
 import odApi from '../api/od.api.js';
 import { useScrollAnimation } from '../hooks/useScrollAnimation.js';
 
@@ -16,6 +16,7 @@ export function FacultyOdApprovals() {
   const [reviewStatus, setReviewStatus] = useState(''); // 'Approved', 'Rejected', 'Needs Revision'
   const [remarks, setRemarks] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
 
   const headerRef = useScrollAnimation({ animationClass: 'fade-in-up', delay: 0.1 });
   const listRef = useScrollAnimation({ animationClass: 'fade-in-up', delay: 0.2 });
@@ -133,7 +134,7 @@ export function FacultyOdApprovals() {
                     {/* Student Details */}
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-base text-white">{student.name || 'Unknown Student'}</h3>
+                        <h3 className="font-bold text-base">{student.name || 'Unknown Student'}</h3>
                         <span className="text-[10px] px-2 py-0.5 rounded font-semibold uppercase tracking-wide bg-blue-500/10 text-blue-400 border border-blue-500/20">
                           {student.studentId || 'N/A'}
                         </span>
@@ -147,19 +148,18 @@ export function FacultyOdApprovals() {
 
                     {/* Event & Proof Info */}
                     <div className="text-left md:text-right">
-                      <div className="font-semibold text-sm text-white">{od.eventName}</div>
+                      <div className="font-semibold text-sm">{od.eventName}</div>
                       <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
                         Event Date: {new Date(od.eventDate).toLocaleDateString()}
                       </div>
                       {od.proofUrl && (
-                        <a 
-                          href={od.proofUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="inline-flex items-center gap-1 text-xs hover:underline text-blue-400 mt-2"
+                        <button
+                          type="button"
+                          onClick={() => setPreviewUrl(od.proofUrl)}
+                          className="inline-flex items-center gap-1 text-xs hover:underline text-blue-400 mt-2 btn btn-outline px-3 py-1.5 font-semibold"
                         >
-                          <FileText size={12} /> View Proof Document
-                        </a>
+                          <FileText size={12} /> Preview Proof
+                        </button>
                       )}
                     </div>
                   </div>
@@ -248,6 +248,74 @@ export function FacultyOdApprovals() {
             })}
           </div>
         )}
+      {/* ATTACHMENT PREVIEW MODAL */}
+      {previewUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="card w-full max-w-3xl flex flex-col p-6 space-y-4" style={{ background: 'var(--surface-card)', borderColor: 'var(--border-color)' }}>
+            
+            {/* Modal Header */}
+            <div className="flex justify-between items-center pb-2 border-b" style={{ borderColor: 'var(--border-color)' }}>
+              <h2 className="text-lg font-bold text-[var(--text-primary)]">Proof Attachment Preview</h2>
+              <button 
+                type="button"
+                onClick={() => setPreviewUrl(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-full hover:bg-white/10"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 flex items-center justify-center min-h-[45vh] max-h-[60vh] overflow-auto bg-black/20 rounded-lg p-2">
+              {previewUrl.toLowerCase().includes('.pdf') ? (
+                <iframe 
+                  src={previewUrl} 
+                  title="PDF Attachment Preview"
+                  className="w-full h-[50vh] rounded border-0" 
+                />
+              ) : (
+                <img 
+                  src={previewUrl} 
+                  alt="Attachment Preview" 
+                  className="max-w-full max-h-[50vh] object-contain rounded" 
+                />
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-between items-center pt-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
+              <a 
+                href={previewUrl} 
+                target="_blank" 
+                rel="noreferrer" 
+                className="btn btn-outline text-xs px-4 py-2 flex items-center gap-1.5"
+              >
+                <ExternalLink size={14} /> Open in New Tab
+              </a>
+              <div className="flex gap-2">
+                <a 
+                  href={previewUrl} 
+                  download 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="btn btn-outline text-xs px-4 py-2"
+                >
+                  Download File
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewUrl(null)}
+                  className="btn btn-primary text-xs px-4 py-2"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       </div>
     </div>
   );

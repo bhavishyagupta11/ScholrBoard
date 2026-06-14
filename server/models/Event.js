@@ -172,14 +172,16 @@ eventSchema.index({ category: 1, isPublished: 1 });
 // Virtual: seats remaining
 eventSchema.virtual('seatsRemaining').get(function () {
   if (!this.maxAttendees) return null;
-  return Math.max(0, this.maxAttendees - this.attendees.length);
+  const attendeeCount = Array.isArray(this.attendees) ? this.attendees.length : 0;
+  return Math.max(0, this.maxAttendees - attendeeCount);
 });
 
 // Virtual: is registration open
 eventSchema.virtual('isRegistrationOpen').get(function () {
   if (!this.requiresRegistration) return false;
   if (this.registrationDeadline && this.registrationDeadline < new Date()) return false;
-  if (this.maxAttendees && this.attendees.length >= this.maxAttendees) return false;
+  const attendeeCount = Array.isArray(this.attendees) ? this.attendees.length : 0;
+  if (this.maxAttendees && attendeeCount >= this.maxAttendees) return false;
   return true;
 });
 

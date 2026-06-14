@@ -108,6 +108,7 @@ async function main() {
     dateTime: new Date(Date.now() + 5 * 86400000).toISOString(),
     venue: 'Smoke Hall',
   });
+  await api('PUT', `/applications/${appId}/status`, admin.token, { status: 'Interviewed' });
   const selected = await api('PUT', `/applications/${appId}/status`, admin.token, { status: 'Selected' });
   if (!selected.ok) throw new Error(selected.data.message);
 

@@ -19,16 +19,20 @@ export function FacultyLayout() {
 		}`;
 
 	return (
-		<div className="app-shell grid md:grid-cols-[280px_1fr]">
+		<div className="app-shell md:grid md:grid-cols-[280px_1fr]">
 			{/* Sidebar */}
 			<aside className="sidebar-panel p-6 md:min-h-screen md:border-r">
-				<div className="mb-8 flex items-center gap-3">
-					<a href="/" className="sidebar-brand-mark">S</a>
-					<div>
-						<a href="/" className="text-2xl font-bold" style={{color:'var(--primary-blue)'}}>ScholrBoard</a>
-						<div className="text-sm mt-1" style={{color:'var(--text-secondary)'}}>Campus Portal</div>
-						<div className="text-xs mt-1 font-medium" style={{color:'var(--text-secondary)'}}>Faculty Portal</div>
-					</div>
+				<div className="mb-8 flex items-center gap-2.5">
+					<a href="/" className="flex items-center gap-2.5">
+						<img src="/assets/logo.png" alt="ScholrBoard Logo" className="w-8 h-8 object-contain" />
+						<div className="flex flex-col">
+							<span className="text-lg font-extrabold tracking-tight leading-none" style={{ fontFamily: 'var(--font-sans)', letterSpacing: '-0.03em' }}>
+								<span style={{ color: 'var(--accent)' }}>Scholr</span>
+								<span style={{ color: 'var(--text-primary)' }}>Board</span>
+							</span>
+							<div className="text-[10px] font-bold uppercase tracking-wider text-amber-500 mt-1">Faculty Portal</div>
+						</div>
+					</a>
 				</div>
 
 				<nav className="flex flex-col space-y-2">

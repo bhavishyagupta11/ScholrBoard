@@ -1,9 +1,9 @@
 /**
- * FacultyApprovals.jsx — Dynamic activity review dashboard
+ * FacultyApprovals.jsx — Dynamic activity review dashboard with proof preview
  */
 import { useState, useEffect } from 'react';
 import activitiesApi from '../api/activities.api.js';
-import { AlertCircle, CheckCircle, XCircle, Clock, Search, ExternalLink } from 'lucide-react';
+import { AlertCircle, CheckCircle, XCircle, Clock, Search, ExternalLink, X } from 'lucide-react';
 
 export function FacultyApprovals() {
   const [pendingList, setPendingList] = useState([]);
@@ -12,6 +12,9 @@ export function FacultyApprovals() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDept, setFilterDept] = useState('All');
+  
+  // Preview modal state
+  const [previewUrl, setPreviewUrl] = useState(null);
 
   useEffect(() => {
     fetchPending();
@@ -171,11 +174,14 @@ export function FacultyApprovals() {
                     <td className="py-4 px-6 subtle">
                       {new Date(item.activityDate || item.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="py-4 px-6 text-center">
+                    <td className="py-4 px-6 text-center animate-pulse-on-hover">
                       {item.proofUrl ? (
-                        <a href={item.proofUrl} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 inline-flex items-center gap-1">
-                          <ExternalLink size={14} /> View
-                        </a>
+                        <button
+                          onClick={() => setPreviewUrl(item.proofUrl)}
+                          className="btn btn-outline text-blue-400 hover:text-blue-300 inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold"
+                        >
+                          <ExternalLink size={12} /> Preview
+                        </button>
                       ) : (
                         <span className="text-xs subtle">No proof</span>
                       )}
@@ -209,6 +215,73 @@ export function FacultyApprovals() {
           </table>
         </div>
       </div>
+
+      {/* ATTACHMENT PREVIEW MODAL */}
+      {previewUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="card w-full max-w-3xl flex flex-col p-6 space-y-4" style={{ background: 'var(--surface-card)', borderColor: 'var(--border-color)' }}>
+            
+            {/* Modal Header */}
+            <div className="flex justify-between items-center pb-2 border-b" style={{ borderColor: 'var(--border-color)' }}>
+              <h2 className="text-lg font-bold text-[var(--text-primary)]">Proof Attachment Preview</h2>
+              <button 
+                onClick={() => setPreviewUrl(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-full hover:bg-white/10"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 flex items-center justify-center min-h-[45vh] max-h-[60vh] overflow-auto bg-black/20 rounded-lg p-2">
+              {previewUrl.toLowerCase().includes('.pdf') ? (
+                <iframe 
+                  src={previewUrl} 
+                  title="PDF Attachment Preview"
+                  className="w-full h-[50vh] rounded border-0" 
+                />
+              ) : (
+                <img 
+                  src={previewUrl} 
+                  alt="Attachment Preview" 
+                  className="max-w-full max-h-[50vh] object-contain rounded" 
+                />
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-between items-center pt-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
+              <a 
+                href={previewUrl} 
+                target="_blank" 
+                rel="noreferrer" 
+                className="btn btn-outline text-xs px-4 py-2 flex items-center gap-1.5"
+              >
+                <ExternalLink size={14} /> Open in New Tab
+              </a>
+              <div className="flex gap-2">
+                <a 
+                  href={previewUrl} 
+                  download 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="btn btn-outline text-xs px-4 py-2"
+                >
+                  Download File
+                </a>
+                <button
+                  onClick={() => setPreviewUrl(null)}
+                  className="btn btn-primary text-xs px-4 py-2"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -120,12 +120,14 @@ export const updateActivity = async (req, res) => {
     if (!activity) {
       return res.status(404).json({ success: false, message: 'Activity not found' });
     }
-    if (activity.status !== 'Pending') {
+    if (activity.status !== 'Pending' && activity.status !== 'Needs Revision') {
       return res.status(400).json({
         success: false,
-        message: 'Only pending activities can be edited',
+        message: 'Only pending or revision-requested activities can be edited',
       });
     }
+
+    const wasNeedsRevision = activity.status === 'Needs Revision';
 
     const { title, description, category, subCategory, activityDate, duration, externalLink } = req.body;
     if (title)        activity.title        = title.trim();
@@ -135,9 +137,26 @@ export const updateActivity = async (req, res) => {
     if (activityDate) activity.activityDate = new Date(activityDate);
     if (duration)     activity.duration     = duration.trim();
     if (externalLink) activity.externalLink = externalLink.trim();
+    if (req.body.proofUrl !== undefined) activity.proofUrl = req.body.proofUrl;
     if (req.file?.cloudinaryUrl) activity.proofUrl = req.file.cloudinaryUrl;
 
+    if (wasNeedsRevision) {
+      activity.status = 'Pending';
+    }
+
     await activity.save();
+
+    await AuditLog.create({
+      action: 'update_activity',
+      performedBy: req.user._id,
+      role: req.user.role,
+      targetModel: 'Activity',
+      targetId: activity._id,
+      details: {
+        title: activity.title,
+        statusChangedToPending: wasNeedsRevision,
+      },
+    });
     return res.json({ success: true, message: 'Activity updated', activity });
   } catch (error) {
     console.error('updateActivity error:', error);

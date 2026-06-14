@@ -212,11 +212,16 @@ export function SignupForm({ role, onToggleForm, additionalFields = [], presenta
                   className="w-full input-dark"
                 >
                   <option value="">{field.placeholder}</option>
-                  {field.options?.map(option => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
+                  {field.options?.map(option => {
+                    const isObj = typeof option === 'object' && option !== null;
+                    const val = isObj ? option.value : option;
+                    const label = isObj ? option.label : option;
+                    return (
+                      <option key={val} value={val}>
+                        {label}
+                      </option>
+                    );
+                  })}
                 </select>
               ) : (
                 <input

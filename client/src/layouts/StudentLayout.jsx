@@ -18,8 +18,7 @@ export function StudentLayout() {
 		{ to: '/student/portfolio', label: 'Portfolio', icon: UserSquare2 },
 		{ to: '/student/coding', label: 'Coding', icon: Code2 },
 		{ to: '/student/developer', label: 'Developer Score', icon: Code2 },
-		{ to: '/student/resume', label: 'Resume', icon: FileText },
-		{ to: '/student/resume-intelligence', label: 'Resume Intelligence', icon: FileText },
+		{ to: '/student/resume-analyzer', label: 'Resume Analyzer', icon: FileText },
 		{ to: '/student/certificates', label: 'Certificates', icon: Award },
 		{ to: '/student/od', label: 'OD Requests', icon: Calendar },
 		{ to: '/student/placements', label: 'Placements', icon: Briefcase },
@@ -27,21 +26,21 @@ export function StudentLayout() {
 	];
 
 	const navLinkClass = ({ isActive }) =>
-		`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+		`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
 			isActive
 				? 'nav-item-active'
-				: 'nav-item-muted hover:bg-blue-50'
+				: 'nav-item-muted'
 		}`;
 
 	return (
 		<div className="app-shell md:grid md:grid-cols-[248px_1fr]">
 			<aside className="sidebar-panel sticky top-0 z-20 border-b p-3 md:h-screen md:border-b-0 md:border-r md:p-4">
 				<div className="mb-3 flex items-center justify-between gap-3 md:mb-7">
-					<a href="/" className="flex items-center gap-3">
-						<span className="sidebar-brand-mark">S</span>
-						<span>
-							<span className="block text-lg font-bold text-brand-blue md:text-xl">ScholrBoard</span>
-							<span className="block text-xs font-medium" style={{color:'var(--text-secondary)'}}>Campus Portal</span>
+					<a href="/" className="flex items-center gap-2.5">
+						<img src="/assets/logo.png" alt="ScholrBoard Logo" className="w-8 h-8 object-contain" />
+						<span className="text-xl font-extrabold tracking-tight" style={{ fontFamily: 'var(--font-sans)', letterSpacing: '-0.03em' }}>
+							<span style={{ color: 'var(--accent)' }}>Scholr</span>
+							<span style={{ color: 'var(--text-primary)' }}>Board</span>
 						</span>
 					</a>
 				</div>
@@ -53,7 +52,7 @@ export function StudentLayout() {
 						</NavLink>
 					))}
 				</nav>
-				<button className="btn btn-outline mt-6 hidden w-full md:flex" onClick={handleLogout}><LogOut size={16}/> Logout</button>
+				<button className="btn btn-outline mt-auto hidden w-full md:flex hover:border-red-500/30 hover:text-red-500 hover:bg-red-500/5 transition-all duration-200" onClick={handleLogout}><LogOut size={16}/> Logout</button>
 			</aside>
 			<div className="flex flex-col min-h-screen">
 				<Topbar />

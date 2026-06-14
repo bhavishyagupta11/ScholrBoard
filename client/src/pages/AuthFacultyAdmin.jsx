@@ -38,7 +38,7 @@ export function FacultyAdminAuth() {
         </div>
       </div>
       
-      <BaseLoginForm role={role} additionalFields={additionalFields} />
+      <BaseLoginForm role={role} additionalFields={additionalFields} disableSignup={true} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import './App.css';
 import { ProfileProvider } from './contexts/ProfileContext.jsx';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthOverlay } from './components/auth/AuthOverlay.jsx';
+import { ThemeProvider } from './contexts/ThemeContext.jsx';
 
 const StudentLoginPage = lazy(() => import('./pages/auth/StudentLoginPage').then((module) => ({ default: module.StudentLoginPage })));
 const FacultyLoginPage = lazy(() => import('./pages/auth/FacultyLoginPage').then((module) => ({ default: module.FacultyLoginPage })));
@@ -18,7 +19,7 @@ const ActivitiesPage = lazy(() => import('./pages/ActivitiesPage.jsx').then((mod
 const PortfolioPage = lazy(() => import('./pages/PortfolioPage.jsx').then((module) => ({ default: module.PortfolioPage })));
 const ProfilePage = lazy(() => import('./pages/ProfilePage.jsx').then((module) => ({ default: module.ProfilePage })));
 const CodingPage = lazy(() => import('./pages/CodingPage.jsx').then((module) => ({ default: module.CodingPage })));
-const ResumeImportPage = lazy(() => import('./pages/ResumeImportPage.jsx').then((module) => ({ default: module.ResumeImportPage })));
+const ResumeAnalyzerPage = lazy(() => import('./pages/ResumeAnalyzerPage.jsx').then((module) => ({ default: module.ResumeAnalyzerPage })));
 const AIChatPage = lazy(() => import('./pages/AIChatPage.jsx').then((module) => ({ default: module.AIChatPage })));
 const CertificatesPage = lazy(() => import('./pages/CertificatesPage.jsx').then((module) => ({ default: module.CertificatesPage })));
 const StudentOdPage = lazy(() => import('./pages/StudentOdPage.jsx').then((module) => ({ default: module.StudentOdPage })));
@@ -35,8 +36,17 @@ const AdminPlacements = lazy(() => import('./pages/AdminPlacements.jsx').then((m
 const AdminEvents = lazy(() => import('./pages/AdminEvents.jsx').then((module) => ({ default: module.AdminEvents })));
 const AdminAnnouncements = lazy(() => import('./pages/AdminAnnouncements.jsx').then((module) => ({ default: module.AdminAnnouncements })));
 const DeveloperDashboard = lazy(() => import('./pages/DeveloperDashboard.jsx').then((module) => ({ default: module.DeveloperDashboard })));
-const ResumeIntelligencePage = lazy(() => import('./pages/ResumeIntelligencePage.jsx').then((module) => ({ default: module.ResumeIntelligencePage })));
 const AdminTalentDiscovery = lazy(() => import('./pages/AdminTalentDiscovery.jsx').then((module) => ({ default: module.AdminTalentDiscovery })));
+const StudentEvents = lazy(() => import('./pages/StudentEvents.jsx').then((module) => ({ default: module.StudentEvents })));
+
+// Info pages
+const AboutUsPage = lazy(() => import('./pages/info/AboutUsPage.jsx').then((module) => ({ default: module.AboutUsPage })));
+const ContactUsPage = lazy(() => import('./pages/info/ContactUsPage.jsx').then((module) => ({ default: module.ContactUsPage })));
+const PrivacyPolicyPage = lazy(() => import('./pages/info/PrivacyPolicyPage.jsx').then((module) => ({ default: module.PrivacyPolicyPage })));
+const TermsPage = lazy(() => import('./pages/info/TermsPage.jsx').then((module) => ({ default: module.TermsPage })));
+const CookiePolicyPage = lazy(() => import('./pages/info/CookiePolicyPage.jsx').then((module) => ({ default: module.CookiePolicyPage })));
+const FaqPage = lazy(() => import('./pages/info/FaqPage.jsx').then((module) => ({ default: module.FaqPage })));
+const SupportPage = lazy(() => import('./pages/info/SupportPage.jsx').then((module) => ({ default: module.SupportPage })));
 
 const PageLoader = () => (
 	<div className="min-h-screen p-6" style={{ background: 'var(--bg-dark)', color: 'var(--text-primary)' }}>
@@ -87,78 +97,82 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 }
 
 export default function App() {
-	useEffect(() => {
-		const savedTheme = localStorage.getItem('theme');
-		const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-		document.documentElement.setAttribute('data-theme', savedTheme || (prefersDark ? 'dark' : 'light'));
-	}, []);
-
 	return (
-		<AuthProvider>
-			<ProfileProvider>
-				<BrowserRouter>
-					<Suspense fallback={<PageLoader />}>
-						<Routes>
-							<Route path="/" element={<LandingPage />} />
-							<Route path="/landing" element={<LandingPage />} />
-							<Route path="/login" element={<AuthOverlay />}>
-								<Route index element={<Navigate to="/login/student" replace />} />
-								<Route path="student" element={<StudentLoginPage presentation="modal" />} />
-								<Route path="faculty" element={<FacultyLoginPage presentation="modal" />} />
-								<Route path="admin" element={<AdminLoginPage presentation="modal" />} />
-							</Route>
-							<Route path="/student" element={
-								<ProtectedRoute allowedRoles={['student']}>
-									<StudentLayout />
-								</ProtectedRoute>
-							}>
-								<Route index element={<DashboardPage />} />
-								<Route path="dashboard" element={<DashboardPage />} />
-								<Route path="upload" element={<UploadPage />} />
-								<Route path="activities" element={<ActivitiesPage />} />
-								<Route path="portfolio" element={<PortfolioPage />} />
-								<Route path="profile" element={<ProfilePage />} />
-								<Route path="coding" element={<CodingPage />} />
-								<Route path="resume" element={<ResumeImportPage />} />
-								<Route path="developer" element={<DeveloperDashboard />} />
-								<Route path="resume-intelligence" element={<ResumeIntelligencePage />} />
-								<Route path="certificates" element={<CertificatesPage />} />
-								<Route path="ai-chat" element={<AIChatPage />} />
-								<Route path="od" element={<StudentOdPage />} />
-								<Route path="placements" element={<StudentPlacementDashboard />} />
-							</Route>
+		<ThemeProvider>
+			<AuthProvider>
+				<ProfileProvider>
+					<BrowserRouter>
+						<Suspense fallback={<PageLoader />}>
+							<Routes>
+								<Route path="/" element={<LandingPage />} />
+								<Route path="/landing" element={<LandingPage />} />
+								<Route path="/about" element={<AboutUsPage />} />
+								<Route path="/contact" element={<ContactUsPage />} />
+								<Route path="/privacy" element={<PrivacyPolicyPage />} />
+								<Route path="/terms" element={<TermsPage />} />
+								<Route path="/cookies" element={<CookiePolicyPage />} />
+								<Route path="/faq" element={<FaqPage />} />
+								<Route path="/support" element={<SupportPage />} />
+								<Route path="/login" element={<AuthOverlay />}>
+									<Route index element={<Navigate to="/login/student" replace />} />
+									<Route path="student" element={<StudentLoginPage presentation="modal" />} />
+									<Route path="faculty" element={<FacultyLoginPage presentation="modal" />} />
+									<Route path="admin" element={<AdminLoginPage presentation="modal" />} />
+								</Route>
+								<Route path="/student" element={
+									<ProtectedRoute allowedRoles={['student']}>
+										<StudentLayout />
+									</ProtectedRoute>
+								}>
+									<Route index element={<DashboardPage />} />
+									<Route path="dashboard" element={<DashboardPage />} />
+									<Route path="upload" element={<UploadPage />} />
+									<Route path="activities" element={<ActivitiesPage />} />
+									<Route path="portfolio" element={<PortfolioPage />} />
+									<Route path="profile" element={<ProfilePage />} />
+									<Route path="coding" element={<CodingPage />} />
+									<Route path="resume" element={<ResumeAnalyzerPage />} />
+									<Route path="resume-analyzer" element={<ResumeAnalyzerPage />} />
+									<Route path="developer" element={<DeveloperDashboard />} />
+									<Route path="certificates" element={<CertificatesPage />} />
+									<Route path="ai-chat" element={<AIChatPage />} />
+									<Route path="od" element={<StudentOdPage />} />
+									<Route path="placements" element={<StudentPlacementDashboard />} />
+									<Route path="events" element={<StudentEvents />} />
+								</Route>
 
-							<Route path="/faculty" element={
-								<ProtectedRoute allowedRoles={['faculty']}>
-									<FacultyLayout />
-								</ProtectedRoute>
-							}>
-								<Route index element={<FacultyDashboard />} />
-								<Route path="approvals" element={<FacultyApprovals />} />
-								<Route path="students" element={<FacultyStudents />} />
-								<Route path="mentor" element={<FacultyStudent360 />} />
-								<Route path="od-approvals" element={<FacultyOdApprovals />} />
-							</Route>
+								<Route path="/faculty" element={
+									<ProtectedRoute allowedRoles={['faculty']}>
+										<FacultyLayout />
+									</ProtectedRoute>
+								}>
+									<Route index element={<FacultyDashboard />} />
+									<Route path="approvals" element={<FacultyApprovals />} />
+									<Route path="students" element={<FacultyStudents />} />
+									<Route path="mentor" element={<FacultyStudent360 />} />
+									<Route path="od-approvals" element={<FacultyOdApprovals />} />
+								</Route>
 
-							<Route path="/admin" element={
-								<ProtectedRoute allowedRoles={['admin']}>
-									<AdminLayout />
-								</ProtectedRoute>
-							}>
-								<Route index element={<AdminDashboard />} />
-								<Route path="approvals" element={<FacultyApprovals />} />
-								<Route path="analytics" element={<AdminAnalytics />} />
-								<Route path="placements" element={<AdminPlacementDashboard />} />
-								<Route path="events" element={<AdminEvents />} />
-								<Route path="announcements" element={<AdminAnnouncements />} />
-								<Route path="talent-discovery" element={<AdminTalentDiscovery />} />
-							</Route>
+								<Route path="/admin" element={
+									<ProtectedRoute allowedRoles={['admin']}>
+										<AdminLayout />
+									</ProtectedRoute>
+								}>
+									<Route index element={<AdminDashboard />} />
+									<Route path="approvals" element={<FacultyApprovals />} />
+									<Route path="analytics" element={<AdminAnalytics />} />
+									<Route path="placements" element={<AdminPlacementDashboard />} />
+									<Route path="events" element={<AdminEvents />} />
+									<Route path="announcements" element={<AdminAnnouncements />} />
+									<Route path="talent-discovery" element={<AdminTalentDiscovery />} />
+								</Route>
 
-							<Route path="*" element={<Navigate to="/" replace />} />
-						</Routes>
-					</Suspense>
-				</BrowserRouter>
-			</ProfileProvider>
-		</AuthProvider>
+								<Route path="*" element={<Navigate to="/" replace />} />
+							</Routes>
+						</Suspense>
+					</BrowserRouter>
+				</ProfileProvider>
+			</AuthProvider>
+		</ThemeProvider>
 	);
 }

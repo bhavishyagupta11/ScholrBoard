@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { 
   Briefcase, Award, TrendingUp, BarChart3, Plus, Trash2, Calendar, 
-  MapPin, Clock, Search, ChevronRight, CheckCircle2, AlertCircle, Loader, FileText
+  MapPin, Clock, Search, ChevronRight, CheckCircle2, AlertCircle, Loader, FileText, X
 } from 'lucide-react';
 import opportunitiesApi from '../api/opportunities.api.js';
 import applicationsApi from '../api/applications.api.js';
@@ -49,6 +49,7 @@ export function AdminPlacementDashboard() {
   const [reviewRemarks, setReviewRemarks] = useState('');
   const [interviewData, setInterviewData] = useState({ dateTime: '', venue: '', instructions: '' });
   const [schedulingAppId, setSchedulingAppId] = useState(null);
+  const [previewAppId, setPreviewAppId] = useState(null);
 
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'compose-drive' | 'compose-scholarship' | 'applicant-reviews'
   const [submitting, setSubmitting] = useState(false);
@@ -372,7 +373,7 @@ export function AdminPlacementDashboard() {
 
             {/* Department Breakdown Table */}
             <div className="card p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Department-wise Placement Audit Breakdown</h3>
+              <h3 className="text-lg font-semibold mb-4">Department-wise Placement Audit Breakdown</h3>
               <div className="overflow-x-auto border rounded-lg" style={{ borderColor: 'var(--border-color)' }}>
                 <table className="w-full text-xs text-left">
                   <thead>
@@ -393,11 +394,11 @@ export function AdminPlacementDashboard() {
                     ) : (
                       stats?.departmentBreakdown?.map(dept => (
                         <tr key={dept.department} className="hover:bg-white/5">
-                          <td className="p-3 font-bold text-white">{dept.department}</td>
+                          <td className="p-3 font-bold">{dept.department}</td>
                           <td className="p-3">{dept.totalStudents}</td>
                           <td className="p-3 font-semibold text-green-400">{dept.placed}</td>
                           <td className="p-3">
-                            <span className="font-semibold text-white">{dept.percentage}%</span>
+                            <span className="font-semibold">{dept.percentage}%</span>
                             <div className="w-24 bg-white/10 h-1.5 rounded-full overflow-hidden mt-1">
                               <div className="bg-blue-500 h-full" style={{ width: `${dept.percentage}%` }}></div>
                             </div>
@@ -417,7 +418,7 @@ export function AdminPlacementDashboard() {
           /* COMPOSE DRIVE FORM                                                */
           /* ================================================================= */
           <form onSubmit={handleCreateDrive} className="card p-6 max-w-4xl mx-auto grid md:grid-cols-2 gap-6">
-            <h2 className="text-xl font-bold text-white md:col-span-2 border-b pb-2" style={{ borderColor: 'var(--border-color)' }}>
+            <h2 className="text-xl font-bold md:col-span-2 border-b pb-2" style={{ borderColor: 'var(--border-color)' }}>
               Compose Placement Drive Draft
             </h2>
             <div>
@@ -521,6 +522,7 @@ export function AdminPlacementDashboard() {
                   <label className="block text-xs subtle mb-1">Min Placement Readiness (0-100)</label>
                   <input
                     type="number"
+                    name="minPlacementReadinessScore"
                     value={driveForm.minPlacementReadinessScore}
                     onChange={e => setDriveForm(prev => ({ ...prev, minPlacementReadinessScore: e.target.value }))}
                     className="w-full input-dark py-1.5 px-3 text-xs"
@@ -548,6 +550,7 @@ export function AdminPlacementDashboard() {
                   <label className="block text-xs subtle mb-1">Eligible Depts (Comma-separated)</label>
                   <input
                     type="text"
+                    name="eligibleDepartments"
                     value={driveForm.eligibleDepartments}
                     onChange={e => setDriveForm(prev => ({ ...prev, eligibleDepartments: e.target.value }))}
                     placeholder="e.g. CSE, ECE"
@@ -592,7 +595,7 @@ export function AdminPlacementDashboard() {
           /* COMPOSE SCHOLARSHIP FORM                                          */
           /* ================================================================= */
           <form onSubmit={handleCreateScholarship} className="card p-6 max-w-4xl mx-auto grid md:grid-cols-2 gap-6">
-            <h2 className="text-xl font-bold text-white md:col-span-2 border-b pb-2" style={{ borderColor: 'var(--border-color)' }}>
+            <h2 className="text-xl font-bold md:col-span-2 border-b pb-2" style={{ borderColor: 'var(--border-color)' }}>
               Compose Scholarship Draft
             </h2>
             <div>
@@ -716,7 +719,7 @@ export function AdminPlacementDashboard() {
             
             {/* Placements drives list */}
             <div className="card p-6 space-y-4">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <h2 className="text-lg font-bold flex items-center gap-2">
                 <Briefcase size={20} className="text-blue-400" />
                 Placement Drive Campaigns
               </h2>
@@ -730,7 +733,7 @@ export function AdminPlacementDashboard() {
                     <div key={op._id} className="p-3 rounded border border-white/10 space-y-2 group" style={{ background: 'var(--bg-medium)' }}>
                       <div className="flex justify-between items-start">
                         <div>
-                          <div className="font-bold text-sm text-white">{op.company} - {op.title}</div>
+                          <div className="font-bold text-sm">{op.company} - {op.title}</div>
                           <div className="text-[10px] uppercase font-semibold text-slate-400 mt-0.5">{op.driveCode} · status: {op.status}</div>
                         </div>
 
@@ -776,7 +779,7 @@ export function AdminPlacementDashboard() {
 
             {/* Scholarships list */}
             <div className="card p-6 space-y-4">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <h2 className="text-lg font-bold flex items-center gap-2">
                 <Award size={20} className="text-yellow-400" />
                 Scholarship Schemes
               </h2>
@@ -790,7 +793,7 @@ export function AdminPlacementDashboard() {
                     <div key={s._id} className="p-3 rounded border border-white/10 space-y-2 group" style={{ background: 'var(--bg-medium)' }}>
                       <div className="flex justify-between items-start">
                         <div>
-                          <div className="font-bold text-sm text-white">{s.title}</div>
+                          <div className="font-bold text-sm">{s.title}</div>
                           <div className="text-[10px] uppercase font-semibold text-slate-400 mt-0.5">{s.provider} · status: {s.status}</div>
                         </div>
 
@@ -843,7 +846,7 @@ export function AdminPlacementDashboard() {
             <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: 'var(--border-color)' }}>
               <div>
                 <span className="text-xs uppercase font-semibold text-blue-400">Review Board</span>
-                <h2 className="text-xl font-bold text-white mt-0.5">{selectedOp?.company} — {selectedOp?.title}</h2>
+                <h2 className="text-xl font-bold mt-0.5">{selectedOp?.company} — {selectedOp?.title}</h2>
               </div>
               <button onClick={() => { setSelectedOp(null); setActiveTab('all-lists'); }} className="text-xs subtle hover:text-white">← Back</button>
             </div>
@@ -860,7 +863,7 @@ export function AdminPlacementDashboard() {
                       {/* Candidate profile snapshot */}
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm text-white">{app.studentId?.name}</span>
+                          <span className="font-bold text-sm">{app.studentId?.name}</span>
                           <span className="text-[10px] subtle">({app.studentId?.studentId || 'N/A'})</span>
                         </div>
                         <div className="text-[11px] subtle mt-1 flex flex-wrap gap-x-3 gap-y-1">
@@ -877,19 +880,23 @@ export function AdminPlacementDashboard() {
                           app.status === 'Selected' ? 'badge-green' :
                           app.status === 'Rejected' ? 'badge-red' :
                           app.status === 'Withdrawn' ? 'badge-red' :
+                          app.status === 'Interview Scheduled' ? 'badge-purple' :
                           app.status === 'Interviewed' ? 'badge-orange' : 'badge-yellow'
                         }`}>{app.status}</span>
                         
                         {app.resumeUrl && (
-                          <a href={app.resumeUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline flex items-center gap-0.5">
+                          <button
+                            onClick={() => setPreviewAppId(app._id)}
+                            className="text-xs text-blue-400 hover:underline flex items-center gap-0.5 cursor-pointer bg-transparent border-0 p-0"
+                          >
                             <FileText size={12} /> View Resume
-                          </a>
+                          </button>
                         )}
                       </div>
                     </div>
 
                     {/* Interview detail details */}
-                    {app.status === 'Interviewed' && app.interviewDetails?.dateTime && (
+                    {(app.status === 'Interview Scheduled' || app.status === 'Interviewed') && app.interviewDetails?.dateTime && (
                       <div className="text-xs p-2.5 rounded bg-white/5 border border-purple-500/20 text-purple-400 font-mono">
                         Interview Schedule: {new Date(app.interviewDetails.dateTime).toLocaleString()} @ {app.interviewDetails.venue}
                       </div>
@@ -909,21 +916,45 @@ export function AdminPlacementDashboard() {
                         </div>
 
                         <div className="flex gap-2">
-                          <button
-                            onClick={() => { setSchedulingAppId(app._id); setError(null); }}
-                            className="text-[10px] px-3 py-1.5 rounded bg-purple-600 hover:bg-purple-500 text-white font-semibold"
-                          >
-                            Schedule Interview
-                          </button>
-                          <button
-                            onClick={() => handleReviewApplicant(app._id, 'Selected')}
-                            className="text-[10px] px-3 py-1.5 rounded bg-green-600 hover:bg-green-500 text-white font-semibold"
-                          >
-                            Select Candidate
-                          </button>
+                          {app.status === 'Applied' && (
+                            <button
+                              onClick={() => handleReviewApplicant(app._id, 'Shortlisted')}
+                              className="btn text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-all"
+                            >
+                              Shortlist
+                            </button>
+                          )}
+
+                          {(app.status === 'Applied' || app.status === 'Shortlisted') && (
+                            <button
+                              onClick={() => { setSchedulingAppId(app._id); setError(null); }}
+                              className="btn text-xs px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-semibold transition-all"
+                            >
+                              Schedule Interview
+                            </button>
+                          )}
+
+                          {app.status === 'Interview Scheduled' && (
+                            <button
+                              onClick={() => handleReviewApplicant(app._id, 'Interviewed')}
+                              className="btn text-xs px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white font-semibold transition-all"
+                            >
+                              Mark Interviewed
+                            </button>
+                          )}
+
+                          {app.status === 'Interviewed' && (
+                            <button
+                              onClick={() => handleReviewApplicant(app._id, 'Selected')}
+                              className="btn text-xs px-3 py-1.5 btn-success-custom font-semibold transition-all"
+                            >
+                              Select Candidate
+                            </button>
+                          )}
+
                           <button
                             onClick={() => handleReviewApplicant(app._id, 'Rejected')}
-                            className="text-[10px] px-3 py-1.5 rounded bg-red-600 hover:bg-red-500 text-white font-semibold"
+                            className="btn text-xs px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-semibold transition-all"
                           >
                             Reject
                           </button>
@@ -943,7 +974,7 @@ export function AdminPlacementDashboard() {
             <div className="flex justify-between items-center border-b pb-2" style={{ borderColor: 'var(--border-color)' }}>
               <div>
                 <span className="text-xs uppercase font-semibold text-yellow-400">Review Board</span>
-                <h2 className="text-xl font-bold text-white mt-0.5">{selectedScholarship?.title}</h2>
+                <h2 className="text-xl font-bold mt-0.5">{selectedScholarship?.title}</h2>
               </div>
               <button onClick={() => { setSelectedScholarship(null); setActiveTab('all-lists'); }} className="text-xs subtle hover:text-white">← Back</button>
             </div>
@@ -959,7 +990,7 @@ export function AdminPlacementDashboard() {
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm text-white">{app.studentId?.name}</span>
+                          <span className="font-bold text-sm">{app.studentId?.name}</span>
                           <span className="text-[10px] subtle">({app.studentId?.studentId || 'N/A'})</span>
                         </div>
                         <div className="text-[11px] subtle mt-1 flex flex-wrap gap-x-3 gap-y-1">
@@ -1033,7 +1064,7 @@ export function AdminPlacementDashboard() {
       {schedulingAppId && (
         <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
           <div className="card max-w-md w-full p-6 space-y-4">
-            <h3 className="text-lg font-bold text-white">Schedule Candidate Interview</h3>
+            <h3 className="text-lg font-bold">Schedule Candidate Interview</h3>
             <p className="text-xs subtle">Compose details for the recruitment interview rounds.</p>
 
             <form onSubmit={handleScheduleInterview} className="space-y-4">
@@ -1076,6 +1107,30 @@ export function AdminPlacementDashboard() {
                 <button type="submit" className="btn btn-primary px-4 py-2 text-xs">Schedule Interview</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Resume Preview Modal */}
+      {previewAppId && (
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="card w-full max-w-3xl flex flex-col p-6 space-y-4" style={{ background: 'var(--surface-card)', borderColor: 'var(--border-color)' }}>
+            <div className="flex justify-between items-center pb-2 border-b" style={{ borderColor: 'var(--border-color)' }}>
+              <h2 className="text-lg font-bold">Candidate Resume Preview</h2>
+              <button 
+                onClick={() => setPreviewAppId(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-full hover:bg-white/10"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 flex items-center justify-center min-h-[50vh] max-h-[70vh] bg-black/20 rounded-lg p-2">
+              <iframe 
+                src={`/api/upload/resume/view/${previewAppId}`} 
+                title="PDF Resume Preview"
+                className="w-full h-[60vh] rounded border-0" 
+              />
+            </div>
           </div>
         </div>
       )}

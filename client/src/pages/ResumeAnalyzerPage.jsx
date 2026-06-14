@@ -12,6 +12,7 @@ import {
   Upload, FileText, CheckCircle, AlertCircle, Award,
   Target, TrendingUp, Zap, BookOpen, ChevronDown, ChevronUp,
   RefreshCw, X, User, Mail, GraduationCap, Briefcase, Star,
+  ExternalLink,
 } from 'lucide-react';
 import uploadApi from '../api/upload.api.js';
 import aiApi from '../api/ai.api.js';
@@ -239,6 +240,46 @@ function ResultsSection({ analysis }) {
           </p>
         )}
       </div>
+
+      {/* PDF Document Preview */}
+      {analysis.fileUrl && (
+        <div className="card p-6 space-y-4">
+          <div className="flex justify-between items-center flex-wrap gap-4 border-b pb-4" style={{ borderColor: 'var(--border-color)' }}>
+            <div className="flex items-center gap-2">
+              <FileText size={20} style={{ color: 'var(--primary-blue)' }} />
+              <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
+                Resume Document Preview
+              </h3>
+            </div>
+            <div className="flex gap-2">
+              <a
+                href={analysis.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-outline text-xs px-3 py-1.5 flex items-center gap-1.5"
+              >
+                <ExternalLink size={14} /> Open in New Tab
+              </a>
+              <a
+                href={analysis.fileUrl}
+                download
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-outline text-xs px-3 py-1.5"
+              >
+                Download PDF
+              </a>
+            </div>
+          </div>
+          <div className="w-full overflow-hidden bg-black/20 rounded-lg p-2" style={{ border: '1px solid var(--border-color)' }}>
+            <iframe
+              src={analysis.fileUrl}
+              title="Resume PDF Preview"
+              className="w-full h-[60vh] rounded border-0"
+            />
+          </div>
+        </div>
+      )}
 
       {/* ── Strengths & Improvements ────────────────────────────── */}
       <div className="grid md:grid-cols-2 gap-4">
@@ -625,8 +666,8 @@ function ResultsSection({ analysis }) {
 function HistoryItem({ analysis, isActive, onClick }) {
   const status = analysis.analysisStatus || 'pending';
   const badgeClass =
-    status === 'completed' ? 'badge-success' :
-    status === 'failed'    ? 'badge-error'   : 'badge-warning';
+    status === 'completed' ? 'badge-green' :
+    status === 'failed'    ? 'badge-red'   : 'badge-yellow';
   const badgeLabel =
     status === 'completed' ? 'Analyzed'    :
     status === 'failed'    ? 'Failed'      : 'Processing…';
@@ -658,7 +699,7 @@ function HistoryItem({ analysis, isActive, onClick }) {
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
-export function ResumeImportPage() {
+export function ResumeAnalyzerPage() {
 
   // ── Upload state ────────────────────────────────────────────────────────────
   const [file,          setFile]          = useState(null);
@@ -848,35 +889,7 @@ export function ResumeImportPage() {
         </p>
       </div>
 
-      {/* Resume Intelligence CTA Banner */}
-      <div className="card p-6 relative overflow-hidden bg-gradient-to-r from-emerald-900/40 to-teal-900/40 border border-emerald-500/30 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-lg shadow-emerald-950/20">
-        <div className="flex flex-col md:flex-row md:items-center gap-6">
-          <div className="flex items-center justify-center w-20 h-20 rounded-full border-4 border-emerald-500/20 bg-emerald-950/40 relative shrink-0">
-            <span className="text-3xl font-extrabold text-white">{latestAtsScore}</span>
-            <div className="absolute -bottom-1 bg-emerald-500 text-[10px] font-bold text-white px-2 py-0.5 rounded-full uppercase tracking-wider">ATS</div>
-          </div>
-          <div className="space-y-1">
-            <h2 className="text-xl font-bold text-white">Resume Intelligence Reports</h2>
-            <p className="text-sm text-slate-305 max-w-xl">
-              Compare multiple resumes, analyze detailed ATS metrics, review skill gap suggestions, and track feedback history.
-            </p>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-xs text-slate-400">Latest Analysis:</span>
-              <span className="text-xs font-semibold text-emerald-400">
-                {latestDate}
-              </span>
-            </div>
-          </div>
-        </div>
-        <div>
-          <Link 
-            to="/student/resume-intelligence" 
-            className="btn btn-primary whitespace-nowrap shadow-lg shadow-emerald-500/20 flex items-center gap-2 hover:translate-x-0.5 transition-transform"
-          >
-            View Resume Intelligence
-          </Link>
-        </div>
-      </div>
+
 
       {/* ── SECTION 1: Upload ────────────────────────────────────────────── */}
       <div className="card p-6 md:p-8">
@@ -1079,4 +1092,4 @@ export function ResumeImportPage() {
   );
 }
 
-export default ResumeImportPage;
+export default ResumeAnalyzerPage;

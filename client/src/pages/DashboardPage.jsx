@@ -248,7 +248,7 @@ export function DashboardPage() {
       </div>
 
       {/* ─── Charts ─────────────────────────────────────────────────────────── */}
-      <div ref={chartsRef} className="grid md:grid-cols-2 gap-4 gpu-accelerated">
+      <div ref={chartsRef} className="grid lg:grid-cols-2 gap-4 gpu-accelerated">
         <div className="card p-4">
           <div className="font-medium mb-3 flex items-center gap-2"><TrendingUp size={16} /> Activity Performance</div>
           <div className="h-64">
@@ -278,28 +278,30 @@ export function DashboardPage() {
         ) : recentActivities.length === 0 ? (
           <div className="text-sm subtle py-4 text-center">No activities yet — <Link to="/student/upload" style={{ color: 'var(--primary-blue)' }}>submit your first one</Link></div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-slate-500">
-                <th className="py-2">Title</th>
-                <th className="py-2">Category</th>
-                <th className="py-2">Status</th>
-                <th className="py-2">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentActivities.map((r) => (
-                <tr key={r._id} className="border-t hover:bg-white/5 transition-colors">
-                  <td className="py-2">{r.title}</td>
-                  <td className="py-2">{r.category}</td>
-                  <td className="py-2">
-                    <span className={`badge ${r.status === 'Approved' ? 'badge-green' : r.status === 'Pending' ? 'badge-yellow' : 'badge-red'}`}>{r.status}</span>
-                  </td>
-                  <td className="py-2 subtle">{new Date(r.activityDate || r.createdAt).toLocaleDateString()}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-slate-500">
+                  <th className="py-2">Title</th>
+                  <th className="py-2">Category</th>
+                  <th className="py-2">Status</th>
+                  <th className="py-2">Date</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {recentActivities.map((r) => (
+                  <tr key={r._id} className="border-t hover:bg-white/5 transition-colors">
+                    <td className="py-2">{r.title}</td>
+                    <td className="py-2">{r.category}</td>
+                    <td className="py-2">
+                      <span className={`badge ${r.status === 'Approved' ? 'badge-green' : r.status === 'Pending' ? 'badge-yellow' : 'badge-red'}`}>{r.status}</span>
+                    </td>
+                    <td className="py-2 subtle">{new Date(r.activityDate || r.createdAt).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -372,12 +374,12 @@ export function DashboardPage() {
       </div>
 
       {/* ─── Placements + Events ─────────────────────────────────────────────── */}
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid lg:grid-cols-2 gap-4">
         {/* Personalized Placements */}
         <div className="card p-4">
           <div className="font-medium mb-3 flex items-center justify-between">
             <span className="flex items-center gap-2"><BriefcaseBusiness size={18} /> Placements &amp; Internships</span>
-            <Link to="/student/activities" className="text-xs" style={{ color: 'var(--primary-blue)' }}>View all →</Link>
+            <Link to="/student/placements" className="text-xs" style={{ color: 'var(--primary-blue)' }}>View all →</Link>
           </div>
           {loadingPlacements ? (
             <ListSkeleton rows={3} />
@@ -418,7 +420,7 @@ export function DashboardPage() {
         <div className="card p-4">
           <div className="font-medium mb-3 flex items-center justify-between">
             <span className="flex items-center gap-2"><CalendarDays size={18} /> Upcoming Events</span>
-            <Link to="/student/activities" className="text-xs" style={{ color: 'var(--primary-blue)' }}>View all →</Link>
+            <Link to="/student/events" className="text-xs" style={{ color: 'var(--primary-blue)' }}>View all →</Link>
           </div>
           {loadingEvents ? (
             <ListSkeleton rows={3} />
@@ -435,12 +437,22 @@ export function DashboardPage() {
                   {event.venue && <div className="text-xs subtle">Venue: {event.venue}</div>}
                   {event.requiresRegistration && (
                     <div className="mt-2">
-                      <button
-                        onClick={() => eventsApi.register(event._id).catch((err) => setDashboardError(err.message || 'Failed to register for event'))}
-                        className="btn btn-primary text-xs px-3 py-1 flex items-center gap-1"
-                      >
-                        <CheckCircle2 size={13} /> Register
-                      </button>
+                      {event.isRegistered ? (
+                        <span className="badge badge-green text-xs font-semibold py-1 px-2.5 flex items-center gap-1 w-fit">
+                          <CheckCircle2 size={13} /> Registered
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            eventsApi.register(event._id)
+                              .then(() => fetchDashboard())
+                              .catch((err) => setDashboardError(err.message || 'Failed to register for event'));
+                          }}
+                          className="btn btn-primary text-xs px-3 py-1 flex items-center gap-1"
+                        >
+                          <CheckCircle2 size={13} /> Register
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -455,7 +467,7 @@ export function DashboardPage() {
         {[
           { title: 'Portfolio', desc: 'View and share your verified portfolio', to: '/student/portfolio', icon: <FileText size={18} /> },
           { title: 'Coding Profiles', desc: 'See your coding stats across platforms', to: '/student/coding', icon: <Code2 size={18} /> },
-          { title: 'Resume Import', desc: 'Upload and analyze your resume with AI', to: '/student/resume', icon: <UploadCloud size={18} /> },
+          { title: 'Resume Analyzer', desc: 'Upload and analyze your resume with AI', to: '/student/resume-analyzer', icon: <UploadCloud size={18} /> },
         ].map((c) => (
           <Link key={c.title} to={c.to} className="card p-4 flex items-start gap-3 hover:opacity-90">
             <div className="grid h-9 w-9 place-items-center rounded-lg flex-shrink-0" style={{ background: 'var(--accent-soft)', color: 'var(--primary-blue)' }}>{c.icon}</div>

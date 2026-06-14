@@ -8,7 +8,9 @@ import { evaluatePlacementEligibility } from '../services/eligibilityService.js'
 import { withTransaction } from '../utils/withTransaction.js';
 
 const LEGAL_ADMIN_TRANSITIONS = {
-  Applied: ['Shortlisted'],
+  Applied: ['Shortlisted', 'Interview Scheduled', 'Rejected'],
+  Shortlisted: ['Interview Scheduled', 'Rejected'],
+  'Interview Scheduled': ['Interviewed', 'Rejected'],
   Interviewed: ['Selected', 'Rejected'],
 };
 
@@ -111,7 +113,7 @@ export const withdrawApplication = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Application not found' });
     }
 
-    if (!['Applied', 'Shortlisted', 'Interviewed'].includes(application.status)) {
+    if (!['Applied', 'Shortlisted', 'Interview Scheduled', 'Interviewed'].includes(application.status)) {
       return res.status(400).json({
         success: false,
         message: `Cannot withdraw an application that is already ${application.status}`,
@@ -173,10 +175,10 @@ export const reviewApplicationStatus = async (req, res) => {
     const { id } = req.params; // Application ID
     const { status, remarks } = req.body;
 
-    if (!['Shortlisted', 'Rejected', 'Selected'].includes(status)) {
+    if (!['Shortlisted', 'Rejected', 'Selected', 'Interviewed', 'Interview Scheduled'].includes(status)) {
       return res.status(400).json({
         success: false,
-        message: 'Status must be one of: "Shortlisted", "Rejected", "Selected"',
+        message: 'Status must be one of: "Shortlisted", "Rejected", "Selected", "Interviewed", "Interview Scheduled"',
       });
     }
 
@@ -268,10 +270,10 @@ export const scheduleInterview = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Application not found' });
     }
 
-    if (application.status !== 'Shortlisted') {
+    if (application.status !== 'Applied' && application.status !== 'Shortlisted') {
       return res.status(400).json({
         success: false,
-        message: `Illegal application transition: ${application.status} -> Interviewed`,
+        message: `Illegal application transition: ${application.status} -> Interview Scheduled`,
       });
     }
 
@@ -280,7 +282,7 @@ export const scheduleInterview = async (req, res) => {
     const interviewInstructions = instructions?.trim() || 'Please attend with professional attire and a copy of your resume.';
 
     await withTransaction(async (session) => {
-      application.status = 'Interviewed';
+      application.status = 'Interview Scheduled';
       application.interviewDetails = {
         dateTime: new Date(dateTime),
         venue: venue.trim(),
@@ -299,7 +301,7 @@ export const scheduleInterview = async (req, res) => {
           company: application.opportunityId?.company,
           title: application.opportunityId?.title,
           previousStatus: prevStatus,
-          newStatus: 'Interviewed',
+          newStatus: 'Interview Scheduled',
           dateTime,
           venue,
         },

@@ -72,7 +72,7 @@ export const getProfileByUserId = async (req, res) => {
     const { userId } = req.params;
 
     const profile = await Profile.findOne({ userId })
-      .populate('userId', 'name email role department semester studentId facultyId avatar verified');
+      .populate('userId', 'name email role department semester studentId facultyId avatar verified advisorId');
 
     if (!profile) {
       return res.status(404).json({ success: false, message: 'Profile not found' });
@@ -102,7 +102,7 @@ export const getProfileByUserId = async (req, res) => {
       const targetUser = profileData.userId;
       if (
         targetUser.role !== 'student' ||
-        (targetUser.department && targetUser.department !== req.user.department)
+        (targetUser.department && targetUser.department !== req.user.department && String(targetUser.advisorId) !== String(req.user._id))
       ) {
         return res.status(403).json({
           success: false,

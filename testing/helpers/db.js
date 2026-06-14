@@ -28,7 +28,8 @@ export async function resetDB() {
     'aichathistories',
     'learningprogresses',
     'analytics',
-    'resumeanalyses'
+    'resumeanalyses',
+    'events'
   ];
 
   console.log('Clearing E2E test database collections...');

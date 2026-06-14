@@ -55,13 +55,13 @@ test('LeetCode / DSA scoring formula regression', () => {
   };
 
   const score = calculateDsaScore(metrics);
-  // Expected:
-  // Solved Points: min(100, (120/400)*100) = 30. Weighted (40%): 12
-  // Difficulty Points: min(100, ((50*1 + 50*2 + 20*3.5)/500)*100) = min(100, (220/500)*100) = 44. Weighted (30%): 13.2
-  // Contest Points: min(100, ((1500-1000)/1000)*100) = 50. Weighted (30%): 15
-  // Total: 12 + 13.2 + 15 = 40.2 -> round to 40
-  if (score !== 40) {
-    throw new Error(`Expected DSA score to be 40, got ${score}`);
+  // Expected (v2.0.0):
+  // Easy Points: min(100, (50/100)*100) = 50. Weighted (20%): 10
+  // Med+Hard Points: min(100, ((50*1 + 20*2.5)/150)*100) = min(100, (100/150)*100) = 66.67. Weighted (30%): 20
+  // Contest Points: min(100, ((1500-1000)/1000)*100) = 50. Weighted (50%): 25
+  // Total: 10 + 20 + 25 = 55
+  if (score !== 55) {
+    throw new Error(`Expected DSA score to be 55, got ${score}`);
   }
 });
 
@@ -215,8 +215,8 @@ test('Version upgrades and score calculations database saving', async () => {
     codingStats: {
       profiles: { github: 'score_test', leetcode: 'score_test' },
       rawMetrics: {
-        github: { publicRepos: 10, followers: 2, stars: 10, forks: 4, topics: ['react', 'node'] }, // GithubScore: 51
-        leetcode: { totalSolved: 120, easySolved: 50, mediumSolved: 50, hardSolved: 20, contestRating: 1500 } // DsaScore: 40
+        github: { publicRepos: 10, effectiveRepositoryCount: 10, followers: 2, stars: 10, forks: 4, topics: ['react', 'node'] }, // GithubScore: 51
+        leetcode: { totalSolved: 120, easySolved: 50, mediumSolved: 50, hardSolved: 20, contestRating: 1500 } // DsaScore: 55
       }
     }
   });
@@ -225,16 +225,16 @@ test('Version upgrades and score calculations database saving', async () => {
     const updated = await recalculateAndSaveScore(profile._id, 'unit test execution');
 
     // Expected subscores
-    if (updated.githubScore !== 51 || updated.dsaScore !== 40 || updated.cpScore !== 0) {
+    if (updated.githubScore !== 51 || updated.dsaScore !== 55 || updated.cpScore !== 0) {
       throw new Error(`Subscores calculated incorrectly. Github: ${updated.githubScore}, DSA: ${updated.dsaScore}`);
     }
 
-    // Expected Unified: (51 * 0.3 + 40 * 0.35) / 0.65 = (15.3 + 14) / 0.65 = 29.3 / 0.65 = 45.07
+    // Expected Unified (v2.0.0): (51 * 0.3 + 55 * 0.35) / 0.65 = (15.3 + 19.25) / 0.65 = 34.55 / 0.65 = 53.15
     // Plus Academic Bonus: 20 * 0.1 = 2
     // Plus Readiness Bonus: 50 * 0.02 = 1
-    // Expected Unified Score = 45.07 + 2 + 1 = 48.07 -> round to 48
-    if (updated.developerScore !== 48) {
-      throw new Error(`Expected unified score to be 48, got ${updated.developerScore}`);
+    // Expected Unified Score = 53.15 + 2 + 1 = 56.15 -> round to 56
+    if (updated.developerScore !== 56) {
+      throw new Error(`Expected unified score to be 56, got ${updated.developerScore}`);
     }
 
     // Expected breakdown details
@@ -242,9 +242,9 @@ test('Version upgrades and score calculations database saving', async () => {
       throw new Error(`Breakdown saved incorrectly: ${JSON.stringify(updated.scoreBreakdown)}`);
     }
 
-    // Expected version updates
-    if (updated.developerScoreVersion !== 1 || updated.scoringFormulaVersion !== 'v1.0.0') {
-      throw new Error(`Expected version 1, formula v1.0.0. Got version ${updated.developerScoreVersion}, formula ${updated.scoringFormulaVersion}`);
+    // Expected version updates (v2.0.0)
+    if (updated.developerScoreVersion !== 2 || updated.scoringFormulaVersion !== 'v2.0.0') {
+      throw new Error(`Expected version 2, formula v2.0.0. Got version ${updated.developerScoreVersion}, formula ${updated.scoringFormulaVersion}`);
     }
 
     // Expected audit logs

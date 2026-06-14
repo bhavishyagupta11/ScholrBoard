@@ -127,11 +127,11 @@ export function CodingPage() {
       <div className="card p-6 relative overflow-hidden bg-gradient-to-r from-blue-900/40 to-indigo-900/40 border border-blue-500/30 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-lg shadow-blue-950/20">
         <div className="flex flex-col md:flex-row md:items-center gap-6">
           <div className="flex items-center justify-center w-20 h-20 rounded-full border-4 border-blue-500/20 bg-blue-950/40 relative shrink-0">
-            <span className="text-3xl font-extrabold text-white">{devScore}</span>
+            <span className="text-3xl font-extrabold">{devScore}</span>
             <div className="absolute -bottom-1 bg-blue-500 text-[10px] font-bold text-white px-2 py-0.5 rounded-full uppercase tracking-wider">Score</div>
           </div>
           <div className="space-y-1">
-            <h2 className="text-xl font-bold text-white">Developer Intelligence Dashboard</h2>
+            <h2 className="text-xl font-bold">Developer Intelligence Dashboard</h2>
             <p className="text-sm text-slate-350 max-w-xl">
               Track your unified developer metrics, algorithm proficiency, and platform synchronization cooldowns.
             </p>
@@ -215,7 +215,15 @@ export function CodingPage() {
             <BarChart data={platforms.filter(p => p.solved > 0)}>
               <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} />
               <YAxis stroke="var(--text-secondary)" fontSize={12} />
-              <Tooltip cursor={{ fill: 'rgba(255,255,255,0.05)' }} contentStyle={{ backgroundColor: 'var(--surface-card)', border: 'none', borderRadius: '8px' }} />
+              <Tooltip 
+                cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }} 
+                contentStyle={{ 
+                  backgroundColor: 'var(--bg-medium)', 
+                  border: '1px solid var(--border-color)', 
+                  borderRadius: '8px',
+                  color: 'var(--text-primary)'
+                }} 
+              />
               <Legend />
               <Bar dataKey="solved" fill="var(--primary-blue)" radius={[4, 4, 0, 0]} name="Score/Activity" />
             </BarChart>

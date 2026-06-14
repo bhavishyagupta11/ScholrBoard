@@ -6,9 +6,10 @@ import { useEffect, useState } from 'react';
 import { useScrollAnimation } from '../hooks/useScrollAnimation.js';
 import activitiesApi from '../api/activities.api.js';
 import { Plus, Trash2, Edit2, AlertCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 export function ActivitiesPage() {
+  const navigate = useNavigate();
   const [activities, setActivities] = useState([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
@@ -122,9 +123,26 @@ export function ActivitiesPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
                         {(a.status === 'Pending' || a.status === 'Needs Revision') && (
-                          <button onClick={() => onDelete(a._id)} className="p-1.5 rounded hover:bg-white/10 text-red-400 transition-colors" title="Delete">
-                            <Trash2 size={16} />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => navigate(`/student/upload?id=${a._id}`)}
+                              className="p-1.5 rounded hover:bg-white/10 text-blue-400 transition-colors flex items-center gap-1"
+                              title="Edit"
+                              aria-label="Edit"
+                            >
+                              <Edit2 size={16} />
+                              <span className="text-xs">Edit</span>
+                            </button>
+                            <button
+                              onClick={() => onDelete(a._id)}
+                              className="p-1.5 rounded hover:bg-white/10 text-red-400 transition-colors flex items-center gap-1"
+                              title="Delete"
+                              aria-label="Delete"
+                            >
+                              <Trash2 size={16} />
+                              <span className="text-xs">Delete</span>
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>

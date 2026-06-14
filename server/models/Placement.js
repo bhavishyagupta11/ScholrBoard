@@ -26,7 +26,7 @@ const applicantSchema = new mongoose.Schema({
   appliedAt: { type: Date, default: Date.now },
   status:    {
     type: String,
-    enum: ['Applied', 'Shortlisted', 'Interviewed', 'Selected', 'Rejected'],
+    enum: ['Applied', 'Shortlisted', 'Interview Scheduled', 'Interviewed', 'Selected', 'Rejected'],
     default: 'Applied',
   },
   notes: { type: String, maxlength: 500 },

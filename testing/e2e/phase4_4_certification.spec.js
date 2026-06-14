@@ -65,11 +65,11 @@ test.describe('Phase 4.4 Production Certification E2E Tests', () => {
     await page.waitForTimeout(2000); // Wait for score rings to animate
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, `${name}_2_developer.png`) });
 
-    // Go to Resume Intelligence
-    console.log('Navigating to Resume Intelligence...');
-    await page.goto('/student/resume-intelligence');
+    // Go to Resume Analyzer
+    console.log('Navigating to Resume Analyzer...');
+    await page.goto('/student/resume-analyzer');
     await page.waitForTimeout(2000);
-    await page.screenshot({ path: path.join(SCREENSHOT_DIR, `${name}_3_resume_intel.png`) });
+    await page.screenshot({ path: path.join(SCREENSHOT_DIR, `${name}_3_resume_analyzer.png`) });
 
     await stopTrace(context, name);
   });
