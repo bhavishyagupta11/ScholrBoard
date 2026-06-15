@@ -113,7 +113,7 @@ export function ContactUsPage() {
               <div>
                 <h4 className="font-bold">Campus Office</h4>
                 <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  Block 4, Academic Circle, Tech University campus
+                  Jagatpura, Jaipur, Rajasthan
                 </p>
               </div>
             </div>
