@@ -227,6 +227,9 @@ export const getSystemAnalytics = async (req, res) => {
         if (req.user.role === 'faculty') {
           const students = await User.find({ role: 'student', advisorId: req.user._id, ...excludeTestUsers() }).select('_id');
           match.userId = { $in: students.map((student) => student._id) };
+        } else {
+          const testUsers = await User.find({ email: TEST_EMAIL_REGEX }).select('_id');
+          match.userId = { $nin: testUsers.map(u => u._id) };
         }
         return Activity.aggregate([
           { $match: match },
@@ -238,6 +241,9 @@ export const getSystemAnalytics = async (req, res) => {
         if (req.user.role === 'faculty') {
           const students = await User.find({ role: 'student', advisorId: req.user._id, ...excludeTestUsers() }).select('_id');
           query.userId = { $in: students.map((student) => student._id) };
+        } else {
+          const testUsers = await User.find({ email: TEST_EMAIL_REGEX }).select('_id');
+          query.userId = { $nin: testUsers.map(u => u._id) };
         }
         return Activity.find(query)
         .populate('userId', 'name studentId department')
@@ -367,5 +373,37 @@ export const getPlacementAnalytics = async (req, res) => {
   } catch (error) {
     console.error('getPlacementAnalytics error:', error);
     return res.status(500).json({ success: false, message: 'Failed to fetch placement analytics' });
+  }
+};
+
+// ─── FACULTY: Advisor activity analytics ─────────────────────────────────────
+export const getFacultyActivityStats = async (req, res) => {
+  try {
+    const { default: User } = await import('../models/User.js');
+
+    // Find assigned advisees, excluding test users
+    const students = await User.find({ role: 'student', advisorId: req.user._id, ...excludeTestUsers() }).select('_id');
+    const studentIds = students.map((s) => s._id);
+
+    const activityStats = await Activity.aggregate([
+      { $match: { userId: { $in: studentIds } } },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]);
+
+    const activitySummary = { Pending: 0, Approved: 0, Rejected: 0 };
+    activityStats.forEach(({ _id, count }) => {
+      if (_id in activitySummary) activitySummary[_id] = count;
+    });
+
+    return res.json({
+      success: true,
+      pending: activitySummary.Pending,
+      approved: activitySummary.Approved,
+      rejected: activitySummary.Rejected,
+      activitySummary,
+    });
+  } catch (error) {
+    console.error('getFacultyActivityStats error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch faculty stats' });
   }
 };

@@ -15,6 +15,9 @@ export const analyticsApi = {
 
   /** Admin: system-wide analytics */
   getSystemAnalytics: () => api.get('/analytics/system'),
+
+  /** Faculty: faculty activity stats */
+  getFacultyActivityStats: () => api.get('/analytics/faculty-activity-stats'),
 };
 
 export default analyticsApi;

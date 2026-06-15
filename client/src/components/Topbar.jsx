@@ -1,11 +1,11 @@
-import { Bell, Search, User2, X, LogOut, Sun, Moon } from 'lucide-react';
+import { Bell, Search, User2, X, LogOut, Sun, Moon, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useTheme } from '../contexts/ThemeContext.jsx';
 import notificationsApi from '../api/notifications.api.js';
 
-export function Topbar() {
+export function Topbar({ onMenuClick }) {
 	const navigate = useNavigate();
 	const { user, logout } = useAuth();
 	const { theme, toggleTheme } = useTheme();
@@ -153,6 +153,14 @@ export function Topbar() {
 					<>
 						{/* Left: Brand / Workspace */}
 						<div className="flex items-center gap-4 min-w-0 flex-1 md:flex-initial">
+							<button 
+								className="header-action-btn md:hidden flex-shrink-0 mr-1"
+								onClick={onMenuClick}
+								aria-label="Open navigation menu"
+							>
+								<Menu size={20} />
+							</button>
+
 							<div className="hidden lg:block min-w-[170px]">
 								<div className="text-[11px] font-semibold uppercase tracking-wide" style={{color:'var(--text-secondary)'}}>
 									Workspace

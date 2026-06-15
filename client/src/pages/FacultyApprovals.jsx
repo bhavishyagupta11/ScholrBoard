@@ -3,12 +3,18 @@
  */
 import { useState, useEffect } from 'react';
 import activitiesApi from '../api/activities.api.js';
+import analyticsApi from '../api/analytics.api.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import { AlertCircle, CheckCircle, XCircle, Clock, Search, ExternalLink, X } from 'lucide-react';
 
 export function FacultyApprovals() {
+  const { user } = useAuth();
+  const role = user?.role || localStorage.getItem('role');
+
   const [pendingList, setPendingList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [stats, setStats] = useState({ Pending: 0, Approved: 0, Rejected: 0 });
 
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDept, setFilterDept] = useState('All');
@@ -18,7 +24,31 @@ export function FacultyApprovals() {
 
   useEffect(() => {
     fetchPending();
+    fetchStats();
   }, []);
+
+  const fetchStats = async () => {
+    try {
+      let res;
+      if (role === 'admin') {
+        res = await analyticsApi.getSystemAnalytics();
+        if (res.success && res.systemAnalytics?.activitySummary) {
+          setStats(res.systemAnalytics.activitySummary);
+        }
+      } else {
+        res = await analyticsApi.getFacultyActivityStats();
+        if (res.success) {
+          setStats({
+            Pending: res.pending ?? 0,
+            Approved: res.approved ?? 0,
+            Rejected: res.rejected ?? 0
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch stats:', err);
+    }
+  };
 
   const fetchPending = async () => {
     setLoading(true);
@@ -50,6 +80,7 @@ export function FacultyApprovals() {
       await activitiesApi.review(id, { status, rejectionReason, reviewComments });
       // Remove from list after review
       setPendingList(prev => prev.filter(item => item._id !== id));
+      fetchStats();
     } catch (err) {
       setError(err.message || 'Failed to review activity');
     }
@@ -85,21 +116,21 @@ export function FacultyApprovals() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="card p-4">
           <div className="flex justify-between items-center">
-            <div className="text-2xl font-bold text-yellow-400">{pendingList.length}</div>
+            <div className="text-2xl font-bold text-yellow-400">{stats.Pending}</div>
             <Clock size={20} className="text-yellow-400 opacity-50" />
           </div>
           <div className="text-sm mt-1" style={{color:'var(--text-secondary)'}}>Pending Review</div>
         </div>
         <div className="card p-4">
           <div className="flex justify-between items-center">
-            <div className="text-2xl font-bold text-green-400">–</div>
+            <div className="text-2xl font-bold text-green-400">{stats.Approved}</div>
             <CheckCircle size={20} className="text-green-400 opacity-50" />
           </div>
           <div className="text-sm mt-1" style={{color:'var(--text-secondary)'}}>Approved (Total)</div>
         </div>
         <div className="card p-4">
           <div className="flex justify-between items-center">
-            <div className="text-2xl font-bold text-red-400">–</div>
+            <div className="text-2xl font-bold text-red-400">{stats.Rejected}</div>
             <XCircle size={20} className="text-red-400 opacity-50" />
           </div>
           <div className="text-sm mt-1" style={{color:'var(--text-secondary)'}}>Rejected (Total)</div>

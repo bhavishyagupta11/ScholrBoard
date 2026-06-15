@@ -5,6 +5,7 @@ import Activity from '../models/Activity.js';
 import AuditLog from '../models/AuditLog.js';
 import Notification from '../models/Notification.js';
 import { withTransaction } from '../utils/withTransaction.js';
+import { excludeTestUsers, TEST_EMAIL_REGEX } from '../utils/testFilters.js';
 
 // ─── STUDENT: Submit a new activity ──────────────────────────────────────────
 export const createActivity = async (req, res) => {
@@ -197,8 +198,12 @@ export const getPendingActivities = async (req, res) => {
     // Faculty only see activities from assigned advisees.
     if (req.user.role === 'faculty') {
       const { default: User } = await import('../models/User.js');
-      const assignedStudents = await User.find({ role: 'student', advisorId: req.user._id }).select('_id');
+      const assignedStudents = await User.find({ role: 'student', advisorId: req.user._id, ...excludeTestUsers() }).select('_id');
       query.userId = { $in: assignedStudents.map((student) => student._id) };
+    } else if (req.user.role === 'admin') {
+      const { default: User } = await import('../models/User.js');
+      const testUsers = await User.find({ email: TEST_EMAIL_REGEX }).select('_id');
+      query.userId = { $nin: testUsers.map(u => u._id) };
     }
 
     if (category) query.category = category;
