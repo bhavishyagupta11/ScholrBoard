@@ -39,6 +39,7 @@ import opportunityRoutes  from './routes/opportunities.js';
 import applicationRoutes  from './routes/applications.js';
 import scholarshipRoutes  from './routes/scholarships.js';
 import developerSyncRoutes from './routes/developerSync.js';
+import supportRoutes       from './routes/support.js';
 
 // ─── Validate critical environment variables ──────────────────────────────────
 const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET'];
@@ -187,6 +188,7 @@ app.use('/api/opportunities', opportunityRoutes);
 app.use('/api/applications',  applicationRoutes);
 app.use('/api/scholarships',  scholarshipRoutes);
 app.use('/api/developer',     developerSyncRoutes);
+app.use('/api/support',       supportRoutes);
 
 // ─── 404 + Global Error Handler ───────────────────────────────────────────────
 app.use(notFound);

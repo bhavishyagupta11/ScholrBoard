@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Mail, Phone, MapPin, Send, CheckCircle } from 'lucide-react';
+import supportApi from '../../api/support.api.js';
 
 export function ContactUsPage() {
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
   const validate = () => {
     const newErrors = {};
@@ -28,7 +30,7 @@ export function ContactUsPage() {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validate();
     if (Object.keys(newErrors).length > 0) {
@@ -37,14 +39,18 @@ export function ContactUsPage() {
     }
 
     setErrors({});
+    setSubmitError(null);
     setLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await supportApi.submitContact(form);
       setSubmitted(true);
       setForm({ name: '', email: '', subject: '', message: '' });
-    }, 1200);
+    } catch (err) {
+      setSubmitError(err.message || 'Failed to submit contact message. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -137,6 +143,11 @@ export function ContactUsPage() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+              {submitError && (
+                <div className="p-3 rounded-lg text-sm bg-red-500/10 text-red-400 border border-red-500/20">
+                  {submitError}
+                </div>
+              )}
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold uppercase tracking-wider block" style={{ color: 'var(--text-secondary)' }}>Your Name</label>
