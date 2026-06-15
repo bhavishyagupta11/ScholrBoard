@@ -293,6 +293,9 @@ export function AuthProvider({ children }) {
     login,
     logout,
     resilientMode,
+    isAuthenticated: !!user,
+    role: user?.role || null,
+    isLoading: loading,
   };
 
   return (

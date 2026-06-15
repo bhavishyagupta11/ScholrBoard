@@ -32,6 +32,7 @@ import Profile from '../models/Profile.js';
  */
 const issueServerJwt = (user) => {
   const payload = {
+    userId:     user._id,
     _id:        user._id,
     email:      user.email,
     name:       user.name,
@@ -98,20 +99,14 @@ const validateRoleFields = (role, data) => {
  */
 export const registerUser = async (req, res) => {
   try {
-    const { email, password, name, role = 'student', studentId, department, semester } = req.body;
-
-    if (role !== 'student') {
-      return res.status(403).json({
-        success: false,
-        message: 'Public registration is available for student accounts only',
-      });
-    }
+    const { email, password, name, studentId, department, semester } = req.body;
+    const role = 'student';
 
     // --- Basic field validation ---
-    if (!email || !password || !name || !role) {
+    if (!email || !password || !name) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields: email, password, name, role',
+        message: 'Missing required fields: email, password, name',
       });
     }
     
@@ -222,19 +217,33 @@ export const loginUser = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    // Ensure user matches selected portal
-    if (portalRole && user.role !== portalRole) {
-      return res.status(403).json({
+    const allowedRoles = ["student", "faculty", "admin"];
+
+    if (!portalRole) {
+      return res.status(400).json({
         success: false,
-        message: 'This account does not belong to the selected portal.'
+        message: "Portal role is required."
       });
     }
 
-    if (!user.isActive) {
+    if (!allowedRoles.includes(portalRole)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid portal role."
+      });
+    }
+
+    if (user.role !== portalRole) {
       return res.status(403).json({
         success: false,
-        message: 'This account has been deactivated. Contact support.',
-        code: 'ACCOUNT_DEACTIVATED',
+        message: "This account does not belong to the selected portal."
+      });
+    }
+
+    if (user.isActive === false) {
+      return res.status(403).json({
+        success: false,
+        message: "Account has been disabled."
       });
     }
 

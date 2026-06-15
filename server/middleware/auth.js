@@ -38,7 +38,8 @@ const auth = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await User.findById(decoded._id).select('-password');
+    const userId = decoded.userId || decoded._id;
+    const user = await User.findById(userId).select('-password');
     if (!user || !user.isActive) {
       return res.status(401).json({
         success: false,
