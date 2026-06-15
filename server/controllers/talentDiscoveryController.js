@@ -279,7 +279,7 @@ export const getTalentDiscovery = async (req, res) => {
 
     const hasUserFilters = !!(search || department || branch || semester || year);
     const hasResumeFilters = !!(hasResumeAnalysis !== undefined || atsScoreMin !== undefined);
-    const shouldPaginateEarly = profileSortFields.includes(sortBy) && !hasUserFilters && !hasResumeFilters;
+    const shouldPaginateEarly = false;
 
     // Data pipeline — sorted, paged, projected
     const dataPipeline = [
