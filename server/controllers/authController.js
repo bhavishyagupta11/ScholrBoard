@@ -202,7 +202,7 @@ export const registerUser = async (req, res) => {
  */
 export const loginUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, portalRole } = req.body;
     
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Please provide email and password' });
@@ -220,6 +220,14 @@ export const loginUser = async (req, res) => {
     
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    // Ensure user matches selected portal
+    if (portalRole && user.role !== portalRole) {
+      return res.status(403).json({
+        success: false,
+        message: 'This account does not belong to the selected portal.'
+      });
     }
 
     if (!user.isActive) {

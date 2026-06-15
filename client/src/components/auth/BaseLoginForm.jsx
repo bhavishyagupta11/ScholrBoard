@@ -34,22 +34,39 @@ export function BaseLoginForm({ role, additionalFields = [], disableSignup = fal
     
     try {
       setIsLoading(true);
-      // Login with Firebase
-      const loggedInUser = await login(formData.email, formData.password);
-
-      // At this point, the user data should be synced with the backend
-      // and available in the FirebaseAuth context
+      // Login with selected portal role
+      const loggedInUser = await login(formData.email, formData.password, role);
       
       // Verify user role matches the expected role
       if (loggedInUser?.role && loggedInUser.role !== role) {
-        setError(`This account is not registered as a ${role}. Please use the correct login page.`);
+        if (role === 'student') {
+          setError('This account is not registered as a student.');
+        } else if (role === 'faculty') {
+          setError('This account is not registered as faculty.');
+        } else if (role === 'admin') {
+          setError('This account is not registered as an administrator.');
+        } else {
+          setError(`This account is not registered as a ${role}.`);
+        }
         return;
       }
 
       // Navigate to dashboard
       navigate(role === 'student' ? '/student/dashboard' : `/${role}`, { replace: true });
     } catch (err) {
-      setError(err.message || 'Invalid email or password');
+      if (err.message && (err.message.includes('selected portal') || err.status === 403 || err.statusCode === 403)) {
+        if (role === 'student') {
+          setError('This account is not registered as a student.');
+        } else if (role === 'faculty') {
+          setError('This account is not registered as faculty.');
+        } else if (role === 'admin') {
+          setError('This account is not registered as an administrator.');
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError(err.message || 'Invalid email or password');
+      }
     } finally {
       setIsLoading(false);
     }

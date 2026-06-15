@@ -259,10 +259,10 @@ export function AuthProvider({ children }) {
   };
 
   // ─── Login ───────────────────────────────────────────────────────────────────
-  const login = async (email, password) => {
+  const login = async (email, password, portalRole) => {
     setError(null);
     try {
-      const result = await authApi.login({ email, password });
+      const result = await authApi.login({ email, password, portalRole });
       const loggedInUser = { ...result.user };
       cacheUser(loggedInUser);
       setUser(loggedInUser);
