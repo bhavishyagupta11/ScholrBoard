@@ -81,11 +81,12 @@ const validateRoleFields = (role, data) => {
     if (!data.semester || data.semester < 1 || data.semester > 8) {
       errors.push('A valid semester (1–8) is required');
     }
-  } else if (role === 'faculty') {
+  } else if (role === 'faculty' || role === 'department_coordinator') {
+    // V2: department_coordinator uses same field requirements as faculty
     if (!data.facultyId)  errors.push('Faculty ID is required');
     if (!data.department) errors.push('Department is required');
   } else if (role !== 'admin') {
-    errors.push(`Invalid role: "${role}". Must be student, faculty, or admin`);
+    errors.push(`Invalid role: "${role}". Must be student, faculty, admin, or department_coordinator`);
   }
   return errors;
 };
@@ -217,26 +218,36 @@ export const loginUser = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    const allowedRoles = ["student", "faculty", "admin"];
+    // V2: allowedRoles expanded to include department_coordinator.
+    // department_coordinator users log in through the Faculty Portal
+    // which sends portalRole='faculty'. They are validated below.
+    const allowedRoles = ['student', 'faculty', 'admin', 'department_coordinator'];
 
     if (!portalRole) {
       return res.status(400).json({
         success: false,
-        message: "Portal role is required."
+        message: 'Portal role is required.',
       });
     }
 
-    if (!allowedRoles.includes(portalRole)) {
+    // portalRole must be one of the three portal-facing values
+    const allowedPortalRoles = ['student', 'faculty', 'admin'];
+    if (!allowedPortalRoles.includes(portalRole)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid portal role."
+        message: 'Invalid portal role.',
       });
     }
 
-    if (user.role !== portalRole) {
+    // V2: department_coordinator logs in via Faculty Portal (portalRole='faculty').
+    // Allow this combination. All other mismatches are rejected.
+    const isCoordinatorViaFacultyPortal =
+      user.role === 'department_coordinator' && portalRole === 'faculty';
+
+    if (!isCoordinatorViaFacultyPortal && user.role !== portalRole) {
       return res.status(403).json({
         success: false,
-        message: "This account does not belong to the selected portal."
+        message: 'This account does not belong to the selected portal.',
       });
     }
 

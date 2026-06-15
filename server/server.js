@@ -40,6 +40,9 @@ import applicationRoutes  from './routes/applications.js';
 import scholarshipRoutes  from './routes/scholarships.js';
 import developerSyncRoutes from './routes/developerSync.js';
 import supportRoutes       from './routes/support.js';
+// V2 additions:
+import ticketRoutes        from './routes/tickets.js';
+import trackRoutes         from './routes/tracks.js';
 
 // ─── Validate critical environment variables ──────────────────────────────────
 const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET'];
@@ -189,6 +192,9 @@ app.use('/api/applications',  applicationRoutes);
 app.use('/api/scholarships',  scholarshipRoutes);
 app.use('/api/developer',     developerSyncRoutes);
 app.use('/api/support',       supportRoutes);
+// V2 additions:
+app.use('/api/tickets',       ticketRoutes);
+app.use('/api/tracks',        trackRoutes);
 
 // ─── 404 + Global Error Handler ───────────────────────────────────────────────
 app.use(notFound);

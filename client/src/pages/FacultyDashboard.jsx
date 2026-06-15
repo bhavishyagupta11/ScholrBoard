@@ -7,8 +7,9 @@ import { useNavigate } from 'react-router-dom';
 import { useScrollAnimation, useStaggeredAnimation } from '../hooks/useScrollAnimation.js';
 import usersApi from '../api/users.api.js';
 import activitiesApi from '../api/activities.api.js';
-import { Users, Activity, CheckCircle, AlertCircle } from 'lucide-react';
+import { Users, Activity, CheckCircle, AlertCircle, LifeBuoy } from 'lucide-react';
 import announcementsApi from '../api/announcements.api.js';
+import ticketsApi from '../api/tickets.api.js';
 
 function StatCard({ label, value, color, icon, loading }) {
   return (
@@ -33,6 +34,8 @@ export function FacultyDashboard() {
   const [error, setError]     = useState(null);
   const [announcements, setAnnouncements] = useState([]);
   const [loadingAnns, setLoadingAnns] = useState(true);
+  const [assignedTickets, setAssignedTickets] = useState([]);
+  const [loadingTickets, setLoadingTickets] = useState(true);
 
   // Scroll animation hooks
   const headerRef = useScrollAnimation({ animationClass: 'fade-in-up', delay: 0.1 });
@@ -54,6 +57,11 @@ export function FacultyDashboard() {
       .then((res) => setAnnouncements(res?.announcements || []))
       .catch((err) => setError(err.message || 'Failed to load announcements'))
       .finally(() => setLoadingAnns(false));
+
+    ticketsApi.getAssignedTickets({ limit: 3 })
+      .then((res) => setAssignedTickets(res?.tickets || []))
+      .catch((err) => console.error('Failed to fetch assigned tickets', err))
+      .finally(() => setLoadingTickets(false));
   }, []);
 
   return (
@@ -112,7 +120,7 @@ export function FacultyDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Pending Activities */}
         <div className="card p-6">
           <h2 className="text-xl font-semibold mb-4" style={{color:'var(--text-primary)'}}>Recent Pending Activities</h2>
@@ -132,6 +140,45 @@ export function FacultyDashboard() {
                   </div>
                 ))}
               </div>
+          )}
+        </div>
+
+        {/* Assigned Support Tickets */}
+        <div className="card p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2" style={{color:'var(--text-primary)'}}>
+              <LifeBuoy size={20} /> Assigned Tickets
+            </h2>
+            <button onClick={() => navigate('/faculty/support')} className="text-xs text-blue-400 hover:underline">
+              Manage →
+            </button>
+          </div>
+          {loadingTickets ? (
+            <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="skeleton h-10 w-full" />)}</div>
+          ) : assignedTickets.length === 0 ? (
+            <div className="text-sm subtle py-4 text-center">No assigned tickets waiting.</div>
+          ) : (
+            <div className="space-y-3">
+              {assignedTickets.map((t) => (
+                <div key={t._id} className="flex justify-between items-center py-3 border-b" style={{borderColor:'var(--border-color)'}}>
+                  <div>
+                    <div className="text-sm font-medium" style={{color:'var(--text-primary)'}}>#{t.ticketNumber}: {t.subject}</div>
+                    <div className="text-xs" style={{color:'var(--text-secondary)'}}>
+                      {t.createdBy?.name} ({t.createdBy?.role}) · {t.category}
+                    </div>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-semibold ${
+                    t.status === 'open' ? 'bg-blue-500/20 text-blue-400' :
+                    t.status === 'in_progress' ? 'bg-yellow-500/20 text-yellow-400' :
+                    t.status === 'waiting_for_response' ? 'bg-purple-500/20 text-purple-400' :
+                    t.status === 'resolved' ? 'bg-green-500/20 text-green-400' :
+                    'bg-slate-500/20 text-slate-400'
+                  }`}>
+                    {t.status.replace('_', ' ')}
+                  </span>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 

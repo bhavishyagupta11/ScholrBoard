@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { ClipboardList, Users, BarChart3, LogOut, UserSquare2, Calendar, X } from 'lucide-react';
+import { ClipboardList, Users, BarChart3, LogOut, UserSquare2, Calendar, LifeBuoy, X } from 'lucide-react';
 import { Topbar } from '../components/Topbar.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
 export function FacultyLayout() {
 	const navigate = useNavigate();
-	const { logout } = useAuth();
+	const { logout, user } = useAuth();
+	const isCoordinator = user?.role === 'department_coordinator';
+	const prefix = isCoordinator ? '/coordinator' : '/faculty';
 	
 	const [isCollapsed, setIsCollapsed] = useState(() => {
 		return localStorage.getItem('sidebar-collapsed') === 'true';
@@ -64,7 +66,9 @@ export function FacultyLayout() {
 								<span style={{ color: 'var(--accent)' }}>Scholr</span>
 								<span style={{ color: 'var(--text-primary)' }}>Board</span>
 							</span>
-							<div className="text-[10px] font-bold uppercase tracking-wider text-amber-500 mt-1">Faculty Portal</div>
+							<div className="text-[10px] font-bold uppercase tracking-wider text-amber-500 mt-1">
+								{isCoordinator ? 'Coordinator Portal' : 'Faculty Portal'}
+							</div>
 						</div>
 					</a>
 
@@ -81,29 +85,42 @@ export function FacultyLayout() {
 
 				{/* Nav Links */}
 				<nav className="flex flex-col space-y-1.5 overflow-y-auto flex-grow custom-scrollbar">
-					<NavLink to="/faculty" end className={navLinkClass} title={isCollapsed ? 'Dashboard' : ''}>
+					<NavLink to={prefix} end className={navLinkClass} title={isCollapsed ? 'Dashboard' : ''}>
 						<BarChart3 size={20} className="flex-shrink-0"/>
 						<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>Dashboard</span>
 					</NavLink>
 					
-					<NavLink to="/faculty/approvals" className={navLinkClass} title={isCollapsed ? 'Activity Approvals' : ''}>
+					<NavLink to={`${prefix}/approvals`} className={navLinkClass} title={isCollapsed ? 'Activity Approvals' : ''}>
 						<ClipboardList size={20} className="flex-shrink-0"/>
 						<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>Activity Approvals</span>
 					</NavLink>
 
-					<NavLink to="/faculty/od-approvals" className={navLinkClass} title={isCollapsed ? 'OD Approvals' : ''}>
-						<Calendar size={20} className="flex-shrink-0"/>
-						<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>OD Approvals</span>
-					</NavLink>
+					{!isCoordinator && (
+						<>
+							<NavLink to="/faculty/od-approvals" className={navLinkClass} title={isCollapsed ? 'OD Approvals' : ''}>
+								<Calendar size={20} className="flex-shrink-0"/>
+								<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>OD Approvals</span>
+							</NavLink>
+						</>
+					)}
 					
-					<NavLink to="/faculty/students" className={navLinkClass} title={isCollapsed ? 'Student Tracker' : ''}>
+					<NavLink to={`${prefix}/students`} className={navLinkClass} title={isCollapsed ? 'Student Tracker' : ''}>
 						<Users size={20} className="flex-shrink-0"/>
 						<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>Student Tracker</span>
 					</NavLink>
 					
-					<NavLink to="/faculty/mentor" className={navLinkClass} title={isCollapsed ? 'Student 360°' : ''}>
-						<UserSquare2 size={20} className="flex-shrink-0"/>
-						<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>Student 360°</span>
+					{!isCoordinator && (
+						<>
+							<NavLink to="/faculty/mentor" className={navLinkClass} title={isCollapsed ? 'Student 360°' : ''}>
+								<UserSquare2 size={20} className="flex-shrink-0"/>
+								<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>Student 360°</span>
+							</NavLink>
+						</>
+					)}
+
+					<NavLink to={`${prefix}/support`} className={navLinkClass} title={isCollapsed ? 'Support' : ''}>
+						<LifeBuoy size={20} className="flex-shrink-0"/>
+						<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>Support</span>
 					</NavLink>
 				</nav>
 

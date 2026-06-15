@@ -69,7 +69,14 @@ const notificationSchema = new mongoose.Schema(
         // Phase 3 additions:
         'opportunity_match',
         'application_status_changed',
-        'scholarship_match'
+        'scholarship_match',
+        // V2 — Support Ticket notifications (additive):
+        'ticket_created',
+        'ticket_assigned',
+        'ticket_replied',
+        'ticket_resolved',
+        'ticket_closed',
+        'ticket_status_changed',
       ],
       required: true,
       index: true,
@@ -85,7 +92,10 @@ const notificationSchema = new mongoose.Schema(
       enum: [
         'Activity', 'Placement', 'Event', 'AiChatHistory', 'OdRequest', 
         'Announcement', 'Opportunity', 'Application', 'Scholarship', 
-        'ScholarshipApplication', null
+        'ScholarshipApplication',
+        // V2 addition:
+        'SupportTicket',
+        null
       ],
       default: null,
     },

@@ -17,7 +17,7 @@ import { Link } from 'react-router-dom';
 import {
   ArrowRight, BellRing, BriefcaseBusiness, CalendarDays,
   CheckCircle2, Code2, FileText, Lightbulb, UploadCloud,
-  ShieldCheck, RefreshCw, TrendingUp, Flame, BookOpen,
+  ShieldCheck, RefreshCw, TrendingUp, Flame, BookOpen, LifeBuoy,
 } from 'lucide-react';
 import { useScrollAnimation, useStaggeredAnimation } from '../hooks/useScrollAnimation.js';
 import analyticsApi from '../api/analytics.api.js';
@@ -26,6 +26,7 @@ import placementsApi from '../api/placements.api.js';
 import eventsApi from '../api/events.api.js';
 import aiApi from '../api/ai.api.js';
 import announcementsApi from '../api/announcements.api.js';
+import ticketsApi from '../api/tickets.api.js';
 
 const AcademicActivityChart = lazy(() =>
   import('../components/StudentDashboardCharts.jsx').then((m) => ({ default: m.AcademicActivityChart }))
@@ -94,6 +95,8 @@ export function DashboardPage() {
   const [recsError,        setRecsError]        = useState(false);
   const [announcements,    setAnnouncements]    = useState([]);
   const [loadingAnns,      setLoadingAnns]      = useState(true);
+  const [tickets,          setTickets]          = useState([]);
+  const [loadingTickets,   setLoadingTickets]   = useState(true);
   const [dashboardError,   setDashboardError]   = useState(null);
 
   const headerRef = useScrollAnimation({ direction: 'up', delay: 0.1 });
@@ -159,6 +162,11 @@ export function DashboardPage() {
     announcementsApi.getMyAnnouncements().then((data) => {
       setAnnouncements(data?.announcements || []);
     }).catch((err) => setDashboardError(err.message || 'Failed to load announcements')).finally(() => setLoadingAnns(false));
+
+    // Support tickets
+    ticketsApi.getMyTickets({ limit: 3 }).then((data) => {
+      setTickets(data?.tickets || []);
+    }).catch((err) => console.error('Failed to load support tickets', err)).finally(() => setLoadingTickets(false));
   }, []);
 
   useEffect(() => {
@@ -267,42 +275,86 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* ─── Recent Activities ───────────────────────────────────────────────── */}
-      <div className="card p-4">
-        <div className="font-medium mb-3 flex items-center justify-between">
-          <span>Recent Activity Submissions</span>
-          <Link to="/student/activities" className="text-xs" style={{ color: 'var(--primary-blue)' }}>View all →</Link>
-        </div>
-        {loadingActivities ? (
-          <ListSkeleton rows={3} />
-        ) : recentActivities.length === 0 ? (
-          <div className="text-sm subtle py-4 text-center">No activities yet — <Link to="/student/upload" style={{ color: 'var(--primary-blue)' }}>submit your first one</Link></div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-slate-500">
-                  <th className="py-2">Title</th>
-                  <th className="py-2">Category</th>
-                  <th className="py-2">Status</th>
-                  <th className="py-2">Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentActivities.map((r) => (
-                  <tr key={r._id} className="border-t hover:bg-white/5 transition-colors">
-                    <td className="py-2">{r.title}</td>
-                    <td className="py-2">{r.category}</td>
-                    <td className="py-2">
-                      <span className={`badge ${r.status === 'Approved' ? 'badge-green' : r.status === 'Pending' ? 'badge-yellow' : 'badge-red'}`}>{r.status}</span>
-                    </td>
-                    <td className="py-2 subtle">{new Date(r.activityDate || r.createdAt).toLocaleDateString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <div className="grid lg:grid-cols-2 gap-4">
+        {/* ─── Recent Activities ───────────────────────────────────────────────── */}
+        <div className="card p-4">
+          <div className="font-medium mb-3 flex items-center justify-between">
+            <span>Recent Activity Submissions</span>
+            <Link to="/student/activities" className="text-xs" style={{ color: 'var(--primary-blue)' }}>View all →</Link>
           </div>
-        )}
+          {loadingActivities ? (
+            <ListSkeleton rows={3} />
+          ) : recentActivities.length === 0 ? (
+            <div className="text-sm subtle py-4 text-center">No activities yet — <Link to="/student/upload" style={{ color: 'var(--primary-blue)' }}>submit your first one</Link></div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-slate-500">
+                    <th className="py-2">Title</th>
+                    <th className="py-2">Category</th>
+                    <th className="py-2">Status</th>
+                    <th className="py-2">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentActivities.map((r) => (
+                    <tr key={r._id} className="border-t hover:bg-white/5 transition-colors">
+                      <td className="py-2">{r.title}</td>
+                      <td className="py-2">{r.category}</td>
+                      <td className="py-2">
+                        <span className={`badge ${r.status === 'Approved' ? 'badge-green' : r.status === 'Pending' ? 'badge-yellow' : 'badge-red'}`}>{r.status}</span>
+                      </td>
+                      <td className="py-2 subtle">{new Date(r.activityDate || r.createdAt).toLocaleDateString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* ─── Support Tickets ───────────────────────────────────────────────── */}
+        <div className="card p-4">
+          <div className="font-medium mb-3 flex items-center justify-between">
+            <span className="flex items-center gap-2"><LifeBuoy size={16} /> My Support Tickets</span>
+            <Link to="/student/support" className="text-xs" style={{ color: 'var(--primary-blue)' }}>View all / Create →</Link>
+          </div>
+          {loadingTickets ? (
+            <ListSkeleton rows={3} />
+          ) : tickets.length === 0 ? (
+            <div className="text-sm subtle py-4 text-center">
+              No support tickets yet. Need help?{' '}
+              <Link to="/student/support" style={{ color: 'var(--primary-blue)' }}>Create a ticket</Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {tickets.map((t) => (
+                <div key={t._id} className="p-3 rounded-md border" style={{ background: 'var(--bg-medium)', borderColor: 'var(--border-color)' }}>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
+                        #{t.ticketNumber}: {t.subject}
+                      </div>
+                      <div className="text-xs subtle mt-1">
+                        Category: {t.category} · Updated {new Date(t.updatedAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-semibold ${
+                      t.status === 'open' ? 'bg-blue-500/20 text-blue-400' :
+                      t.status === 'in_progress' ? 'bg-yellow-500/20 text-yellow-400' :
+                      t.status === 'waiting_for_response' ? 'bg-purple-500/20 text-purple-400' :
+                      t.status === 'resolved' ? 'bg-green-500/20 text-green-400' :
+                      'bg-slate-500/20 text-slate-400'
+                    }`}>
+                      {t.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ─── AI Recommendations ──────────────────────────────────────────────── */}

@@ -6,7 +6,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useScrollAnimation, useStaggeredAnimation } from '../hooks/useScrollAnimation.js';
 import analyticsApi from '../api/analytics.api.js';
-import { Users, Activity, CheckCircle, TrendingUp, AlertCircle } from 'lucide-react';
+import { Users, Activity, CheckCircle, TrendingUp, AlertCircle, LifeBuoy } from 'lucide-react';
+import ticketsApi from '../api/tickets.api.js';
 
 function StatCard({ label, value, color, icon, loading }) {
   return (
@@ -29,6 +30,8 @@ export function AdminDashboard() {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
+  const [ticketSummary, setTicketSummary] = useState(null);
+  const [loadingTickets, setLoadingTickets] = useState(true);
 
   const headerRef = useScrollAnimation({ animationClass: 'fade-in-up', delay: 0.1 });
   const { containerRef: statsContainerRef } = useStaggeredAnimation(4, 0.1);
@@ -38,6 +41,11 @@ export function AdminDashboard() {
       .then((res) => setData(res?.systemAnalytics || null))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
+
+    ticketsApi.getTicketSummary()
+      .then((res) => setTicketSummary(res?.summary || null))
+      .catch((err) => console.error('Failed to fetch ticket summary', err))
+      .finally(() => setLoadingTickets(false));
   }, []);
 
   return (
@@ -81,17 +89,20 @@ export function AdminDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="card p-6 cursor-pointer hover:bg-white/5 transition-colors" onClick={() => navigate('/admin/approvals')}>
-          <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>📋 Activity Approvals</h2>
-          {!loading && data?.activitySummary?.Pending > 0 && (
-            <div className="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold" style={{ background: 'rgba(234,179,8,0.2)', color: 'var(--warning-color)' }}>
-              {data.activitySummary.Pending} pending review
-            </div>
-          )}
-          <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Review and approve student activities</p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="card p-6 cursor-pointer hover:bg-white/5 transition-colors flex flex-col justify-between" onClick={() => navigate('/admin/approvals')}>
+          <div>
+            <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>📋 Activity Approvals</h2>
+            {!loading && data?.activitySummary?.Pending > 0 && (
+              <div className="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold" style={{ background: 'rgba(234,179,8,0.2)', color: 'var(--warning-color)' }}>
+                {data.activitySummary.Pending} pending review
+              </div>
+            )}
+            <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Review and approve student activities</p>
+          </div>
           <button className="btn btn-outline w-full">Review Approvals</button>
         </div>
+
         <div className="card p-6">
           <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>📋 Recent Pending Activities</h2>
           {loading ? (
@@ -111,6 +122,43 @@ export function AdminDashboard() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Ticket Summary */}
+        <div className="card p-6 flex flex-col justify-between">
+          <div>
+            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+              <LifeBuoy size={20} /> Support Tickets
+            </h2>
+            {loadingTickets ? (
+              <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="skeleton h-10 w-full" />)}</div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 my-4">
+                <div className="p-3 rounded-lg text-center" style={{ background: 'var(--bg-medium)' }}>
+                  <div className="text-2xl font-bold text-blue-400">{ticketSummary?.open ?? 0}</div>
+                  <div className="text-xs subtle mt-1">Open</div>
+                </div>
+                <div className="p-3 rounded-lg text-center" style={{ background: 'var(--bg-medium)' }}>
+                  <div className="text-2xl font-bold text-yellow-400">{ticketSummary?.in_progress ?? 0}</div>
+                  <div className="text-xs subtle mt-1">In Progress</div>
+                </div>
+                <div className="p-3 rounded-lg text-center" style={{ background: 'var(--bg-medium)' }}>
+                  <div className="text-2xl font-bold text-green-400">{ticketSummary?.resolved ?? 0}</div>
+                  <div className="text-xs subtle mt-1">Resolved</div>
+                </div>
+                <div className="p-3 rounded-lg text-center" style={{ background: 'var(--bg-medium)' }}>
+                  <div className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                    {ticketSummary?.total ?? 0}
+                  </div>
+                  <div className="text-xs subtle mt-1">Total</div>
+                </div>
+              </div>
+            )}
+            <p className="text-xs subtle mb-4">View, assign, and resolve support tickets across the system.</p>
+          </div>
+          <button className="btn btn-outline w-full" onClick={() => navigate('/admin/support')}>
+            Manage Support Tickets
+          </button>
         </div>
       </div>
     </div>

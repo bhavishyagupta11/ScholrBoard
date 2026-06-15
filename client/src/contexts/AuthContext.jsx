@@ -37,6 +37,7 @@ const cacheUser = (userData) => {
     department:  userData.department || null,
     semester:    userData.semester   || null,
     verified:    userData.verified   || false,
+    trackId:     userData.trackId    || null,
   };
   localStorage.setItem(CACHE_KEY, JSON.stringify(data));
   if (data.role) {

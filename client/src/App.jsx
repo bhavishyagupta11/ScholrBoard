@@ -49,6 +49,12 @@ const CookiePolicyPage = lazy(() => import('./pages/info/CookiePolicyPage.jsx').
 const FaqPage = lazy(() => import('./pages/info/FaqPage.jsx').then((module) => ({ default: module.FaqPage })));
 const SupportPage = lazy(() => import('./pages/info/SupportPage.jsx').then((module) => ({ default: module.SupportPage })));
 
+// V2 additions:
+const StudentSupportPage = lazy(() => import('./pages/StudentSupportPage.jsx').then((module) => ({ default: module.StudentSupportPage })));
+const FacultySupportPage = lazy(() => import('./pages/FacultySupportPage.jsx').then((module) => ({ default: module.FacultySupportPage })));
+const AdminSupportPage = lazy(() => import('./pages/AdminSupportPage.jsx').then((module) => ({ default: module.AdminSupportPage })));
+const CoordinatorDashboard = lazy(() => import('./pages/CoordinatorDashboard.jsx').then((module) => ({ default: module.CoordinatorDashboard })));
+
 const PageLoader = () => (
 	<div className="min-h-screen p-6" style={{ background: 'var(--bg-dark)', color: 'var(--text-primary)' }}>
 		<div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-[220px_1fr]">
@@ -76,6 +82,8 @@ const getDashboardPath = (role) => {
 	if (role === 'student') return '/student/dashboard';
 	if (role === 'faculty') return '/faculty';
 	if (role === 'admin') return '/admin';
+	// V2: department_coordinator routes to /coordinator
+	if (role === 'department_coordinator') return '/coordinator';
 	return '/login/student';
 };
 
@@ -140,6 +148,8 @@ export default function App() {
 									<Route path="od" element={<StudentOdPage />} />
 									<Route path="placements" element={<StudentPlacementDashboard />} />
 									<Route path="events" element={<StudentEvents />} />
+									{/* V2: Student support ticket portal */}
+									<Route path="support" element={<StudentSupportPage />} />
 								</Route>
 
 								<Route path="/faculty" element={
@@ -152,6 +162,8 @@ export default function App() {
 									<Route path="students" element={<FacultyStudents />} />
 									<Route path="mentor" element={<FacultyStudent360 />} />
 									<Route path="od-approvals" element={<FacultyOdApprovals />} />
+									{/* V2: Faculty support ticket view */}
+									<Route path="support" element={<FacultySupportPage />} />
 								</Route>
 
 								<Route path="/admin" element={
@@ -167,6 +179,20 @@ export default function App() {
 									<Route path="announcements" element={<AdminAnnouncements />} />
 									<Route path="talent-discovery" element={<AdminTalentDiscovery />} />
 									<Route path="advisors" element={<AdminAdvisors />} />
+									{/* V2: Admin support ticket management */}
+									<Route path="support" element={<AdminSupportPage />} />
+								</Route>
+
+								{/* V2: Department Coordinator routes — uses FacultyLayout */}
+								<Route path="/coordinator" element={
+									<ProtectedRoute allowedRoles={['department_coordinator']}>
+										<FacultyLayout />
+									</ProtectedRoute>
+								}>
+									<Route index element={<CoordinatorDashboard />} />
+									<Route path="support" element={<FacultySupportPage />} />
+									<Route path="students" element={<FacultyStudents />} />
+									<Route path="approvals" element={<FacultyApprovals />} />
 								</Route>
 
 								<Route path="*" element={<Navigate to="/" replace />} />

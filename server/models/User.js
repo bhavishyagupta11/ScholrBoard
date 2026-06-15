@@ -10,7 +10,12 @@
  *
  * Relations:
  *   User._id ← referenced by Profile, Activity, LearningProgress,
- *              AiChatHistory, Analytics, Notification, ResumeAnalysis
+ *              AiChatHistory, Analytics, Notification, ResumeAnalysis,
+ *              SupportTicket, Track
+ *
+ * V2 Changes (additive only — no migration required):
+ *   - role enum: appended 'department_coordinator' (existing docs unaffected)
+ *   - trackId: new optional field, default null (existing docs unaffected)
  */
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
@@ -53,8 +58,9 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: {
-        values: ['student', 'faculty', 'admin'],
-        message: 'Role must be one of: student, faculty, admin',
+        // V2: 'department_coordinator' appended — existing docs unaffected
+        values: ['student', 'faculty', 'admin', 'department_coordinator'],
+        message: 'Role must be one of: student, faculty, admin, department_coordinator',
       },
       required: [true, 'Role is required'],
       index: true,
@@ -94,10 +100,11 @@ const userSchema = new mongoose.Schema(
       trim: true,
       validate: {
         validator: function (v) {
-          if (this.role === 'student' || this.role === 'faculty') return !!v;
+          // department_coordinator is treated like faculty for this requirement
+          if (this.role === 'student' || this.role === 'faculty' || this.role === 'department_coordinator') return !!v;
           return true;
         },
-        message: 'Department is required for student and faculty accounts',
+        message: 'Department is required for student, faculty, and department_coordinator accounts',
       },
     },
     semester: {
@@ -117,6 +124,14 @@ const userSchema = new mongoose.Schema(
       ref: 'User',
       default: null,
       index: true,
+    },
+
+    // --- V2: Career Track (UI personalization only — NOT authorization) ---
+    // null = show all modules (default behavior preserved for all existing users)
+    trackId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Track',
+      default: null,
     },
 
     // --- Account status ---

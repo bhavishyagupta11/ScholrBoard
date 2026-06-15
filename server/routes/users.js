@@ -82,15 +82,22 @@ router.put('/assign-advisor', requireRole('admin'), async (req, res) => {
 });
 
 // @route   GET /api/users/advisor/students
-// @desc    Get all students assigned to the logged-in advisor
-// @access  Faculty only
-router.get('/advisor/students', requireRole('faculty'), async (req, res) => {
+// @desc    Get all students assigned to the logged-in advisor (faculty)
+//          or all department students for coordinator
+// @access  Faculty or Department Coordinator
+router.get('/advisor/students', requireRole('faculty', 'department_coordinator'), async (req, res) => {
   try {
-    const students = await User.find({
-      role: 'student',
-      advisorId: req.user._id,
-      isActive: true,
-    }).select('-password -__v');
+    let query = { role: 'student', isActive: true };
+
+    if (req.user.role === 'department_coordinator') {
+      // Coordinators see all students in their department
+      if (req.user.department) query.department = req.user.department;
+    } else {
+      // Faculty: only their assigned advisees
+      query.advisorId = req.user._id;
+    }
+
+    const students = await User.find(query).select('-password -__v');
 
     return res.json({ success: true, students });
   } catch (error) {
@@ -101,8 +108,8 @@ router.get('/advisor/students', requireRole('faculty'), async (req, res) => {
 
 // @route   GET /api/users
 // @desc    Get all users (with filtering by role/department)
-// @access  Admin or Faculty
-router.get('/', requireRole('admin', 'faculty'), async (req, res) => {
+// @access  Admin, Faculty, or Department Coordinator
+router.get('/', requireRole('admin', 'faculty', 'department_coordinator'), async (req, res) => {
   try {
     const { role, department, verified, page = 1, limit = 50, scope } = req.query;
 
@@ -115,7 +122,12 @@ router.get('/', requireRole('admin', 'faculty'), async (req, res) => {
       } else {
         query.advisorId = req.user._id;
       }
+    } else if (req.user.role === 'department_coordinator') {
+      // Coordinator: department-scoped students only
+      query.role = 'student';
+      if (req.user.department) query.department = new RegExp(`^${req.user.department}$`, 'i');
     } else {
+      // Admin: full access
       if (role)       query.role       = role;
       if (department) query.department = new RegExp(department, 'i');
     }

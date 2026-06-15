@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { ClipboardList, BarChart3, LogOut, Calendar, Briefcase, Megaphone, Search, Users, X } from 'lucide-react';
+import { ClipboardList, BarChart3, LogOut, Calendar, Briefcase, Megaphone, Search, Users, LifeBuoy, X } from 'lucide-react';
 import { Topbar } from '../components/Topbar.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
@@ -119,6 +119,11 @@ export function AdminLayout() {
 					<NavLink to="/admin/events" className={navLinkClass} title={isCollapsed ? 'Events & Activities' : ''}>
 						<Calendar size={20} className="flex-shrink-0"/>
 						<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>Events & Activities</span>
+					</NavLink>
+
+					<NavLink to="/admin/support" className={navLinkClass} title={isCollapsed ? 'Support Tickets' : ''}>
+						<LifeBuoy size={20} className="flex-shrink-0"/>
+						<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>Support Tickets</span>
 					</NavLink>
 				</nav>
 

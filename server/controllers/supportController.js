@@ -1,4 +1,5 @@
 import ContactMessage from '../models/ContactMessage.js';
+import { sendContactNotification } from '../services/emailService.js';
 
 /**
  * @desc    Submit a support contact query
@@ -43,11 +44,25 @@ export const createContactMessage = async (req, res) => {
       message: trimmedMessage,
     });
 
-    return res.status(201).json({
+    // Step 1: Respond to user immediately (MongoDB save succeeded)
+    res.status(201).json({
       success: true,
       message: 'Your message has been submitted successfully.',
       contactMessage,
     });
+
+    // Step 2: Fire-and-forget email notification (NEVER blocks the response)
+    // Errors are caught internally by emailService — no await, no .catch needed here
+    sendContactNotification({
+      name:    trimmedName,
+      email:   trimmedEmail,
+      subject: trimmedSubject,
+      message: trimmedMessage,
+      _id:     contactMessage._id,
+    });
+
+    // Note: return is intentionally after res.json() to avoid double-send
+    return;
   } catch (error) {
     if (error.name === 'ValidationError') {
       return res.status(400).json({
