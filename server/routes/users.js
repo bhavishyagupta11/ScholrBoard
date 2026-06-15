@@ -8,6 +8,7 @@ import User from '../models/User.js';
 import Profile from '../models/Profile.js';
 import validateObjectId from '../middleware/validateObjectId.js';
 import { getTalentDiscovery } from '../controllers/talentDiscoveryController.js';
+import { excludeTestUsers } from '../utils/testFilters.js';
 
 const router = express.Router();
 
@@ -105,7 +106,7 @@ router.get('/', requireRole('admin', 'faculty'), async (req, res) => {
   try {
     const { role, department, verified, page = 1, limit = 50, scope } = req.query;
 
-    const query = { isActive: true };
+    const query = { isActive: true, ...excludeTestUsers() };
     
     if (req.user.role === 'faculty') {
       query.role = 'student';

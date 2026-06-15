@@ -1,3 +1,6 @@
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first');
+
 import dotenv from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,7 +16,13 @@ const PASSWORD = 'TestPass123!';
 const API_BASE = 'http://localhost:5000/api';
 
 async function setupDatabase() {
-  await mongoose.connect(process.env.MONGODB_URI);
+  await mongoose.connect(process.env.MONGODB_URI_TEST);
+  const dbName = mongoose.connection.db.databaseName;
+  if (dbName !== 'scholrboard_test') {
+    await mongoose.disconnect();
+    throw new Error('CRITICAL SAFETY ERROR: Execution is only allowed on the test database "scholrboard_test". Currently connected to: "' + dbName + '". Execution aborted!');
+  }
+
   console.log('📦 Connected to MongoDB for test prep.');
 
   const UserSchema = new mongoose.Schema({}, { strict: false });
@@ -133,7 +142,13 @@ async function runTests() {
     results.push(githubResult);
     
     // Connect, reset, disconnect for LeetCode
-    await mongoose.connect(process.env.MONGODB_URI);
+    await mongoose.connect(process.env.MONGODB_URI_TEST);
+  let dbName = mongoose.connection.db.databaseName;
+  if (dbName !== 'scholrboard_test') {
+    await mongoose.disconnect();
+    throw new Error('CRITICAL SAFETY ERROR: Execution is only allowed on the test database "scholrboard_test". Currently connected to: "' + dbName + '". Execution aborted!');
+  }
+
     await mongoose.model('Profile').updateOne(
       { userId: new mongoose.Types.ObjectId(studentId) },
       { $set: { 
@@ -151,7 +166,13 @@ async function runTests() {
     results.push(leetcodeResult);
 
     // Connect, reset, disconnect for Codeforces
-    await mongoose.connect(process.env.MONGODB_URI);
+    await mongoose.connect(process.env.MONGODB_URI_TEST);
+  dbName = mongoose.connection.db.databaseName;
+  if (dbName !== 'scholrboard_test') {
+    await mongoose.disconnect();
+    throw new Error('CRITICAL SAFETY ERROR: Execution is only allowed on the test database "scholrboard_test". Currently connected to: "' + dbName + '". Execution aborted!');
+  }
+
     await mongoose.model('Profile').updateOne(
       { userId: new mongoose.Types.ObjectId(studentId) },
       { $set: { 
@@ -169,7 +190,13 @@ async function runTests() {
     results.push(codeforcesResult);
 
     // Connect, reset, disconnect for All
-    await mongoose.connect(process.env.MONGODB_URI);
+    await mongoose.connect(process.env.MONGODB_URI_TEST);
+  dbName = mongoose.connection.db.databaseName;
+  if (dbName !== 'scholrboard_test') {
+    await mongoose.disconnect();
+    throw new Error('CRITICAL SAFETY ERROR: Execution is only allowed on the test database "scholrboard_test". Currently connected to: "' + dbName + '". Execution aborted!');
+  }
+
     await mongoose.model('Profile').updateOne(
       { userId: new mongoose.Types.ObjectId(studentId) },
       { $set: { 

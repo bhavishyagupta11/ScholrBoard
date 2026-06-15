@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { ClipboardList, BarChart3, LogOut, Calendar, Briefcase, Megaphone, Search } from 'lucide-react';
+import { ClipboardList, BarChart3, LogOut, Calendar, Briefcase, Megaphone, Search, Users } from 'lucide-react';
 import { Topbar } from '../components/Topbar.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
@@ -42,6 +42,10 @@ export function AdminLayout() {
 					
 					<NavLink to="/admin/approvals" className={navLinkClass}>
 						<ClipboardList size={20}/> Activity Approvals
+					</NavLink>
+
+					<NavLink to="/admin/advisors" className={navLinkClass}>
+						<Users size={20} className="flex-shrink-0"/> Advisor Mappings
 					</NavLink>
 
 					<NavLink to="/admin/talent-discovery" className={navLinkClass}>

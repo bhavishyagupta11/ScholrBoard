@@ -1,3 +1,6 @@
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first');
+
 import dotenv from 'dotenv';
 import connectDB from '../config/db.js';
 import mongoose from 'mongoose';
@@ -21,7 +24,20 @@ import { evaluatePlacementEligibility, evaluateScholarshipEligibility } from '..
 async function runAudit() {
   console.log('🚀 STARTING PHASE 3 COMPLIANCE VERIFICATION AUDIT...\n');
   try {
-    await connectDB();
+    const dbUri = process.env.MONGODB_URI_TEST;
+    if (!dbUri) {
+      throw new Error('CRITICAL SAFETY ERROR: MONGODB_URI_TEST is not defined in environment variables.');
+    }
+    await mongoose.connect(dbUri);
+    const dbName = mongoose.connection.db.databaseName;
+    if (dbName !== 'scholrboard_test') {
+      await mongoose.disconnect();
+      throw new Error(`CRITICAL SAFETY ERROR: Execution is only allowed on the test database "scholrboard_test". Currently connected to: "${dbName}". Execution aborted!`);
+    }
+    if (process.env.NODE_ENV === 'production') {
+      await mongoose.disconnect();
+      throw new Error('CRITICAL SAFETY ERROR: Execution is strictly forbidden in production mode.');
+    }
     console.log('✅ Database connected.');
 
     const uniqueId = crypto.randomBytes(4).toString('hex');

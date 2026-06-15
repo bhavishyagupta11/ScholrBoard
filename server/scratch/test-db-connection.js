@@ -1,3 +1,6 @@
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first');
+
 import dotenv from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,9 +10,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 async function run() {
-  const uri = process.env.MONGODB_URI;
+  const uri = process.env.MONGODB_URI_TEST;
   if (!uri) {
-    console.error('❌ MONGODB_URI not found in environment');
+    console.error('❌ MONGODB_URI_TEST not found in environment');
     process.exit(1);
   }
 
@@ -25,6 +28,12 @@ async function run() {
 
   try {
     await mongoose.connect(uri);
+  const dbName = mongoose.connection.db.databaseName;
+  if (dbName !== 'scholrboard_test') {
+    await mongoose.disconnect();
+    throw new Error('CRITICAL SAFETY ERROR: Execution is only allowed on the test database "scholrboard_test". Currently connected to: "' + dbName + '". Execution aborted!');
+  }
+
 
     console.log('\n📊 --- CONNECTION INFO ---');
     console.log(`Connection state: ${mongoose.STATES[mongoose.connection.readyState]}`);

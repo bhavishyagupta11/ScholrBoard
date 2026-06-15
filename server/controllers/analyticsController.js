@@ -6,6 +6,7 @@ import Analytics from '../models/Analytics.js';
 import Activity from '../models/Activity.js';
 import Profile from '../models/Profile.js';
 import mongoose from 'mongoose';
+import { excludeTestUsers, TEST_EMAIL_REGEX } from '../utils/testFilters.js';
 
 // Helper: normalize a date to midnight UTC (strips time component)
 const toMidnight = (d = new Date()) => {
@@ -215,15 +216,16 @@ export const getSystemAnalytics = async (req, res) => {
       User.countDocuments({
         role: 'student',
         isActive: true,
+        ...excludeTestUsers(),
         ...(req.user.role === 'faculty' ? { advisorId: req.user._id } : {}),
       }),
       req.user.role === 'admin'
-        ? User.countDocuments({ role: 'faculty', isActive: true })
+        ? User.countDocuments({ role: 'faculty', isActive: true, ...excludeTestUsers() })
         : Promise.resolve(1),
       (async () => {
         const match = {};
         if (req.user.role === 'faculty') {
-          const students = await User.find({ role: 'student', advisorId: req.user._id }).select('_id');
+          const students = await User.find({ role: 'student', advisorId: req.user._id, ...excludeTestUsers() }).select('_id');
           match.userId = { $in: students.map((student) => student._id) };
         }
         return Activity.aggregate([
@@ -234,7 +236,7 @@ export const getSystemAnalytics = async (req, res) => {
       (async () => {
         const query = { status: 'Pending' };
         if (req.user.role === 'faculty') {
-          const students = await User.find({ role: 'student', advisorId: req.user._id }).select('_id');
+          const students = await User.find({ role: 'student', advisorId: req.user._id, ...excludeTestUsers() }).select('_id');
           query.userId = { $in: students.map((student) => student._id) };
         }
         return Activity.find(query)
@@ -278,16 +280,20 @@ export const getPlacementAnalytics = async (req, res) => {
     const Application = mongoose.model('Application');
 
     // 1. Get total students registered
-    const totalStudents = await User.countDocuments({ role: 'student', isActive: true });
+    const totalStudents = await User.countDocuments({ role: 'student', isActive: true, ...excludeTestUsers() });
+
+    // Exclude test users from placement counts
+    const testUsers = await User.find({ email: TEST_EMAIL_REGEX }).select('_id');
+    const testUserIds = testUsers.map(u => u._id);
 
     // 2. Get unique placed student count (Application status is 'Selected')
-    const placedStudentIds = await Application.distinct('studentId', { status: 'Selected' });
+    const placedStudentIds = await Application.distinct('studentId', { status: 'Selected', studentId: { $nin: testUserIds } });
     const totalPlaced = placedStudentIds.length;
 
     const placementPercentage = totalStudents > 0 ? Math.round((totalPlaced / totalStudents) * 1000) / 10 : 0;
 
     // 3. Get all selected applications populated with package details
-    const selectedApps = await Application.find({ status: 'Selected' })
+    const selectedApps = await Application.find({ status: 'Selected', studentId: { $nin: testUserIds } })
       .populate('studentId', 'department')
       .populate('opportunityId', 'salaryPackage');
 
@@ -297,7 +303,7 @@ export const getPlacementAnalytics = async (req, res) => {
 
     // 4. Department breakdown
     const deptStudents = await User.aggregate([
-      { $match: { role: 'student', isActive: true } },
+      { $match: { role: 'student', isActive: true, ...excludeTestUsers() } },
       { $group: { _id: '$department', count: { $sum: 1 } } }
     ]);
 

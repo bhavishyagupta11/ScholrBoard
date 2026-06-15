@@ -2,6 +2,9 @@
  * Simulates mid-transaction failures to verify rollback behavior.
  * Requires MongoDB replica set (Atlas or local rs0).
  */
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first');
+
 import dotenv from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -76,7 +79,13 @@ async function simulateActivityReviewRollback() {
 }
 
 async function main() {
-  await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 60000, connectTimeoutMS: 60000 });
+  await mongoose.connect(process.env.MONGODB_URI_TEST, { serverSelectionTimeoutMS: 60000, connectTimeoutMS: 60000 });
+  const dbName = mongoose.connection.db.databaseName;
+  if (dbName !== 'scholrboard_test') {
+    await mongoose.disconnect();
+    throw new Error('CRITICAL SAFETY ERROR: Execution is only allowed on the test database "scholrboard_test". Currently connected to: "' + dbName + '". Execution aborted!');
+  }
+
   console.log('MongoDB connected for transaction simulation.');
 
   const results = [];

@@ -29,6 +29,7 @@ const FacultyStudents = lazy(() => import('./pages/FacultyStudents.jsx').then((m
 const FacultyStudent360 = lazy(() => import('./pages/FacultyStudent360.jsx').then((module) => ({ default: module.FacultyStudent360 })));
 const FacultyOdApprovals = lazy(() => import('./pages/FacultyOdApprovals.jsx').then((module) => ({ default: module.FacultyOdApprovals })));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard.jsx').then((module) => ({ default: module.AdminDashboard })));
+const AdminAdvisors = lazy(() => import('./pages/AdminAdvisors.jsx').then((module) => ({ default: module.AdminAdvisors })));
 const AdminAnalytics = lazy(() => import('./pages/AdminAnalytics.jsx').then((module) => ({ default: module.AdminAnalytics })));
 const AdminPlacementDashboard = lazy(() => import('./pages/AdminPlacementDashboard.jsx').then((module) => ({ default: module.AdminPlacementDashboard })));
 const StudentPlacementDashboard = lazy(() => import('./pages/StudentPlacementDashboard.jsx').then((module) => ({ default: module.StudentPlacementDashboard })));
@@ -165,6 +166,7 @@ export default function App() {
 									<Route path="events" element={<AdminEvents />} />
 									<Route path="announcements" element={<AdminAnnouncements />} />
 									<Route path="talent-discovery" element={<AdminTalentDiscovery />} />
+									<Route path="advisors" element={<AdminAdvisors />} />
 								</Route>
 
 								<Route path="*" element={<Navigate to="/" replace />} />

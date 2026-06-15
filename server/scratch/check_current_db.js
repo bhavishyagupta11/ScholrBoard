@@ -1,3 +1,6 @@
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first');
+
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
@@ -11,9 +14,15 @@ import Notification from '../models/Notification.js';
 dotenv.config();
 
 async function run() {
-  const uri = process.env.MONGODB_URI;
+  const uri = process.env.MONGODB_URI_TEST;
   console.log('Connecting to:', uri);
   await mongoose.connect(uri);
+  const dbName = mongoose.connection.db.databaseName;
+  if (dbName !== 'scholrboard_test') {
+    await mongoose.disconnect();
+    throw new Error('CRITICAL SAFETY ERROR: Execution is only allowed on the test database "scholrboard_test". Currently connected to: "' + dbName + '". Execution aborted!');
+  }
+
 
   console.log('\n================ USERS ================');
   const users = await User.find({});

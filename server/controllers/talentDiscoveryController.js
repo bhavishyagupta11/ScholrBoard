@@ -1,5 +1,6 @@
 import Profile from '../models/Profile.js';
 import AuditLog from '../models/AuditLog.js';
+import { TEST_EMAIL_REGEX } from '../utils/testFilters.js';
 
 /**
  * GET /api/users/talent-discovery
@@ -179,7 +180,8 @@ export const getTalentDiscovery = async (req, res) => {
     //    role, isActive, department, semester, year, and keyword search.
     const userMatchClauses = [
       { 'user.role': 'student' },
-      { 'user.isActive': true }
+      { 'user.isActive': true },
+      { 'user.email': { $not: TEST_EMAIL_REGEX } }
     ];
 
     if (department) {

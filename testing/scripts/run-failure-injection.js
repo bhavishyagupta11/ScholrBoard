@@ -1,3 +1,6 @@
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first');
+
 import dotenv from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,8 +14,14 @@ const { acquireSyncLock, releaseSyncLock } = await import('../../server/services
 const { recalculateAndSaveScore } = await import('../../server/services/developerScoringService.js');
 
 async function runFailureInjectionTests() {
-  const mongoUri = process.env.MONGODB_URI;
+  const mongoUri = process.env.MONGODB_URI_TEST;
   await mongoose.connect(mongoUri);
+  const dbName = mongoose.connection.db.databaseName;
+  if (dbName !== 'scholrboard_test') {
+    await mongoose.disconnect();
+    throw new Error('CRITICAL SAFETY ERROR: Execution is only allowed on the test database "scholrboard_test". Currently connected to: "' + dbName + '". Execution aborted!');
+  }
+
 
   const testUserId = new mongoose.Types.ObjectId();
   const results = [];

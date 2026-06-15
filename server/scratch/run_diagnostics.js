@@ -1,3 +1,6 @@
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first');
+
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
@@ -37,7 +40,13 @@ async function apiRequest(endpoint, method, body, token) {
 }
 
 async function runDiagnostics() {
-  await mongoose.connect(process.env.MONGODB_URI);
+  await mongoose.connect(process.env.MONGODB_URI_TEST);
+  const dbName = mongoose.connection.db.databaseName;
+  if (dbName !== 'scholrboard_test') {
+    await mongoose.disconnect();
+    throw new Error('CRITICAL SAFETY ERROR: Execution is only allowed on the test database "scholrboard_test". Currently connected to: "' + dbName + '". Execution aborted!');
+  }
+
   console.log('Connected to Database.');
 
   // Let's delete previous diagnostic test data to ensure fresh runs

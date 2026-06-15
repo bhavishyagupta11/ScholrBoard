@@ -1,4 +1,7 @@
 process.env.NODE_ENV = 'test';
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first');
+
 import dotenv from 'dotenv';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -99,8 +102,8 @@ function generateToken(user) {
 }
 
 async function main() {
-  if (!process.env.MONGODB_URI || !process.env.JWT_SECRET) {
-    throw new Error('MONGODB_URI and JWT_SECRET must be set in server/.env');
+  if (!process.env.MONGODB_URI_TEST || !process.env.JWT_SECRET) {
+    throw new Error('MONGODB_URI_TEST and JWT_SECRET must be set in server/.env');
   }
 
   // Clean dynamic collections before seeding
@@ -109,7 +112,13 @@ async function main() {
   // Import mongoose from server so model imports share the same singleton
   const { default: mongoose } = await import('../../server/node_modules/mongoose/index.js');
   if (mongoose.connection.readyState === 0) {
-    await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 60000, connectTimeoutMS: 60000 });
+    await mongoose.connect(process.env.MONGODB_URI_TEST, { serverSelectionTimeoutMS: 60000, connectTimeoutMS: 60000 });
+  }
+
+  const dbName = mongoose.connection.db.databaseName;
+  if (dbName !== 'scholrboard_test') {
+    await mongoose.disconnect();
+    throw new Error(`CRITICAL SAFETY ERROR: Seeding test users is only allowed on the test database "scholrboard_test". Connected to: "${dbName}". Aborted!`);
   }
   console.log('MongoDB connected.');
 

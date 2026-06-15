@@ -1,3 +1,6 @@
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first');
+
 import dotenv from 'dotenv';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -89,8 +92,14 @@ const calculateOldUnifiedScore = (profile, githubScore, dsaScore, cpScore) => {
 };
 
 async function runTests() {
-  const mongoUri = process.env.MONGODB_URI;
+  const mongoUri = process.env.MONGODB_URI_TEST;
   await mongoose.connect(mongoUri);
+  const dbName = mongoose.connection.db.databaseName;
+  if (dbName !== 'scholrboard_test') {
+    await mongoose.disconnect();
+    throw new Error('CRITICAL SAFETY ERROR: Execution is only allowed on the test database "scholrboard_test". Currently connected to: "' + dbName + '". Execution aborted!');
+  }
+
   console.log('Connected to MongoDB.');
 
   const results = [];

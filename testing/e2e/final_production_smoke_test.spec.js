@@ -21,8 +21,17 @@ test.describe('ScholrBoard Final Production Smoke Test - 20 Steps', () => {
     await resetDB();
     fs.copyFileSync(pdfFixture, resumeFixture);
 
+    const dbUri = process.env.MONGODB_URI_TEST;
+    if (!dbUri) {
+      throw new Error('CRITICAL SAFETY ERROR: MONGODB_URI_TEST is not defined in environment variables.');
+    }
     if (mongoose.connection.readyState === 0) {
-      dbConnection = await mongoose.connect(process.env.MONGODB_URI);
+      dbConnection = await mongoose.connect(dbUri);
+    }
+    const dbName = mongoose.connection.db.databaseName;
+    if (dbName !== 'scholrboard_test') {
+      await mongoose.disconnect();
+      throw new Error(`CRITICAL SAFETY ERROR: E2E testing is only allowed on the test database "scholrboard_test". Currently connected to: "${dbName}". Execution aborted!`);
     }
     User = (await import('../../server/models/User.js')).default;
     Event = (await import('../../server/models/Event.js')).default;

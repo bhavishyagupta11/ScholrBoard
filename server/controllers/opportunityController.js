@@ -5,6 +5,7 @@ import AuditLog from '../models/AuditLog.js';
 import Notification from '../models/Notification.js';
 import { evaluatePlacementEligibility } from '../services/eligibilityService.js';
 import { withTransaction } from '../utils/withTransaction.js';
+import { excludeTestUsers } from '../utils/testFilters.js';
 
 // ─── ADMIN: Create Opportunity ────────────────────────────────────────────────
 export const createOpportunity = async (req, res) => {
@@ -89,7 +90,7 @@ export const publishOpportunity = async (req, res) => {
       return res.status(400).json({ success: false, message: `Opportunity is already ${opportunity.status}` });
     }
 
-    const students = await User.find({ role: 'student', isActive: true });
+    const students = await User.find({ role: 'student', isActive: true, ...excludeTestUsers() });
     const notifications = [];
 
     for (const student of students) {

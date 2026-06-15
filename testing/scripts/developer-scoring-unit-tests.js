@@ -1,3 +1,6 @@
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first');
+
 import dotenv from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -259,14 +262,20 @@ test('Version upgrades and score calculations database saving', async () => {
 
 // ─── RUNNER ──────────────────────────────────────────────────────────────────
 async function main() {
-  const mongoUri = process.env.MONGODB_URI;
+  const mongoUri = process.env.MONGODB_URI_TEST;
   if (!mongoUri) {
-    console.error('CRITICAL: MONGODB_URI is not defined in environment variables.');
+    console.error('CRITICAL: MONGODB_URI_TEST is not defined in environment variables.');
     process.exit(1);
   }
 
   console.log('Connecting to MongoDB for testing...');
   await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 30000 });
+  const dbName = mongoose.connection.db.databaseName;
+  if (dbName !== 'scholrboard_test') {
+    await mongoose.disconnect();
+    throw new Error('CRITICAL SAFETY ERROR: Execution is only allowed on the test database "scholrboard_test". Currently connected to: "' + dbName + '". Execution aborted!');
+  }
+
   console.log('MongoDB connected.');
 
   console.log(`Running ${tests.length} developer scoring unit tests...\n`);

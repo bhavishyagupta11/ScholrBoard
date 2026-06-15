@@ -6,6 +6,7 @@ import AuditLog from '../models/AuditLog.js';
 import Notification from '../models/Notification.js';
 import { evaluateScholarshipEligibility } from '../services/eligibilityService.js';
 import { withTransaction } from '../utils/withTransaction.js';
+import { excludeTestUsers } from '../utils/testFilters.js';
 
 // ─── ADMIN: Create Scholarship ────────────────────────────────────────────────
 export const createScholarship = async (req, res) => {
@@ -68,7 +69,7 @@ export const publishScholarship = async (req, res) => {
       return res.status(400).json({ success: false, message: `Scholarship is already ${scholarship.status}` });
     }
 
-    const students = await User.find({ role: 'student', isActive: true });
+    const students = await User.find({ role: 'student', isActive: true, ...excludeTestUsers() });
     const notifications = [];
 
     for (const student of students) {

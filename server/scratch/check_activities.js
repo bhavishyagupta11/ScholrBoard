@@ -1,3 +1,6 @@
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first');
+
 import dotenv from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,13 +15,19 @@ import Placement from '../models/Placement.js';
 import Notification from '../models/Notification.js';
 
 async function runQueries() {
-  const mongoUri = process.env.MONGODB_URI;
+  const mongoUri = process.env.MONGODB_URI_TEST;
   if (!mongoUri) {
-    console.error('MONGODB_URI not defined.');
+    console.error('MONGODB_URI_TEST not defined.');
     process.exit(1);
   }
   console.log('Connecting to MongoDB...');
   await mongoose.connect(mongoUri);
+  const dbName = mongoose.connection.db.databaseName;
+  if (dbName !== 'scholrboard_test') {
+    await mongoose.disconnect();
+    throw new Error('CRITICAL SAFETY ERROR: Execution is only allowed on the test database "scholrboard_test". Currently connected to: "' + dbName + '". Execution aborted!');
+  }
+
   console.log('Connected.');
 
   // 1. Activities

@@ -1,3 +1,6 @@
+import dns from 'dns';
+dns.setDefaultResultOrder('ipv4first');
+
 import '../config/env.js';
 import crypto from 'node:crypto';
 import mongoose from 'mongoose';
@@ -65,7 +68,20 @@ const login = async (email, password = 'password123') => {
 };
 
 try {
-  await connectDB();
+  const dbUri = process.env.MONGODB_URI_TEST;
+  if (!dbUri) {
+    throw new Error('CRITICAL SAFETY ERROR: MONGODB_URI_TEST is not defined in environment variables.');
+  }
+  await mongoose.connect(dbUri);
+  const dbName = mongoose.connection.db.databaseName;
+  if (dbName !== 'scholrboard_test') {
+    await mongoose.disconnect();
+    throw new Error(`CRITICAL SAFETY ERROR: Execution is only allowed on the test database "scholrboard_test". Currently connected to: "${dbName}". Execution aborted!`);
+  }
+  if (process.env.NODE_ENV === 'production') {
+    await mongoose.disconnect();
+    throw new Error('CRITICAL SAFETY ERROR: Execution is strictly forbidden in production mode.');
+  }
 
   const publicAdmin = await request('/auth/register', {
     method: 'POST',
