@@ -70,10 +70,18 @@ const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
   .split(',')
   .map((o) => o.trim());
 
+// Ensure localhost development origins are always allowed
+if (!allowedOrigins.includes('http://localhost:5173')) {
+  allowedOrigins.push('http://localhost:5173');
+}
+if (!allowedOrigins.includes('http://localhost:3000')) {
+  allowedOrigins.push('http://localhost:3000');
+}
+
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, Postman) in dev mode
-    if (!origin && process.env.NODE_ENV !== 'production') {
+    // Allow requests with no origin (direct browser access, curl, health checks)
+    if (!origin) {
       return callback(null, true);
     }
     if (allowedOrigins.includes(origin)) {
