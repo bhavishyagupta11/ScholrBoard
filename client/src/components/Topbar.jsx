@@ -154,7 +154,7 @@ export function Topbar({ onMenuClick }) {
 						{/* Left: Brand / Workspace */}
 						<div className="flex items-center gap-4 min-w-0 flex-1 md:flex-initial">
 							<button 
-								className="header-action-btn md:hidden flex-shrink-0 mr-1"
+								className="header-action-btn flex-shrink-0 mr-1"
 								onClick={onMenuClick}
 								aria-label="Open navigation menu"
 							>

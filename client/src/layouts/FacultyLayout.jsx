@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { ClipboardList, Users, BarChart3, LogOut, UserSquare2, Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ClipboardList, Users, BarChart3, LogOut, UserSquare2, Calendar, X } from 'lucide-react';
 import { Topbar } from '../components/Topbar.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
@@ -16,6 +16,14 @@ export function FacultyLayout() {
 	useEffect(() => {
 		localStorage.setItem('sidebar-collapsed', isCollapsed);
 	}, [isCollapsed]);
+
+	const toggleSidebar = () => {
+		if (window.innerWidth >= 768) {
+			setIsCollapsed(prev => !prev);
+		} else {
+			setIsMobileOpen(prev => !prev);
+		}
+	};
 
 	const handleLogout = async () => { 
 		await logout();
@@ -61,15 +69,6 @@ export function FacultyLayout() {
 					</a>
 
 					<div className="flex items-center gap-2">
-						{/* Desktop Toggle Button */}
-						<button 
-							onClick={() => setIsCollapsed(prev => !prev)} 
-							className="hidden md:flex items-center justify-center p-1 rounded-lg border border-[var(--border-color)] hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-							title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-						>
-							{isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-						</button>
-
 						{/* Mobile Close Button */}
 						<button 
 							onClick={() => setIsMobileOpen(false)} 
@@ -123,7 +122,7 @@ export function FacultyLayout() {
 
 			{/* Main Content */}
 			<div className="flex flex-col min-h-screen">
-				<Topbar onMenuClick={() => setIsMobileOpen(true)} />
+				<Topbar onMenuClick={toggleSidebar} />
 				<main className="flex-1 p-6">
 					<Outlet />
 				</main>
