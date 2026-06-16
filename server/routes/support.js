@@ -2,12 +2,13 @@ import express from 'express';
 import auth from '../middleware/auth.js';
 import requireRole from '../middleware/roleAuth.js';
 import { createContactMessage, getContactMessages } from '../controllers/supportController.js';
-import rateLimit from 'express-rate-limit';
+import { rateLimit, ipKeyGenerator } from 'express-rate-limit';
 
 const contactLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
-  message: { success: false, message: 'Too many requests. Please try again later.' }
+  message: { success: false, message: 'Too many requests. Please try again later.' },
+  keyGenerator: (req, res) => ipKeyGenerator(req, res)
 });
 
 const router = express.Router();

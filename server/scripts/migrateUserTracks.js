@@ -13,7 +13,7 @@ import { resolveTrackForDepartment } from '../utils/trackResolver.js';
 
 const migrate = async () => {
   try {
-    const mongoUri = process.env.MONGODB_URI_TEST || process.env.MONGODB_URI;
+    const mongoUri = process.env.MONGODB_URI;
     console.log(`📡 Connecting to MongoDB: ${mongoUri}`);
     await mongoose.connect(mongoUri);
     console.log('✅ Connected to MongoDB');

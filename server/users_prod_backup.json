@@ -1,0 +1,320 @@
+[
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "69efa027227a38f279d129ee",
+    "role": "student",
+    "department": "CSE",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "69efa027227a38f279d129ee"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "69fe24d262adb08128f428db",
+    "role": "student",
+    "department": "CSE",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "69fe24d262adb08128f428db"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a0c2b9ef82a7a6b1271cddb",
+    "role": "faculty",
+    "department": "CSE",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a0c2b9ef82a7a6b1271cddb"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a0c2c490976d3613c878abf",
+    "role": "student",
+    "department": "CSE",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a0c2c490976d3613c878abf"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a0c2c80e1ec86640d44bf1b",
+    "role": "student",
+    "department": "CSE",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a0c2c80e1ec86640d44bf1b"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a0c2cba639340838348e19a",
+    "role": "student",
+    "department": "CSE",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a0c2cba639340838348e19a"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a0c2cdce6fe65c347a56541",
+    "role": "student",
+    "department": "CSE",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a0c2cdce6fe65c347a56541"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a0c2d64e0293baf985895fa",
+    "role": "student",
+    "department": "CSE",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a0c2d64e0293baf985895fa"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a0c2d65e0293baf98589600",
+    "role": "faculty",
+    "department": "CSE",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a0c2d65e0293baf98589600"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a0c2d65e0293baf98589606",
+    "role": "admin",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a0c2d65e0293baf98589606"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a27d9648435b89ab4f584a9",
+    "role": "student",
+    "department": "CSE",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a27d9648435b89ab4f584a9"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a27f0387c68af28361e10e0",
+    "role": "faculty",
+    "department": "CS-AUDIT-eab6a4",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a27f0387c68af28361e10e0"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a27f0397c68af28361e10f2",
+    "role": "faculty",
+    "department": "CS-AUDIT-eab6a4",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a27f0397c68af28361e10f2"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a27f0397c68af28361e10f8",
+    "role": "student",
+    "department": "CS-AUDIT-eab6a4",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a27f0397c68af28361e10f8"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a27f03a7c68af28361e10fa",
+    "role": "student",
+    "department": "CS-AUDIT-eab6a4",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a27f03a7c68af28361e10fa"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a27f03a7c68af28361e10fc",
+    "role": "student",
+    "department": "CS-AUDIT-eab6a4",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a27f03a7c68af28361e10fc"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a27f03a7c68af28361e10fe",
+    "role": "student",
+    "department": "ECE-AUDIT-eab6a4",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a27f03a7c68af28361e10fe"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a27f03b7c68af28361e1100",
+    "role": "admin",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a27f03b7c68af28361e1100"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a27f2ea41863b7f995bc4c9",
+    "role": "admin",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a27f2ea41863b7f995bc4c9"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a27f2ea41863b7f995bc4cf",
+    "role": "student",
+    "department": "CSE-f434fe7a",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a27f2ea41863b7f995bc4cf"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a27f2ea41863b7f995bc4d9",
+    "role": "student",
+    "department": "ECE-f434fe7a",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a27f2ea41863b7f995bc4d9"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a27f33e04625bcf6c630537",
+    "role": "admin",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a27f33e04625bcf6c630537"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a27f33e04625bcf6c63053f",
+    "role": "student",
+    "department": "CSE-7e4cf21f",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a27f33e04625bcf6c63053f"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a27f33e04625bcf6c630546",
+    "role": "student",
+    "department": "ECE-7e4cf21f",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a27f33e04625bcf6c630546"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a280141aeeacfed308fb165",
+    "role": "admin",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a280141aeeacfed308fb165"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a2bcd71052dfc43ae4bcbf8",
+    "role": "admin",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a2bcd71052dfc43ae4bcbf8"
+  },
+  {
+    "trackId": null,
+    "_id": "6a2bcd71052dfc43ae4bcc03",
+    "role": "faculty",
+    "department": "CSE",
+    "facultyLevel": "faculty",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a2bcd71052dfc43ae4bcc03"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a2c111087482ef13805811e",
+    "role": "student",
+    "department": "CSE",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a2c111087482ef13805811e"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a2c111087482ef138058124",
+    "role": "student",
+    "department": "CSE",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a2c111087482ef138058124"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a2fc1eefc5fba3046da91b8",
+    "role": "faculty",
+    "department": "CSE",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a2fc1eefc5fba3046da91b8"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a2fc1effc5fba3046da91c3",
+    "role": "faculty",
+    "department": "IT",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a2fc1effc5fba3046da91c3"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a2fc1effc5fba3046da91cc",
+    "role": "faculty",
+    "department": "ECE",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a2fc1effc5fba3046da91cc"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a2fc1effc5fba3046da91d4",
+    "role": "faculty",
+    "department": "EE",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a2fc1effc5fba3046da91d4"
+  },
+  {
+    "facultyLevel": "faculty",
+    "trackId": null,
+    "_id": "6a2fc1effc5fba3046da91db",
+    "role": "faculty",
+    "department": "ME",
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a2fc1effc5fba3046da91db"
+  },
+  {
+    "facultyLevel": "faculty",
+    "_id": "6a2ffa99b75e71fa95af7ae3",
+    "role": "student",
+    "department": "CE",
+    "trackId": null,
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a2ffa99b75e71fa95af7ae3"
+  },
+  {
+    "_id": "6a30ee8a833f67f00ba9a4b6",
+    "role": "student",
+    "facultyLevel": "faculty",
+    "department": "CHE",
+    "trackId": null,
+    "avatarUrl": "https://ui-avatars.com/api/?name=undefined&background=3b82f6&color=fff",
+    "id": "6a30ee8a833f67f00ba9a4b6"
+  }
+]

@@ -19,13 +19,13 @@ import {
   updateTicketStatus,
   getTicketSummary,
 } from '../controllers/ticketController.js';
-import rateLimit from 'express-rate-limit';
+import { rateLimit, ipKeyGenerator } from 'express-rate-limit';
 
 const ticketCreateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 20,
   message: { success: false, message: 'Ticket creation limit exceeded. Please try again later.' },
-  keyGenerator: (req) => req.user?._id?.toString() || req.ip
+  keyGenerator: (req, res) => req.user?._id?.toString() || ipKeyGenerator(req, res)
 });
 
 const router = express.Router();

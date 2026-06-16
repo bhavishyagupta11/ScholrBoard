@@ -52,7 +52,7 @@ const TRACKS = [
 
 const seed = async () => {
   try {
-    const mongoUri = process.env.MONGODB_URI_TEST || process.env.MONGODB_URI;
+    const mongoUri = process.env.MONGODB_URI;
     console.log(`📡 Connecting to MongoDB: ${mongoUri}`);
     await mongoose.connect(mongoUri);
     console.log('✅ Connected to MongoDB');
@@ -61,7 +61,7 @@ const seed = async () => {
     let updated = 0;
 
     for (const track of TRACKS) {
-      const existing = await Track.findOne({ code: track.code });
+      const existing = await Track.findOne({ slug: track.slug });
       if (existing) {
         // Update track fields
         Object.assign(existing, track);

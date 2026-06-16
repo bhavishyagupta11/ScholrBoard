@@ -10,7 +10,7 @@
  * Reused for both faculty and coordinator routes.
  */
 import { useState, useEffect, useCallback } from 'react';
-import { LifeBuoy, MessageSquare, Clock, ChevronRight, X, Send, RefreshCw, AlertCircle, Tag, User } from 'lucide-react';
+import { LifeBuoy, MessageSquare, Clock, ChevronRight, X, Send, RefreshCw, AlertCircle, Tag, User, Plus } from 'lucide-react';
 import ticketsApi from '../api/tickets.api.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
@@ -28,6 +28,90 @@ function StatusBadge({ status }) {
     <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ color: cfg.color, background: cfg.bg }}>
       {cfg.icon} {cfg.label}
     </span>
+  );
+}
+
+const CATEGORIES = ['Academic', 'Technical', 'Administrative', 'Attendance', 'Scholarship', 'Placement', 'OD Request', 'Grievance', 'Other'];
+
+function CreateTicketModal({ onClose, onCreated }) {
+  const [form, setForm] = useState({ subject: '', description: '', category: 'Academic', targetRole: 'admin', priority: 'medium' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.subject.trim() || !form.description.trim()) {
+      setError('Subject and description are required.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await ticketsApi.createTicket(form);
+      onCreated();
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Failed to create ticket.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}>
+      <div className="card p-6 w-full max-w-lg relative" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white"><X size={20} /></button>
+        <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>🎫 Create Admin Support Ticket</h2>
+        {error && (
+          <div className="mb-3 flex items-center gap-2 text-sm p-3 rounded-lg" style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--danger-color)' }}>
+            <AlertCircle size={14} /> {error}
+          </div>
+        )}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Subject *</label>
+            <input
+              className="input w-full"
+              placeholder="Brief description of your issue"
+              value={form.subject}
+              onChange={e => setForm(p => ({ ...p, subject: e.target.value }))}
+              maxLength={200}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Category</label>
+              <select className="input w-full" value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}>
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Priority</label>
+              <select className="input w-full" value={form.priority} onChange={e => setForm(p => ({ ...p, priority: e.target.value }))}>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Description *</label>
+            <textarea
+              className="input w-full min-h-[120px] resize-y"
+              placeholder="Describe your issue in detail..."
+              value={form.description}
+              onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+              maxLength={5000}
+            />
+          </div>
+          <button type="submit" disabled={loading} className="btn btn-primary w-full">
+            {loading ? <RefreshCw size={16} className="animate-spin inline mr-2" /> : <Send size={16} className="inline mr-2" />}
+            {loading ? 'Submitting...' : 'Submit Ticket'}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
 
@@ -139,6 +223,7 @@ export function FacultySupportPage() {
   const [error, setError] = useState('');
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [filterStatus, setFilterStatus] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
 
   const isCoordinator = (user?.role === 'faculty' && user?.facultyLevel === 'coordinator');
 
@@ -155,20 +240,27 @@ export function FacultySupportPage() {
 
   return (
     <div className="space-y-6">
+      {showCreate && <CreateTicketModal onClose={() => setShowCreate(false)} onCreated={loadTickets} />}
       {selectedTicket && <TicketDetailModal ticket={selectedTicket} onClose={() => { setSelectedTicket(null); loadTickets(); }} />}
 
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
-          <LifeBuoy size={28} style={{ color: 'var(--accent)' }} />
-          {isCoordinator ? 'Department Support Tickets' : 'Assigned Support Tickets'}
-        </h1>
-        <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
-          {isCoordinator
-            ? `All support tickets from ${user?.department || 'your department'}`
-            : 'Support tickets assigned to you'}
-        </p>
+      <div className="flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-3" style={{ color: 'var(--text-primary)' }}>
+            <LifeBuoy size={28} style={{ color: 'var(--accent)' }} />
+            {isCoordinator ? 'Department Support Tickets' : 'Assigned Support Tickets'}
+          </h1>
+          <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
+            {isCoordinator
+              ? `All support tickets from ${user?.department || 'your department'}`
+              : 'Support tickets assigned to you'}
+          </p>
+        </div>
+        <button onClick={() => setShowCreate(true)} className="btn btn-primary">
+          <Plus size={18} className="mr-2" /> Create Ticket
+        </button>
       </div>
+
 
       {/* Status filter */}
       <div className="flex flex-wrap gap-2">
