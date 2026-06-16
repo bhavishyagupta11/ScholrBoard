@@ -6,7 +6,7 @@
  * and handles common error cases (401 → redirect to login, etc.)
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+export const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const TOKEN_KEY = 'scholrmind_token';
 
 // ─── Token management ─────────────────────────────────────────────────────────
@@ -85,6 +85,37 @@ export const apiRequest = async (endpoint, options = {}) => {
   }
 
   return data;
+};
+
+// ─── Blob fetch wrapper ────────────────────────────────────────────────────────
+
+export const fetchBlob = async (endpoint, options = {}) => {
+  const token = getToken();
+
+  const headers = {
+    ...(token && { Authorization: `Bearer ${token}` }),
+    ...options.headers,
+  };
+
+  const response = await fetch(`${BASE_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      window.dispatchEvent(new CustomEvent('auth:session-expired'));
+    }
+    const err = new Error(`Failed to fetch secure document`);
+    err.status = response.status;
+    err.contentType = response.headers.get('content-type') || 'Unknown';
+    throw err;
+  }
+
+  return {
+    blob: await response.blob(),
+    contentType: response.headers.get('content-type') || ''
+  };
 };
 
 // ─── Token refresh ────────────────────────────────────────────────────────────

@@ -14,8 +14,10 @@ import {
   RefreshCw, X, User, Mail, GraduationCap, Briefcase, Star,
   ExternalLink,
 } from 'lucide-react';
+import { BASE_URL } from '../api/index.js';
 import uploadApi from '../api/upload.api.js';
 import aiApi from '../api/ai.api.js';
+import { usePdfBlob } from '../hooks/usePdfBlob.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -203,6 +205,9 @@ function ResultsSection({ analysis }) {
   const atsScore     = ai.atsScore     ?? null;
   const overallScore = ai.overallScore ?? null;
 
+  const proxyEndpoint = analysis?.fileUrl?.toLowerCase().includes('.pdf') ? `/upload/proxy?url=${encodeURIComponent(analysis.fileUrl)}` : null;
+  const { blobUrl, loading: pdfLoading, error: pdfError } = usePdfBlob(proxyEndpoint);
+
   // parsed data
   const name     = parsed.name     || analysis?.fileName?.replace(/\.[^.]+$/, '') || '—';
   const email    = parsed.email    || '—';
@@ -272,11 +277,22 @@ function ResultsSection({ analysis }) {
             </div>
           </div>
           <div className="w-full overflow-hidden bg-black/20 rounded-lg p-2" style={{ border: '1px solid var(--border-color)' }}>
-            <iframe
-              src={analysis.fileUrl}
-              title="Resume PDF Preview"
-              className="w-full h-[60vh] rounded border-0"
-            />
+            {pdfLoading ? (
+              <div className="flex flex-col items-center justify-center h-[60vh]">
+                <span className="loader"></span>
+                <p className="mt-4 text-sm text-slate-400">Loading PDF securely...</p>
+              </div>
+            ) : pdfError ? (
+              <div className="flex flex-col items-center justify-center h-[60vh] text-red-400 text-sm">
+                Failed to load PDF: {pdfError}
+              </div>
+            ) : (
+              <iframe
+                src={blobUrl}
+                title="Resume PDF Preview"
+                className="w-full h-[60vh] rounded border-0"
+              />
+            )}
           </div>
         </div>
       )}

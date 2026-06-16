@@ -19,6 +19,7 @@ import {
   getMyResumeAnalyses,
   getResumeAnalysis,
   viewResumeFile,
+  proxyPdf,
 } from '../controllers/uploadController.js';
 
 const router = express.Router();
@@ -69,5 +70,9 @@ router.get('/resume/analyses/:id', validateObjectId('id'), getResumeAnalysis);
 // @route   GET /api/upload/resume/view/:id
 // @desc    Get a specific resume as an inline PDF stream
 router.get('/resume/view/:id', validateObjectId('id'), viewResumeFile);
+
+// @route   GET /api/upload/proxy
+// @desc    Generic PDF proxy to enforce inline viewing (bypassing Cloudinary forced attachment)
+router.get('/proxy', proxyPdf);
 
 export default router;

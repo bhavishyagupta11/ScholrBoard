@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import uploadApi from '../api/upload.api.js';
 import aiApi from '../api/ai.api.js';
+import { BASE_URL, fetchBlob } from '../api/index.js';
 import { useProfile } from '../contexts/ProfileContext.jsx';
 
 const CONFIDENCE_COLOR = (n) => {
@@ -26,6 +27,27 @@ function CertBadge({ label, color = 'var(--primary-blue)' }) {
 }
 
 function CertCard({ cert, onDelete }) {
+  const [fetchingPdf, setFetchingPdf] = useState(false);
+
+  const handleViewProof = async (url) => {
+    try {
+      setFetchingPdf(true);
+      const proxyEndpoint = `/upload/proxy?url=${encodeURIComponent(url)}`;
+      const { blob, contentType } = await fetchBlob(proxyEndpoint);
+      if (!contentType.toLowerCase().includes('application/pdf')) {
+        throw new Error('Invalid content type received.');
+      }
+      const objUrl = URL.createObjectURL(blob);
+      window.open(objUrl, '_blank');
+    } catch (err) {
+      const status = err.status ? `Status: ${err.status}` : 'Status: Unknown';
+      const type = err.contentType ? `Type: ${err.contentType}` : 'Type: Unknown';
+      alert(`Unable to load PDF preview. ${status} | ${type} | URL: ${proxyEndpoint}`);
+    } finally {
+      setFetchingPdf(false);
+    }
+  };
+
   return (
     <div className="card p-5 group relative gpu-accelerated hover:scale-[1.01] transition-transform">
       <div className="flex items-start gap-4">
@@ -82,11 +104,14 @@ function CertCard({ cert, onDelete }) {
           )}
 
           {cert.credentialUrl && (
-            <a href={cert.credentialUrl} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs mt-2 hover:underline"
-              style={{ color: 'var(--primary-blue)' }}>
-              <ExternalLink size={12} /> View Certificate
-            </a>
+            <button 
+              onClick={() => handleViewProof(cert.credentialUrl)}
+              disabled={fetchingPdf}
+              className="inline-flex items-center gap-1 text-xs mt-2 hover:underline cursor-pointer disabled:opacity-50"
+              style={{ color: 'var(--primary-blue)' }}
+            >
+              <ExternalLink size={12} /> {fetchingPdf ? 'Loading...' : 'View Certificate'}
+            </button>
           )}
         </div>
       </div>

@@ -236,8 +236,11 @@ export const getAssignedTickets = async (req, res) => {
       query.department = user.department;
       if (status && typeof status === 'string') query.status = status;
     } else {
-      // Faculty sees tickets assigned to them
-      query.assignedTo = user._id;
+      // Faculty sees tickets assigned to them AND tickets they created
+      query.$or = [
+        { assignedTo: user._id },
+        { createdBy: user._id }
+      ];
       if (status && typeof status === 'string') query.status = status;
     }
 

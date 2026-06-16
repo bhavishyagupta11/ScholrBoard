@@ -3,6 +3,8 @@
  */
 import { useState, useEffect } from 'react';
 import activitiesApi from '../api/activities.api.js';
+import { BASE_URL } from '../api/index.js';
+import { usePdfBlob } from '../hooks/usePdfBlob.js';
 import analyticsApi from '../api/analytics.api.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { AlertCircle, CheckCircle, XCircle, Clock, Search, ExternalLink, X } from 'lucide-react';
@@ -21,6 +23,9 @@ export function FacultyApprovals() {
   
   // Preview modal state
   const [previewUrl, setPreviewUrl] = useState(null);
+
+  const proxyEndpoint = previewUrl?.toLowerCase().includes('.pdf') ? `/upload/proxy?url=${encodeURIComponent(previewUrl)}` : null;
+  const { blobUrl, loading: pdfLoading, error: pdfError } = usePdfBlob(proxyEndpoint);
 
   useEffect(() => {
     fetchPending();
@@ -266,11 +271,20 @@ export function FacultyApprovals() {
             {/* Modal Body */}
             <div className="flex-1 flex items-center justify-center min-h-[45vh] max-h-[60vh] overflow-auto bg-black/20 rounded-lg p-2">
               {previewUrl.toLowerCase().includes('.pdf') ? (
-                <iframe 
-                  src={previewUrl} 
-                  title="PDF Attachment Preview"
-                  className="w-full h-[50vh] rounded border-0" 
-                />
+                pdfLoading ? (
+                  <div className="flex flex-col items-center justify-center p-8">
+                    <span className="loader"></span>
+                    <p className="mt-4 text-sm text-slate-400">Loading PDF securely...</p>
+                  </div>
+                ) : pdfError ? (
+                  <div className="text-red-400 text-sm">Failed to load PDF: {pdfError}</div>
+                ) : (
+                  <iframe 
+                    src={blobUrl} 
+                    title="PDF Attachment Preview"
+                    className="w-full h-[50vh] rounded border-0" 
+                  />
+                )
               ) : (
                 <img 
                   src={previewUrl} 

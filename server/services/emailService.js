@@ -81,7 +81,12 @@ export const sendContactNotification = async (data) => {
       return;
     }
 
-    const adminEmail = process.env.ADMIN_CONTACT_EMAIL || 'pathbullish@gmail.com';
+    let adminEmail = process.env.ADMIN_CONTACT_EMAIL || 'pathbullish@gmail.com';
+    
+    // FIX: Prevent Gmail SMTP from hiding self-sent emails in the "Sent" folder
+    if (adminEmail === process.env.EMAIL_USER && adminEmail.endsWith('@gmail.com')) {
+      adminEmail = adminEmail.replace('@gmail.com', '+admin@gmail.com');
+    }
 
     const mailOptions = {
       from: `"ScholrBoard Support" <${process.env.EMAIL_USER}>`,
@@ -129,11 +134,14 @@ export const sendContactNotification = async (data) => {
       text: `New Contact Form Submission\n\nMessage ID: ${data._id}\nName: ${data.name}\nEmail: ${data.email}\nSubject: ${data.subject}\nSubmitted At: ${new Date(data.createdAt).toLocaleString()}\n\nMessage:\n${data.message}`,
     };
 
+    console.log('EMAIL SEND STARTED');
     await transporter.sendMail(mailOptions);
+    console.log('EMAIL SENT SUCCESSFULLY');
     console.info(`[EmailService] Contact notification sent successfully for submission ${data._id || 'N/A'}`);
 
   } catch (err) {
     // Log only — never propagate to caller
+    console.log(err);
     console.error(`[EmailService] Failed to send contact notification:`, {
       message: err.message,
       code: err.code,

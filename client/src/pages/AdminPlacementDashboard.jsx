@@ -6,11 +6,13 @@ import {
   Briefcase, Award, TrendingUp, BarChart3, Plus, Trash2, Calendar, 
   MapPin, Clock, Search, ChevronRight, CheckCircle2, AlertCircle, Loader, FileText, X
 } from 'lucide-react';
+import { BASE_URL } from '../api/index.js';
 import opportunitiesApi from '../api/opportunities.api.js';
 import applicationsApi from '../api/applications.api.js';
 import scholarshipsApi from '../api/scholarships.api.js';
 import { api } from '../api/index.js';
 import { useScrollAnimation } from '../hooks/useScrollAnimation.js';
+import { usePdfBlob } from '../hooks/usePdfBlob.js';
 
 export function AdminPlacementDashboard() {
   // Placement Stats State
@@ -22,6 +24,7 @@ export function AdminPlacementDashboard() {
   const [scholarships, setScholarships] = useState([]);
   const [loadingOps, setLoadingOps] = useState(true);
   const [loadingScholarships, setLoadingScholarships] = useState(true);
+  const [editingScholarshipId, setEditingScholarshipId] = useState(null);
 
   // Active review lists
   const [selectedOp, setSelectedOp] = useState(null);
@@ -50,6 +53,9 @@ export function AdminPlacementDashboard() {
   const [interviewData, setInterviewData] = useState({ dateTime: '', venue: '', instructions: '' });
   const [schedulingAppId, setSchedulingAppId] = useState(null);
   const [previewAppId, setPreviewAppId] = useState(null);
+
+  const proxyEndpoint = previewAppId ? `/upload/resume/view/${previewAppId}` : null;
+  const { blobUrl, loading: pdfLoading, error: pdfError } = usePdfBlob(proxyEndpoint);
 
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'compose-drive' | 'compose-scholarship' | 'applicant-reviews'
   const [submitting, setSubmitting] = useState(false);
@@ -1125,11 +1131,20 @@ export function AdminPlacementDashboard() {
               </button>
             </div>
             <div className="flex-1 flex items-center justify-center min-h-[50vh] max-h-[70vh] bg-black/20 rounded-lg p-2">
-              <iframe 
-                src={`/api/upload/resume/view/${previewAppId}`} 
-                title="PDF Resume Preview"
-                className="w-full h-[60vh] rounded border-0" 
-              />
+              {pdfLoading ? (
+                <div className="flex flex-col items-center justify-center p-8">
+                  <span className="loader"></span>
+                  <p className="mt-4 text-sm text-slate-400">Loading Resume securely...</p>
+                </div>
+              ) : pdfError ? (
+                <div className="text-red-400 text-sm">Failed to load Resume: {pdfError}</div>
+              ) : (
+                <iframe 
+                  src={blobUrl} 
+                  title="PDF Resume Preview"
+                  className="w-full h-[60vh] rounded border-0" 
+                />
+              )}
             </div>
           </div>
         </div>

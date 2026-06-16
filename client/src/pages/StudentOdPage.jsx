@@ -3,9 +3,10 @@
  */
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, AlertCircle, FileText, Check, Upload, Clock, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { Calendar, AlertCircle, FileText, Check, Upload, Clock, ShieldAlert, CheckCircle2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import odApi from '../api/od.api.js';
 import uploadApi from '../api/upload.api.js';
+import { BASE_URL, fetchBlob } from '../api/index.js';
 import { useScrollAnimation } from '../hooks/useScrollAnimation.js';
 
 export function StudentOdPage() {
@@ -22,6 +23,7 @@ export function StudentOdPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [fetchingPdfId, setFetchingPdfId] = useState(null);
 
   const [ods, setOds] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -73,6 +75,33 @@ export function StudentOdPage() {
     setSuccess(false);
   };
 
+  const resetForm = () => {
+    setFormData({ eventName: '', eventDate: '' });
+    setFile(null);
+    setEditingOdId(null);
+    setError(null);
+  };
+
+  const handleViewProof = async (od) => {
+    try {
+      setFetchingPdfId(od._id);
+      const proxyEndpoint = `/upload/proxy?url=${encodeURIComponent(od.proofUrl)}`;
+      const { blob, contentType } = await fetchBlob(proxyEndpoint);
+      if (!contentType.toLowerCase().includes('application/pdf')) {
+        throw new Error('Invalid content type received.');
+      }
+      const objUrl = URL.createObjectURL(blob);
+      window.open(objUrl, '_blank');
+      // No strict revoke needed here as it opens in a new tab which manages its own session
+    } catch (err) {
+      const status = err.status ? `Status: ${err.status}` : 'Status: Unknown';
+      const type = err.contentType ? `Type: ${err.contentType}` : 'Type: Unknown';
+      setError(`Unable to load PDF preview. ${status} | ${type} | URL: ${proxyEndpoint}`);
+    } finally {
+      setFetchingPdfId(null);
+    }
+  };
+
   const handleCancelEdit = () => {
     setEditingOdId(null);
     setFormData({ eventName: '', eventDate: '' });
@@ -116,8 +145,7 @@ export function StudentOdPage() {
         setSuccess(true);
       }
 
-      setFormData({ eventName: '', eventDate: '' });
-      setFile(null);
+      resetForm();
       
       // Refresh list
       fetchOds();
@@ -328,14 +356,13 @@ export function StudentOdPage() {
                         </button>
                       )}
                       {od.proofUrl && (
-                        <a 
-                          href={od.proofUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-xs flex items-center gap-1 hover:underline text-blue-400"
+                        <button 
+                          onClick={() => handleViewProof(od)}
+                          disabled={fetchingPdfId === od._id}
+                          className="text-xs flex items-center gap-1 hover:underline text-blue-400 cursor-pointer disabled:opacity-50"
                         >
-                          <FileText size={12} /> View Proof
-                        </a>
+                          <FileText size={12} /> {fetchingPdfId === od._id ? 'Loading...' : 'View Proof'}
+                        </button>
                       )}
                     </div>
                   </div>

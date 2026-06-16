@@ -54,6 +54,7 @@ export const createContactMessage = async (req, res) => {
 
     // Step 2: Fire-and-forget email notification (NEVER blocks the response)
     // Errors are caught internally by emailService — no await, no .catch needed here
+    console.log('Executing sendContactNotification()');
     sendContactNotification({
       name:    trimmedName,
       email:   trimmedEmail,

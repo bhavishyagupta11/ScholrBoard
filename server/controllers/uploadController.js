@@ -192,3 +192,39 @@ export const viewResumeFile = async (req, res) => {
     return res.status(500).send('Internal server error while viewing resume');
   }
 };
+
+// ─── GET generic PDF file as inline stream (Global PDF proxy) ────────────────
+export const proxyPdf = async (req, res) => {
+  try {
+    const { url } = req.query;
+    if (!url) {
+      return res.status(400).send('URL is required');
+    }
+
+    if (!url.startsWith('http')) {
+      return res.status(400).send('Invalid URL format');
+    }
+
+    // Enforce that we only proxy trusted domains (Cloudinary) to prevent SSRF
+    if (!url.includes('res.cloudinary.com')) {
+      // If it's not cloudinary, we can just redirect to it since it likely doesn't have the attachment issue
+      return res.redirect(url);
+    }
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      return res.status(response.status).send('Failed to fetch file from storage');
+    }
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename="document.pdf"');
+    
+    // We get it as an ArrayBuffer, convert to Buffer, and send
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    return res.send(buffer);
+  } catch (error) {
+    console.error('proxyPdf error:', error);
+    return res.status(500).send('Failed to proxy PDF file');
+  }
+};

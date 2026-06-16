@@ -4,7 +4,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AlertCircle, CheckCircle2, Clock, XCircle, FileText, ChevronDown, ChevronUp, X, ExternalLink } from 'lucide-react';
 import odApi from '../api/od.api.js';
+import { BASE_URL } from '../api/index.js';
 import { useScrollAnimation } from '../hooks/useScrollAnimation.js';
+import { usePdfBlob } from '../hooks/usePdfBlob.js';
 
 export function FacultyOdApprovals() {
   const [ods, setOds] = useState([]);
@@ -17,6 +19,9 @@ export function FacultyOdApprovals() {
   const [remarks, setRemarks] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
+
+  const proxyEndpoint = previewUrl?.toLowerCase().includes('.pdf') ? `/upload/proxy?url=${encodeURIComponent(previewUrl)}` : null;
+  const { blobUrl, loading: pdfLoading, error: pdfError } = usePdfBlob(proxyEndpoint);
 
   const headerRef = useScrollAnimation({ animationClass: 'fade-in-up', delay: 0.1 });
   const listRef = useScrollAnimation({ animationClass: 'fade-in-up', delay: 0.2 });
@@ -268,11 +273,20 @@ export function FacultyOdApprovals() {
             {/* Modal Body */}
             <div className="flex-1 flex items-center justify-center min-h-[45vh] max-h-[60vh] overflow-auto bg-black/20 rounded-lg p-2">
               {previewUrl.toLowerCase().includes('.pdf') ? (
-                <iframe 
-                  src={previewUrl} 
-                  title="PDF Attachment Preview"
-                  className="w-full h-[50vh] rounded border-0" 
-                />
+                pdfLoading ? (
+                  <div className="flex flex-col items-center justify-center p-8">
+                    <span className="loader"></span>
+                    <p className="mt-4 text-sm text-slate-400">Loading PDF securely...</p>
+                  </div>
+                ) : pdfError ? (
+                  <div className="text-red-400 text-sm">Failed to load PDF: {pdfError}</div>
+                ) : (
+                  <iframe 
+                    src={blobUrl} 
+                    title="PDF Attachment Preview"
+                    className="w-full h-[50vh] rounded border-0" 
+                  />
+                )
               ) : (
                 <img 
                   src={previewUrl} 
