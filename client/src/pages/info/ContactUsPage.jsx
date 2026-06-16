@@ -158,7 +158,7 @@ export function ContactUsPage() {
                     onChange={handleChange}
                     className="w-full px-3 py-2.5 rounded-lg border text-sm"
                     style={{ background: 'var(--bg-medium)', borderColor: errors.name ? '#ef4444' : 'var(--border-color)', color: 'var(--text-primary)' }}
-                    placeholder="John Doe"
+                    placeholder="USER_NAME"
                   />
                   {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
                 </div>
@@ -172,7 +172,7 @@ export function ContactUsPage() {
                     onChange={handleChange}
                     className="w-full px-3 py-2.5 rounded-lg border text-sm"
                     style={{ background: 'var(--bg-medium)', borderColor: errors.email ? '#ef4444' : 'var(--border-color)', color: 'var(--text-primary)' }}
-                    placeholder="john@university.edu"
+                    placeholder="user_name@university.edu"
                   />
                   {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
                 </div>
