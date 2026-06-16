@@ -4,7 +4,7 @@
  * Permission matrix:
  *   student:               create, view own, reply to own
  *   faculty:               create (to admin), view assigned, reply
- *   department_coordinator: create (to admin), view dept tickets, reply
+ *   coordinator: create (to admin), view dept tickets, reply
  *   admin:                 view all, assign, update status, resolve, close
  *
  * Notifications are fired after each state change.
@@ -14,15 +14,15 @@ import SupportTicket from '../models/SupportTicket.js';
 import SupportTicketMessage from '../models/SupportTicketMessage.js';
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
-import { sendTicketNotification } from '../services/emailService.js';
+import { escapeHtml } from '../utils/sanitize.js';
 
 // ─── Helper: create notification (fire-and-forget style) ─────────────────────
 
-const notifyUser = async (userId, type, title, message, ticketId) => {
+export const notifyTicketEvent = async (userId, eventName, title, message, ticketId) => {
   try {
     await Notification.create({
       userId,
-      type,
+      type: eventName,
       title,
       message,
       relatedId: ticketId,
@@ -31,17 +31,20 @@ const notifyUser = async (userId, type, title, message, ticketId) => {
       priority: 'medium',
     });
   } catch (err) {
-    console.error(`[ticketController] Failed to create notification (${type}):`, err.message);
+    console.error(`[ticketController] Failed to create notification (${eventName}):`, err.message);
   }
 };
 
 // ─── Determine flow from creator role and targetRole ─────────────────────────
 
-const determineFlow = (creatorRole, targetRole) => {
+const determineFlow = (creator, targetRole) => {
+  const creatorRole = creator.role;
   if (creatorRole === 'student' && targetRole === 'faculty') return 'student_to_faculty';
   if (creatorRole === 'student' && targetRole === 'admin')   return 'student_to_admin';
-  if (creatorRole === 'faculty' && targetRole === 'admin')   return 'faculty_to_admin';
-  if (creatorRole === 'department_coordinator' && targetRole === 'admin') return 'coordinator_to_admin';
+  if (creatorRole === 'faculty' && targetRole === 'admin') {
+    if (creator.facultyLevel === 'coordinator') return 'coordinator_to_admin';
+    return 'faculty_to_admin';
+  }
   return null;
 };
 
@@ -50,7 +53,7 @@ const determineFlow = (creatorRole, targetRole) => {
 /**
  * @desc    Create a new support ticket
  * @route   POST /api/tickets
- * @access  Private — student, faculty, department_coordinator
+ * @access  Private — student, faculty
  */
 export const createTicket = async (req, res) => {
   try {
@@ -65,7 +68,7 @@ export const createTicket = async (req, res) => {
     }
 
     // Validate targetRole for this creator
-    const flow = determineFlow(creator.role, targetRole);
+    const flow = determineFlow(creator, targetRole);
     if (!flow) {
       return res.status(400).json({
         success: false,
@@ -75,8 +78,8 @@ export const createTicket = async (req, res) => {
 
     // Build ticket document
     const ticketData = {
-      subject:     subject.trim(),
-      description: description.trim(),
+      subject:     escapeHtml(subject.trim()),
+      description: escapeHtml(description.trim()),
       category,
       priority:    priority || 'medium',
       createdBy:   creator._id,
@@ -85,8 +88,33 @@ export const createTicket = async (req, res) => {
       department:  creator.department || undefined,
     };
 
-    // Optional: admin can pre-assign, or allow explicit assignedToId
-    if (assignedToId) {
+    // V2 fallback assignment chain: Advisor -> Coordinator -> Admin
+    if (flow === 'student_to_faculty') {
+      if (creator.advisorId) {
+        ticketData.assignedTo = creator.advisorId;
+      } else {
+        // Find coordinator in student's department
+        const coordinator = await User.findOne({
+          department: creator.department,
+          role: 'faculty', 
+          facultyLevel: 'coordinator',
+          isActive: true
+        });
+
+        if (coordinator) {
+          ticketData.assignedTo = coordinator._id;
+        } else {
+          // Find any active admin
+          const admin = await User.findOne({ role: 'admin', isActive: true });
+          if (admin) {
+            ticketData.assignedTo = admin._id;
+          } else {
+            ticketData.status = 'unassigned';
+          }
+        }
+      }
+    } else if (assignedToId) {
+      // Optional: admin can pre-assign, or allow explicit assignedToId
       const assignee = await User.findById(assignedToId).select('_id role');
       if (assignee) ticketData.assignedTo = assignee._id;
     }
@@ -97,7 +125,7 @@ export const createTicket = async (req, res) => {
     await SupportTicketMessage.create({
       ticketId:  ticket._id,
       senderId:  creator._id,
-      message:   description.trim(),
+      message:   escapeHtml(description.trim()),
       isInternal: false,
     });
 
@@ -105,9 +133,9 @@ export const createTicket = async (req, res) => {
     if (targetRole === 'admin') {
       const admins = await User.find({ role: 'admin', isActive: true }).select('_id email name');
       for (const admin of admins) {
-        await notifyUser(
+        await notifyTicketEvent(
           admin._id,
-          'ticket_created',
+          'TicketCreated',
           `New support ticket: ${ticket.ticketNumber}`,
           `${creator.name} opened a ticket: "${subject}"`,
           ticket._id
@@ -117,9 +145,9 @@ export const createTicket = async (req, res) => {
 
     // Notify the assigned faculty if flow is student_to_faculty
     if (targetRole === 'faculty' && ticket.assignedTo) {
-      await notifyUser(
+      await notifyTicketEvent(
         ticket.assignedTo,
-        'ticket_created',
+        'TicketCreated',
         `New support ticket from ${creator.name}`,
         `Ticket ${ticket.ticketNumber}: "${subject}"`,
         ticket._id
@@ -155,7 +183,7 @@ export const getMyTickets = async (req, res) => {
   try {
     const { status, page = 1, limit = 20 } = req.query;
     const query = { createdBy: req.user._id };
-    if (status) query.status = status;
+    if (status && typeof status === 'string') query.status = status;
 
     const skip = (Number(page) - 1) * Number(limit);
 
@@ -189,7 +217,7 @@ export const getMyTickets = async (req, res) => {
 /**
  * @desc    Get tickets assigned to the logged-in faculty or coordinator
  * @route   GET /api/tickets/assigned
- * @access  Private — faculty, department_coordinator, admin
+ * @access  Private — faculty, admin
  */
 export const getAssignedTickets = async (req, res) => {
   try {
@@ -198,17 +226,19 @@ export const getAssignedTickets = async (req, res) => {
 
     let query = {};
 
+    const isCoordinator = (user.role === 'faculty' && user.facultyLevel === 'coordinator');
+
     if (user.role === 'admin') {
       // Admin sees all
-      if (status) query.status = status;
-    } else if (user.role === 'department_coordinator') {
+      if (status && typeof status === 'string') query.status = status;
+    } else if (isCoordinator) {
       // Coordinator sees department-level tickets
       query.department = user.department;
-      if (status) query.status = status;
+      if (status && typeof status === 'string') query.status = status;
     } else {
       // Faculty sees tickets assigned to them
       query.assignedTo = user._id;
-      if (status) query.status = status;
+      if (status && typeof status === 'string') query.status = status;
     }
 
     const skip = (Number(page) - 1) * Number(limit);
@@ -250,7 +280,7 @@ export const getAllTickets = async (req, res) => {
   try {
     const { status, flow, priority, page = 1, limit = 20 } = req.query;
     const query = {};
-    if (status)   query.status   = status;
+    if (status && typeof status === 'string')   query.status   = status;
     if (flow)     query.flow     = flow;
     if (priority) query.priority = priority;
 
@@ -316,7 +346,7 @@ export const getTicketById = async (req, res) => {
     const isAdmin = req.user.role === 'admin';
     const isCreator = String(ticket.createdBy._id) === userId;
     const isAssignee = ticket.assignedTo && String(ticket.assignedTo._id) === userId;
-    const isCoordinator = req.user.role === 'department_coordinator' &&
+    const isCoordinator = (req.user.role === 'faculty' && req.user.facultyLevel === 'coordinator') &&
       ticket.department === req.user.department;
 
     if (!isAdmin && !isCreator && !isAssignee && !isCoordinator) {
@@ -368,7 +398,7 @@ export const replyToTicket = async (req, res) => {
     const isAdmin = req.user.role === 'admin';
     const isCreator = String(ticket.createdBy) === userId;
     const isAssignee = ticket.assignedTo && String(ticket.assignedTo) === userId;
-    const isCoordinator = req.user.role === 'department_coordinator' &&
+    const isCoordinator = (req.user.role === 'faculty' && req.user.facultyLevel === 'coordinator') &&
       ticket.department === req.user.department;
 
     if (!isAdmin && !isCreator && !isAssignee && !isCoordinator) {
@@ -381,7 +411,7 @@ export const replyToTicket = async (req, res) => {
     const ticketMessage = await SupportTicketMessage.create({
       ticketId:   ticket._id,
       senderId:   req.user._id,
-      message:    message.trim(),
+      message:    escapeHtml(message.trim()),
       isInternal: msgInternal,
     });
 
@@ -399,9 +429,9 @@ export const replyToTicket = async (req, res) => {
     if (!msgInternal) {
       const notifyTarget = isCreator ? ticket.assignedTo : ticket.createdBy;
       if (notifyTarget) {
-        await notifyUser(
+        await notifyTicketEvent(
           notifyTarget,
-          'ticket_replied',
+          'TicketReply',
           `New reply on ticket ${ticket.ticketNumber}`,
           `${req.user.name} replied to your ticket: "${ticket.subject}"`,
           ticket._id
@@ -447,31 +477,22 @@ export const assignTicket = async (req, res) => {
     ).populate('createdBy assignedTo', 'name role');
 
     // Notify assignee
-    await notifyUser(
+    await notifyTicketEvent(
       assignee._id,
-      'ticket_assigned',
+      'TicketAssigned',
       `Ticket assigned to you: ${ticket.ticketNumber}`,
       `You have been assigned ticket "${ticket.subject}"`,
       ticket._id
     );
 
     // Notify creator
-    await notifyUser(
+    await notifyTicketEvent(
       ticket.createdBy,
-      'ticket_assigned',
+      'TicketAssigned',
       `Your ticket has been assigned`,
       `Ticket ${ticket.ticketNumber} is now assigned to ${assignee.name}`,
       ticket._id
     );
-
-    // Fire-and-forget email
-    sendTicketNotification({
-      recipientEmail: assignee.email,
-      recipientName:  assignee.name,
-      ticketNumber:   ticket.ticketNumber,
-      eventType:      'ticket_assigned',
-      message:        `You have been assigned support ticket "${ticket.subject}". Please review and respond.`,
-    });
 
     return res.json({ success: true, message: 'Ticket assigned.', ticket: updated });
   } catch (error) {
@@ -521,16 +542,14 @@ export const updateTicketStatus = async (req, res) => {
     ).populate('createdBy assignedTo resolvedBy', 'name role');
 
     // Map status to notification type
-    const notifType = status === 'resolved' ? 'ticket_resolved'
-      : status === 'closed' ? 'ticket_closed'
-      : 'ticket_status_changed';
+    const notifType = status === 'resolved' ? 'TicketResolved' : 'TicketReply';
 
     const notifTitle = status === 'resolved' ? `Ticket ${ticket.ticketNumber} resolved`
       : status === 'closed' ? `Ticket ${ticket.ticketNumber} closed`
       : `Ticket ${ticket.ticketNumber} status updated`;
 
     // Notify creator
-    await notifyUser(
+    await notifyTicketEvent(
       ticket.createdBy,
       notifType,
       notifTitle,
@@ -559,9 +578,9 @@ export const getTicketSummary = async (req, res) => {
 
     if (user.role === 'student') {
       query.createdBy = user._id;
-    } else if (user.role === 'faculty') {
+    } else if (user.role === 'faculty' && user.facultyLevel !== 'coordinator') {
       query.assignedTo = user._id;
-    } else if (user.role === 'department_coordinator') {
+    } else if ((user.role === 'faculty' && user.facultyLevel === 'coordinator')) {
       query.department = user.department;
     }
     // admin: no filter = all tickets

@@ -7,8 +7,8 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 export function FacultyLayout() {
 	const navigate = useNavigate();
 	const { logout, user } = useAuth();
-	const isCoordinator = user?.role === 'department_coordinator';
-	const prefix = isCoordinator ? '/coordinator' : '/faculty';
+	const isCoordinator = (user?.role === 'faculty' && user?.facultyLevel === 'coordinator');
+	const prefix = '/faculty';
 	
 	const [isCollapsed, setIsCollapsed] = useState(() => {
 		return localStorage.getItem('sidebar-collapsed') === 'true';
@@ -95,28 +95,20 @@ export function FacultyLayout() {
 						<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>Activity Approvals</span>
 					</NavLink>
 
-					{!isCoordinator && (
-						<>
-							<NavLink to="/faculty/od-approvals" className={navLinkClass} title={isCollapsed ? 'OD Approvals' : ''}>
-								<Calendar size={20} className="flex-shrink-0"/>
-								<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>OD Approvals</span>
-							</NavLink>
-						</>
-					)}
+					<NavLink to="/faculty/od-approvals" className={navLinkClass} title={isCollapsed ? 'OD Approvals' : ''}>
+						<Calendar size={20} className="flex-shrink-0"/>
+						<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>OD Approvals</span>
+					</NavLink>
 					
 					<NavLink to={`${prefix}/students`} className={navLinkClass} title={isCollapsed ? 'Student Tracker' : ''}>
 						<Users size={20} className="flex-shrink-0"/>
 						<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>Student Tracker</span>
 					</NavLink>
 					
-					{!isCoordinator && (
-						<>
-							<NavLink to="/faculty/mentor" className={navLinkClass} title={isCollapsed ? 'Student 360°' : ''}>
-								<UserSquare2 size={20} className="flex-shrink-0"/>
-								<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>Student 360°</span>
-							</NavLink>
-						</>
-					)}
+					<NavLink to="/faculty/mentor" className={navLinkClass} title={isCollapsed ? 'Student 360°' : ''}>
+						<UserSquare2 size={20} className="flex-shrink-0"/>
+						<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>Student 360°</span>
+					</NavLink>
 
 					<NavLink to={`${prefix}/support`} className={navLinkClass} title={isCollapsed ? 'Support' : ''}>
 						<LifeBuoy size={20} className="flex-shrink-0"/>
@@ -138,7 +130,7 @@ export function FacultyLayout() {
 			</aside>
 
 			{/* Main Content */}
-			<div className="flex flex-col min-h-screen">
+			<div className="flex flex-col min-h-screen min-w-0">
 				<Topbar onMenuClick={toggleSidebar} />
 				<main className="flex-1 p-6">
 					<Outlet />

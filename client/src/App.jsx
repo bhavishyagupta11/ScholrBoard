@@ -82,8 +82,6 @@ const getDashboardPath = (role) => {
 	if (role === 'student') return '/student/dashboard';
 	if (role === 'faculty') return '/faculty';
 	if (role === 'admin') return '/admin';
-	// V2: department_coordinator routes to /coordinator
-	if (role === 'department_coordinator') return '/coordinator';
 	return '/login/student';
 };
 
@@ -98,7 +96,9 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 		return <Navigate to="/login/student" replace />;
 	}
 
-	if (!user.role || !allowedRoles.includes(user.role)) {
+	const isAllowed = allowedRoles.includes(user.role);
+
+	if (!user.role || !isAllowed) {
 		return <Navigate to={getDashboardPath(user.role)} replace />;
 	}
 	
@@ -183,17 +183,7 @@ export default function App() {
 									<Route path="support" element={<AdminSupportPage />} />
 								</Route>
 
-								{/* V2: Department Coordinator routes — uses FacultyLayout */}
-								<Route path="/coordinator" element={
-									<ProtectedRoute allowedRoles={['department_coordinator']}>
-										<FacultyLayout />
-									</ProtectedRoute>
-								}>
-									<Route index element={<CoordinatorDashboard />} />
-									<Route path="support" element={<FacultySupportPage />} />
-									<Route path="students" element={<FacultyStudents />} />
-									<Route path="approvals" element={<FacultyApprovals />} />
-								</Route>
+
 
 								<Route path="*" element={<Navigate to="/" replace />} />
 							</Routes>

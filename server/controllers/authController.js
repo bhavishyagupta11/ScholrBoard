@@ -23,6 +23,7 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import Profile from '../models/Profile.js';
+import { resolveTrackForDepartment } from '../utils/trackResolver.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,7 @@ const issueServerJwt = (user) => {
     email:      user.email,
     name:       user.name,
     role:       user.role,
+    facultyLevel: user.facultyLevel || 'faculty',
     department: user.department || null,
     studentId:  user.studentId || null,
     facultyId:  user.facultyId || null,
@@ -59,12 +61,14 @@ const buildUserResponse = (user, token) => ({
     name:        user.name,
     email:       user.email,
     role:        user.role,
+    facultyLevel: user.facultyLevel || 'faculty',
     avatar:      user.avatar || null,
     department:  user.department || null,
     studentId:   user.studentId || null,
     facultyId:   user.facultyId || null,
     semester:    user.semester  || null,
     verified:    user.verified,
+    trackId:     user.trackId   || null,
     createdAt:   user.createdAt,
   },
 });
@@ -81,12 +85,12 @@ const validateRoleFields = (role, data) => {
     if (!data.semester || data.semester < 1 || data.semester > 8) {
       errors.push('A valid semester (1–8) is required');
     }
-  } else if (role === 'faculty' || role === 'department_coordinator') {
-    // V2: department_coordinator uses same field requirements as faculty
+  } else if (role === 'faculty') {
+    // faculty with facultyLevel=coordinator replaces old department_coordinator
     if (!data.facultyId)  errors.push('Faculty ID is required');
     if (!data.department) errors.push('Department is required');
   } else if (role !== 'admin') {
-    errors.push(`Invalid role: "${role}". Must be student, faculty, admin, or department_coordinator`);
+    errors.push(`Invalid role: "${role}". Must be student, faculty, or admin`);
   }
   return errors;
 };
@@ -151,9 +155,11 @@ export const registerUser = async (req, res) => {
     if (role === 'student') {
       createData.studentId = studentId;
       createData.semester = semester;
+      createData.trackId = await resolveTrackForDepartment(department);
     }
 
     const user = await User.create(createData);
+    await user.populate('trackId');
 
     // --- Auto-create an empty Profile document linked to the new user ---
     await Profile.create({ userId: user._id });
@@ -205,7 +211,7 @@ export const loginUser = async (req, res) => {
     }
 
     // Find user by email and explicitly select password
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email }).select('+password').populate('trackId');
     
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
@@ -218,10 +224,8 @@ export const loginUser = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    // V2: allowedRoles expanded to include department_coordinator.
-    // department_coordinator users log in through the Faculty Portal
-    // which sends portalRole='faculty'. They are validated below.
-    const allowedRoles = ['student', 'faculty', 'admin', 'department_coordinator'];
+    // V2.2: allowedRoles restricted. department_coordinator is gone.
+    const allowedRoles = ['student', 'faculty', 'admin'];
 
     if (!portalRole) {
       return res.status(400).json({
@@ -239,12 +243,7 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    // V2: department_coordinator logs in via Faculty Portal (portalRole='faculty').
-    // Allow this combination. All other mismatches are rejected.
-    const isCoordinatorViaFacultyPortal =
-      user.role === 'department_coordinator' && portalRole === 'faculty';
-
-    if (!isCoordinatorViaFacultyPortal && user.role !== portalRole) {
+    if (user.role !== portalRole) {
       return res.status(403).json({
         success: false,
         message: 'This account does not belong to the selected portal.',
@@ -284,7 +283,7 @@ export const loginUser = async (req, res) => {
  */
 export const getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('-__v');
+    const user = await User.findById(req.user._id).populate('trackId').select('-__v');
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -302,7 +301,7 @@ export const getMe = async (req, res) => {
  */
 export const refreshToken = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id).populate('trackId');
     if (!user || !user.isActive) {
       return res.status(401).json({ success: false, message: 'User not found or deactivated' });
     }

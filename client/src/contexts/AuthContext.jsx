@@ -31,6 +31,7 @@ const cacheUser = (userData) => {
     name:        userData.name,
     email:       userData.email,
     role:        userData.role,
+    facultyLevel: userData.facultyLevel || 'faculty',
     avatar:      userData.avatar || null,
     studentId:   userData.studentId || null,
     facultyId:   userData.facultyId || null,

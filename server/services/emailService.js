@@ -63,17 +63,13 @@ export const sendContactNotification = async (data) => {
       return;
     }
 
-    const adminEmail = process.env.ADMIN_CONTACT_EMAIL;
-    if (!adminEmail) {
-      console.warn('[EmailService] ADMIN_CONTACT_EMAIL not set. Skipping notification email.');
-      return;
-    }
+    const adminEmail = process.env.ADMIN_CONTACT_EMAIL || 'pathbullish@gmail.com';
 
     const mailOptions = {
-      from: `"ScholrBoard Notifications" <${process.env.EMAIL_USER}>`,
+      from: `"ScholrBoard Support" <${process.env.EMAIL_USER}>`,
       to: adminEmail,
       replyTo: data.email,
-      subject: `[ScholrBoard Contact] ${data.subject}`,
+      subject: `New Contact Form Submission - ScholrBoard`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
           <div style="background: linear-gradient(135deg, #3b82f6, #8b5cf6); padding: 20px; border-radius: 6px 6px 0 0;">
@@ -82,7 +78,11 @@ export const sendContactNotification = async (data) => {
           <div style="padding: 24px; background: #f8fafc;">
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
-                <td style="padding: 8px 0; font-weight: bold; color: #475569; width: 100px;">From:</td>
+                <td style="padding: 8px 0; font-weight: bold; color: #475569; width: 100px;">Message ID:</td>
+                <td style="padding: 8px 0; color: #1e293b;">${data._id}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; font-weight: bold; color: #475569; width: 100px;">Name:</td>
                 <td style="padding: 8px 0; color: #1e293b;">${data.name}</td>
               </tr>
               <tr>
@@ -93,19 +93,22 @@ export const sendContactNotification = async (data) => {
                 <td style="padding: 8px 0; font-weight: bold; color: #475569;">Subject:</td>
                 <td style="padding: 8px 0; color: #1e293b;">${data.subject}</td>
               </tr>
+              <tr>
+                <td style="padding: 8px 0; font-weight: bold; color: #475569;">Submitted At:</td>
+                <td style="padding: 8px 0; color: #1e293b;">${new Date(data.createdAt).toLocaleString()}</td>
+              </tr>
             </table>
             <div style="margin-top: 16px;">
               <div style="font-weight: bold; color: #475569; margin-bottom: 8px;">Message:</div>
               <div style="background: white; padding: 16px; border-radius: 6px; border: 1px solid #e2e8f0; color: #1e293b; white-space: pre-wrap;">${data.message}</div>
             </div>
-            ${data._id ? `<div style="margin-top: 16px; font-size: 12px; color: #94a3b8;">Record ID: ${data._id}</div>` : ''}
           </div>
           <div style="padding: 12px 24px; background: #f1f5f9; border-radius: 0 0 6px 6px; font-size: 12px; color: #94a3b8; text-align: center;">
             This is an automated notification from ScholrBoard. Reply directly to this email to respond to the sender.
           </div>
         </div>
       `,
-      text: `New Contact Form Submission\n\nFrom: ${data.name}\nEmail: ${data.email}\nSubject: ${data.subject}\n\nMessage:\n${data.message}`,
+      text: `New Contact Form Submission\n\nMessage ID: ${data._id}\nName: ${data.name}\nEmail: ${data.email}\nSubject: ${data.subject}\nSubmitted At: ${new Date(data.createdAt).toLocaleString()}\n\nMessage:\n${data.message}`,
     };
 
     await transporter.sendMail(mailOptions);

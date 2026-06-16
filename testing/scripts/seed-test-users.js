@@ -31,6 +31,14 @@ const USERS = {
     facultyId: 'E2E-FAC-001',
     department: DEPT,
   },
+  coordinator: {
+    email: 'e2e.coordinator@scholrboard.test',
+    name: 'E2E Test Coordinator',
+    role: 'faculty',
+    facultyId: 'E2E-FAC-002',
+    department: DEPT,
+    facultyLevel: 'coordinator',
+  },
   admin: {
     email: 'e2e.admin@scholrboard.test',
     name: 'E2E Test Admin',
@@ -47,6 +55,7 @@ async function upsertUser(userData) {
   if (user) {
     user.name = userData.name;
     user.role = userData.role;
+    user.facultyLevel = userData.facultyLevel || 'faculty';
     user.department = userData.department || user.department;
     user.studentId = userData.studentId || user.studentId;
     user.facultyId = userData.facultyId || user.facultyId;
@@ -89,6 +98,7 @@ function generateToken(user) {
     email:      user.email,
     name:       user.name,
     role:       user.role,
+    facultyLevel: user.facultyLevel || 'faculty',
     department: user.department || null,
     studentId:  user.studentId || null,
     facultyId:  user.facultyId || null,
@@ -124,6 +134,7 @@ async function main() {
 
   const student = await upsertUser(USERS.student);
   const faculty = await upsertUser(USERS.faculty);
+  const coordinator = await upsertUser(USERS.coordinator);
   const admin = await upsertUser(USERS.admin);
 
   await mongoose.model('User').updateOne(
@@ -134,6 +145,7 @@ async function main() {
   const tokens = {
     student: generateToken(student),
     faculty: generateToken(faculty),
+    coordinator: generateToken(coordinator),
     admin: generateToken(admin),
   };
 
@@ -143,6 +155,7 @@ async function main() {
     users: {
       student: { ...USERS.student, _id: student._id.toString(), token: tokens.student.token },
       faculty: { ...USERS.faculty, _id: faculty._id.toString(), token: tokens.faculty.token },
+      coordinator: { ...USERS.coordinator, _id: coordinator._id.toString(), token: tokens.coordinator.token },
       admin: { ...USERS.admin, _id: admin._id.toString(), token: tokens.admin.token },
     },
   };

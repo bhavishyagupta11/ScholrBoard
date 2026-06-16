@@ -141,7 +141,7 @@ export function AdminLayout() {
 			</aside>
 
 			{/* Main Content */}
-			<div className="flex flex-col min-h-screen">
+			<div className="flex flex-col min-h-screen min-w-0">
 				<Topbar onMenuClick={toggleSidebar} />
 				<main className="flex-1 p-6">
 					<Outlet />

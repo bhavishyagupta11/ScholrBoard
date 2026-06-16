@@ -45,7 +45,9 @@ export async function resetDB() {
     'learningprogresses',
     'analytics',
     'resumeanalyses',
-    'events'
+    'events',
+    'supporttickets',
+    'supportticketmessages'
   ];
 
   console.log('Clearing E2E test database collections...');

@@ -16,11 +16,14 @@ const requireRole = (...allowedRoles) => {
       });
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    const userRole = req.user.role;
+    const isAllowed = allowedRoles.includes(userRole);
+
+    if (!isAllowed) {
       return res.status(403).json({
         success: false,
         message: `Access denied — requires role: ${allowedRoles.join(' or ')}`,
-        yourRole: req.user.role,
+        yourRole: userRole,
       });
     }
 

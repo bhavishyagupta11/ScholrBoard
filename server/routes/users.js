@@ -81,15 +81,49 @@ router.put('/assign-advisor', requireRole('admin'), async (req, res) => {
   }
 });
 
+// @route   GET /api/users/advisor/health
+// @desc    Get advisor mapping stats for Admin Dashboard
+// @access  Admin only
+router.get('/advisor/health', requireRole('admin'), async (req, res) => {
+  try {
+    const totalStudents = await User.countDocuments({ role: 'student', isActive: true, ...excludeTestUsers() });
+    const studentsWithAdvisor = await User.countDocuments({ role: 'student', isActive: true, advisorId: { $ne: null }, ...excludeTestUsers() });
+    const studentsWithoutAdvisor = await User.countDocuments({ role: 'student', isActive: true, advisorId: null, ...excludeTestUsers() });
+    
+    const faculties = await User.find({ role: 'faculty', isActive: true }).select('_id');
+    let facultyWithoutAdviseesCount = 0;
+    
+    for (const faculty of faculties) {
+      const adviseeCount = await User.countDocuments({ role: 'student', isActive: true, advisorId: faculty._id, ...excludeTestUsers() });
+      if (adviseeCount === 0) {
+        facultyWithoutAdviseesCount++;
+      }
+    }
+    
+    return res.json({
+      success: true,
+      stats: {
+        totalStudents,
+        studentsWithAdvisor,
+        studentsWithoutAdvisor,
+        facultyWithoutAdvisees: facultyWithoutAdviseesCount
+      }
+    });
+  } catch (error) {
+    console.error('get-advisor-health error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch advisor health statistics' });
+  }
+});
+
 // @route   GET /api/users/advisor/students
-// @desc    Get all students assigned to the logged-in advisor (faculty)
-//          or all department students for coordinator
-// @access  Faculty or Department Coordinator
-router.get('/advisor/students', requireRole('faculty', 'department_coordinator'), async (req, res) => {
+// @desc    Get all students assigned to logged-in faculty advisor
+// @access  Private — faculty
+router.get('/advisor/students', requireRole('faculty'), async (req, res) => {
   try {
     let query = { role: 'student', isActive: true };
+    const isCoordinator = (req.user.role === 'faculty' && req.user.facultyLevel === 'coordinator');
 
-    if (req.user.role === 'department_coordinator') {
+    if (isCoordinator) {
       // Coordinators see all students in their department
       if (req.user.department) query.department = req.user.department;
     } else {
@@ -107,25 +141,27 @@ router.get('/advisor/students', requireRole('faculty', 'department_coordinator')
 });
 
 // @route   GET /api/users
-// @desc    Get all users (with filtering by role/department)
-// @access  Admin, Faculty, or Department Coordinator
-router.get('/', requireRole('admin', 'faculty', 'department_coordinator'), async (req, res) => {
+// @desc    Get all users (admin) or filtered by department (faculty)
+// @access  Private — admin, faculty
+router.get('/', requireRole('admin', 'faculty'), async (req, res) => {
   try {
     const { role, department, verified, page = 1, limit = 50, scope } = req.query;
 
     const query = { isActive: true, ...excludeTestUsers() };
     
-    if (req.user.role === 'faculty') {
+    const isCoordinator = (req.user.role === 'faculty' && req.user.facultyLevel === 'coordinator');
+
+    if (isCoordinator) {
+      // Coordinator: department-scoped students only
+      query.role = 'student';
+      if (req.user.department) query.department = new RegExp(`^${req.user.department}$`, 'i');
+    } else if (req.user.role === 'faculty') {
       query.role = 'student';
       if (scope === 'all') {
         if (req.user.department) query.department = new RegExp(`^${req.user.department}$`, 'i');
       } else {
         query.advisorId = req.user._id;
       }
-    } else if (req.user.role === 'department_coordinator') {
-      // Coordinator: department-scoped students only
-      query.role = 'student';
-      if (req.user.department) query.department = new RegExp(`^${req.user.department}$`, 'i');
     } else {
       // Admin: full access
       if (role)       query.role       = role;
@@ -161,9 +197,9 @@ router.get('/', requireRole('admin', 'faculty', 'department_coordinator'), async
 });
 
 // @route   GET /api/users/talent-discovery
-// @desc    Admin Talent Discovery (searching, filtering, ranking)
-// @access  Admin only
-router.get('/talent-discovery', requireRole('admin'), getTalentDiscovery);
+// @desc    Get ranked list of top engineering students
+// @access  Private — admin, faculty
+router.get('/talent-discovery', requireRole('admin', 'faculty'), getTalentDiscovery);
 
 // @route   GET /api/users/me
 // @desc    Get current user (quick route — same as /api/auth/me)
@@ -224,6 +260,12 @@ router.put('/:id', requireRole('admin'), validateObjectId('id'), async (req, res
     delete updates.password;
     delete updates.email;
     delete updates.__v;
+
+    // Auto-resolve trackId if department changes
+    if (updates.department !== undefined) {
+      const { resolveTrackForDepartment } = await import('../utils/trackResolver.js');
+      updates.trackId = await resolveTrackForDepartment(updates.department);
+    }
 
     const user = await User.findByIdAndUpdate(
       id,

@@ -19,6 +19,14 @@ import {
   updateTicketStatus,
   getTicketSummary,
 } from '../controllers/ticketController.js';
+import rateLimit from 'express-rate-limit';
+
+const ticketCreateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  message: { success: false, message: 'Ticket creation limit exceeded. Please try again later.' },
+  keyGenerator: (req) => req.user?._id?.toString() || req.ip
+});
 
 const router = express.Router();
 
@@ -37,19 +45,20 @@ router.get('/all', requireRole('admin'), getAllTickets);
 
 // @route   GET /api/tickets/assigned
 // @desc    Get tickets assigned to logged-in faculty/coordinator
-// @access  Private — faculty, department_coordinator, admin
+// @access  Private — faculty, admin
 router.get(
   '/assigned',
-  requireRole('faculty', 'department_coordinator', 'admin'),
+  requireRole('faculty', 'admin'),
   getAssignedTickets
 );
 
 // @route   POST /api/tickets
 // @desc    Create a new support ticket
-// @access  Private — student, faculty, department_coordinator
+// @access  Private — student, faculty
 router.post(
   '/',
-  requireRole('student', 'faculty', 'department_coordinator'),
+  requireRole('student', 'faculty'),
+  ticketCreateLimiter,
   createTicket
 );
 

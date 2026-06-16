@@ -9,6 +9,9 @@ export const TEST_EMAIL_REGEX = /e2e|smoke|manual|scholrboard\.test/i;
  * Usage: User.find({ ...excludeTestUsers() })
  */
 export const excludeTestUsers = () => {
+  if (process.env.NODE_ENV === 'test') {
+    return {};
+  }
   return {
     email: { $not: TEST_EMAIL_REGEX }
   };

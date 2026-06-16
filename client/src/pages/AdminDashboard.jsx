@@ -8,6 +8,7 @@ import { useScrollAnimation, useStaggeredAnimation } from '../hooks/useScrollAni
 import analyticsApi from '../api/analytics.api.js';
 import { Users, Activity, CheckCircle, TrendingUp, AlertCircle, LifeBuoy } from 'lucide-react';
 import ticketsApi from '../api/tickets.api.js';
+import usersApi from '../api/users.api.js';
 
 function StatCard({ label, value, color, icon, loading }) {
   return (
@@ -32,6 +33,8 @@ export function AdminDashboard() {
   const [error, setError]     = useState(null);
   const [ticketSummary, setTicketSummary] = useState(null);
   const [loadingTickets, setLoadingTickets] = useState(true);
+  const [advisorHealth, setAdvisorHealth] = useState(null);
+  const [loadingAdvisor, setLoadingAdvisor] = useState(true);
 
   const headerRef = useScrollAnimation({ animationClass: 'fade-in-up', delay: 0.1 });
   const { containerRef: statsContainerRef } = useStaggeredAnimation(4, 0.1);
@@ -46,6 +49,11 @@ export function AdminDashboard() {
       .then((res) => setTicketSummary(res?.summary || null))
       .catch((err) => console.error('Failed to fetch ticket summary', err))
       .finally(() => setLoadingTickets(false));
+
+    usersApi.getAdvisorHealth()
+      .then((res) => setAdvisorHealth(res?.stats || null))
+      .catch((err) => console.error('Failed to fetch advisor mapping health', err))
+      .finally(() => setLoadingAdvisor(false));
   }, []);
 
   return (
@@ -89,7 +97,7 @@ export function AdminDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="card p-6 cursor-pointer hover:bg-white/5 transition-colors flex flex-col justify-between" onClick={() => navigate('/admin/approvals')}>
           <div>
             <h2 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>📋 Activity Approvals</h2>
@@ -157,7 +165,42 @@ export function AdminDashboard() {
             <p className="text-xs subtle mb-4">View, assign, and resolve support tickets across the system.</p>
           </div>
           <button className="btn btn-outline w-full" onClick={() => navigate('/admin/support')}>
-            Manage Support Tickets
+            Manage Tickets
+          </button>
+        </div>
+
+        {/* Advisor Mapping Health Widget */}
+        <div className="card p-6 flex flex-col justify-between">
+          <div>
+            <h2 className="text-lg font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+              <Users size={20} /> Advisor Mapping
+            </h2>
+            {loadingAdvisor ? (
+              <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="skeleton h-10 w-full" />)}</div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 my-4">
+                <div className="p-3 rounded-lg text-center" style={{ background: 'var(--bg-medium)' }}>
+                  <div className="text-2xl font-bold text-blue-400">{advisorHealth?.totalStudents ?? 0}</div>
+                  <div className="text-xs subtle mt-1">Total Students</div>
+                </div>
+                <div className="p-3 rounded-lg text-center" style={{ background: 'var(--bg-medium)' }}>
+                  <div className="text-2xl font-bold text-green-400">{advisorHealth?.studentsWithAdvisor ?? 0}</div>
+                  <div className="text-xs subtle mt-1">Mapped</div>
+                </div>
+                <div className="p-3 rounded-lg text-center" style={{ background: 'var(--bg-medium)' }}>
+                  <div className="text-2xl font-bold text-red-400">{advisorHealth?.studentsWithoutAdvisor ?? 0}</div>
+                  <div className="text-xs subtle mt-1">Unmapped</div>
+                </div>
+                <div className="p-3 rounded-lg text-center" style={{ background: 'var(--bg-medium)' }}>
+                  <div className="text-2xl font-bold text-yellow-400">{advisorHealth?.facultyWithoutAdvisees ?? 0}</div>
+                  <div className="text-xs subtle mt-1">Unmapped Faculty</div>
+                </div>
+              </div>
+            )}
+            <p className="text-xs subtle mb-4">Monitor student assignment status and under-allocated advisors.</p>
+          </div>
+          <button className="btn btn-outline w-full" onClick={() => navigate('/admin/advisors')}>
+            Manage Advisors
           </button>
         </div>
       </div>

@@ -407,3 +407,145 @@ export const getFacultyActivityStats = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to fetch faculty stats' });
   }
 };
+
+// ─── COORDINATOR: Scoped department analytics ──────────────────────────────────
+export const getCoordinatorAnalytics = async (req, res) => {
+  try {
+    const { default: User } = await import('../models/User.js');
+    const { default: Profile } = await import('../models/Profile.js');
+    const { default: Activity } = await import('../models/Activity.js');
+    const { default: OdRequest } = await import('../models/OdRequest.js');
+    const { default: SupportTicket } = await import('../models/SupportTicket.js');
+
+    const department = req.user.department;
+    if (!department) {
+      return res.status(400).json({ success: false, message: 'Coordinator must have a department assigned.' });
+    }
+
+    // 1. Student stats
+    // Total Students in department
+    const totalStudents = await User.countDocuments({
+      role: 'student',
+      department,
+      ...excludeTestUsers()
+    });
+
+    // Active Students in department
+    const activeStudents = await User.countDocuments({
+      role: 'student',
+      department,
+      isActive: true,
+      ...excludeTestUsers()
+    });
+
+    // Student IDs for profile and activity aggregation
+    const studentUsers = await User.find({
+      role: 'student',
+      department,
+      isActive: true,
+      ...excludeTestUsers()
+    }).select('_id');
+    const studentIds = studentUsers.map(s => s._id);
+
+    // Placement Ready Students (placementReadinessScore >= 75)
+    const placementReadyCount = await Profile.countDocuments({
+      userId: { $in: studentIds },
+      placementReadinessScore: { $gte: 75 }
+    });
+
+    // At Risk Students (GPA < 6.0 OR attendanceOverall < 75 OR backlogs > 0)
+    const atRiskCount = await Profile.countDocuments({
+      userId: { $in: studentIds },
+      $or: [
+        { gpa: { $lt: 6.0, $ne: null } },
+        { attendanceOverall: { $lt: 75, $ne: null } },
+        { backlogs: { $gt: 0 } }
+      ]
+    });
+
+    // 2. Faculty stats
+    const totalFaculty = await User.countDocuments({
+      role: 'faculty',
+      department,
+      isActive: true
+    });
+
+    // Pending Approvals (Activities)
+    const pendingApprovalsCount = await Activity.countDocuments({
+      userId: { $in: studentIds },
+      status: 'Pending'
+    });
+
+    // Pending ODs
+    const pendingOdsCount = await OdRequest.countDocuments({
+      studentId: { $in: studentIds },
+      status: 'Pending'
+    });
+
+    // Faculty Workload
+    const departmentFaculty = await User.find({
+      role: 'faculty',
+      department,
+      isActive: true
+    }).select('_id name');
+
+    const facultyWorkload = await Promise.all(
+      departmentFaculty.map(async (fac) => {
+        const count = await User.countDocuments({
+          role: 'student',
+          advisorId: fac._id,
+          isActive: true,
+          ...excludeTestUsers()
+        });
+        return {
+          facultyId: fac._id,
+          name: fac.name,
+          adviseeCount: count
+        };
+      })
+    );
+
+    // 3. Ticket stats
+    const openTicketsCount = await SupportTicket.countDocuments({
+      department,
+      status: { $in: ['open', 'in_progress', 'waiting_for_response'] }
+    });
+
+    const resolvedTicketsCount = await SupportTicket.countDocuments({
+      department,
+      status: { $in: ['resolved', 'closed'] }
+    });
+
+    const escalatedTicketsCount = await SupportTicket.countDocuments({
+      department,
+      status: { $in: ['open', 'in_progress', 'waiting_for_response'] },
+      priority: { $in: ['high', 'urgent'] }
+    });
+
+    return res.json({
+      success: true,
+      stats: {
+        students: {
+          total: totalStudents,
+          active: activeStudents,
+          placementReady: placementReadyCount,
+          atRisk: atRiskCount
+        },
+        faculty: {
+          total: totalFaculty,
+          pendingApprovals: pendingApprovalsCount,
+          pendingOds: pendingOdsCount,
+          workload: facultyWorkload
+        },
+        tickets: {
+          open: openTicketsCount,
+          resolved: resolvedTicketsCount,
+          escalated: escalatedTicketsCount
+        }
+      }
+    });
+  } catch (error) {
+    console.error('getCoordinatorAnalytics error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch coordinator analytics' });
+  }
+};

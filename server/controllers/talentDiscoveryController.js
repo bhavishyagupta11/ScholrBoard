@@ -1,6 +1,7 @@
 import Profile from '../models/Profile.js';
 import AuditLog from '../models/AuditLog.js';
 import { TEST_EMAIL_REGEX } from '../utils/testFilters.js';
+import { TRACK_DEPARTMENT_MAPPING } from '../config/trackMapping.js';
 
 /**
  * GET /api/users/talent-discovery
@@ -180,20 +181,31 @@ export const getTalentDiscovery = async (req, res) => {
     //    role, isActive, department, semester, year, and keyword search.
     const userMatchClauses = [
       { 'user.role': 'student' },
-      { 'user.isActive': true },
-      { 'user.email': { $not: TEST_EMAIL_REGEX } }
+      { 'user.isActive': true }
     ];
-
-    if (department) {
-      userMatchClauses.push({ 'user.department': new RegExp(department.trim(), 'i') });
+    if (process.env.NODE_ENV !== 'test') {
+      userMatchClauses.push({ 'user.email': { $not: TEST_EMAIL_REGEX } });
     }
-    if (branch) {
-      userMatchClauses.push({
-        $or: [
-          { 'user.branch': new RegExp(branch.trim(), 'i') },
-          { 'user.department': new RegExp(branch.trim(), 'i') }
-        ]
-      });
+
+    // V2.2: Talent Discovery EXCLUSIVELY for software_engineering students
+    const swDepts = TRACK_DEPARTMENT_MAPPING.software_engineering.map(d => new RegExp(d, 'i'));
+    userMatchClauses.push({ 'user.department': { $in: swDepts } });
+
+    const isCoordinator = (req.user.role === 'faculty' && req.user.facultyLevel === 'coordinator');
+    if (isCoordinator) {
+      userMatchClauses.push({ 'user.department': new RegExp(`^${req.user.department.trim()}$`, 'i') });
+    } else {
+      if (department) {
+        userMatchClauses.push({ 'user.department': new RegExp(department.trim(), 'i') });
+      }
+      if (branch) {
+        userMatchClauses.push({
+          $or: [
+            { 'user.branch': new RegExp(branch.trim(), 'i') },
+            { 'user.department': new RegExp(branch.trim(), 'i') }
+          ]
+        });
+      }
     }
     if (semester) {
       userMatchClauses.push({ 'user.semester': Number(semester) });

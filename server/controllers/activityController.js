@@ -195,8 +195,13 @@ export const getPendingActivities = async (req, res) => {
 
     const query = { status: 'Pending', isArchived: false };
 
-    // Faculty only see activities from assigned advisees.
-    if (req.user.role === 'faculty') {
+    const isCoordinator = (req.user.role === 'faculty' && req.user.facultyLevel === 'coordinator');
+
+    if (isCoordinator) {
+      const { default: User } = await import('../models/User.js');
+      const deptStudents = await User.find({ role: 'student', department: req.user.department, ...excludeTestUsers() }).select('_id');
+      query.userId = { $in: deptStudents.map((student) => student._id) };
+    } else if (req.user.role === 'faculty') {
       const { default: User } = await import('../models/User.js');
       const assignedStudents = await User.find({ role: 'student', advisorId: req.user._id, ...excludeTestUsers() }).select('_id');
       query.userId = { $in: assignedStudents.map((student) => student._id) };

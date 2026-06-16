@@ -14,6 +14,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState, useCallback } from 'react';
 import { useProfile } from '../contexts/ProfileContext.jsx';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext.jsx';
 import {
   ArrowRight, BellRing, BriefcaseBusiness, CalendarDays,
   CheckCircle2, Code2, FileText, Lightbulb, UploadCloud,
@@ -81,6 +82,8 @@ const ListSkeleton = ({ rows = 3 }) => (
 
 export function DashboardPage() {
   const { profile } = useProfile();
+  const { user } = useAuth();
+  const track = user?.trackId;
   const [analytics,        setAnalytics]        = useState(null);
   const [progress,         setProgress]         = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
@@ -224,7 +227,7 @@ export function DashboardPage() {
       </div>
 
       {/* ─── Stat Cards ─────────────────────────────────────────────────────── */}
-      <div ref={statsContainerRef} className="grid md:grid-cols-4 gap-4">
+      <div ref={statsContainerRef} className={`grid gap-4 ${(track && !track.enableCodingModule) ? 'md:grid-cols-3' : 'md:grid-cols-4'}`}>
         <StatCard
           innerRef={setStatRef(0)}
           label="GPA" loading={loadingAnalytics}
@@ -232,20 +235,24 @@ export function DashboardPage() {
           sub={analytics?.gpa ? `Attendance: ${analytics?.attendance ?? '–'}%` : 'Update in your profile'}
           color="var(--primary-blue)"
         />
-        <StatCard
-          innerRef={setStatRef(1)}
-          label="Approved Activities" loading={loadingAnalytics}
-          value={analytics?.activities?.Approved ?? 0}
-          sub={`${analytics?.activities?.Pending ?? 0} pending review`}
-          color="var(--success-color)"
-        />
-        <StatCard
-          innerRef={setStatRef(2)}
-          label="Study This Week" loading={loadingAnalytics}
-          value={analytics ? `${Math.round((analytics.weeklyStudyMinutes || 0) / 60)}h` : null}
-          sub={`Longest streak: ${analytics?.longestStreak ?? 0} days`}
-          color="var(--primary-blue)"
-        />
+        {(!track || track.enableActivities) && (
+          <StatCard
+            innerRef={setStatRef(1)}
+            label="Approved Activities" loading={loadingAnalytics}
+            value={analytics?.activities?.Approved ?? 0}
+            sub={`${analytics?.activities?.Pending ?? 0} pending review`}
+            color="var(--success-color)"
+          />
+        )}
+        {(!track || (track.enableCodingModule && track.enableDeveloperScore)) && (
+          <StatCard
+            innerRef={setStatRef(2)}
+            label="Study This Week" loading={loadingAnalytics}
+            value={analytics ? `${Math.round((analytics.weeklyStudyMinutes || 0) / 60)}h` : null}
+            sub={`Longest streak: ${analytics?.longestStreak ?? 0} days`}
+            color="var(--primary-blue)"
+          />
+        )}
         <StatCard
           innerRef={setStatRef(3)}
           label="Total Points" loading={loadingAnalytics}
@@ -255,24 +262,105 @@ export function DashboardPage() {
         />
       </div>
 
+      {/* ─── Track & Career Progress & Support Ticket Widgets ───────────────── */}
+      <div className="grid md:grid-cols-3 gap-4">
+        {/* Track Widget */}
+        <div className="card p-4 flex flex-col justify-between">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-blue-400 mb-1">Active Track</div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">{track?.icon || '📚'}</span>
+              <h3 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>
+                {track?.name || 'Assigned Track'}
+              </h3>
+            </div>
+            <p className="text-xs leading-relaxed subtle">
+              {track?.description || 'Customized platform modules mapped to your degree branch.'}
+            </p>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-1">
+            {(!track || track.enableCodingModule) && <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 font-medium">Coding</span>}
+            {(!track || track.enablePlacements) && <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 font-medium">Placements</span>}
+            {(!track || track.enableInternships) && <span className="text-[9px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 font-medium">Internships</span>}
+            {(!track || track.enableResearch) && <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 font-medium">Research</span>}
+            {(!track || track.enableCertifications) && <span className="text-[9px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400 font-medium">Certificates</span>}
+          </div>
+        </div>
+
+        {/* Career Progress Widget */}
+        <div className="card p-4">
+          <div className="text-xs font-semibold uppercase tracking-wider text-green-400 mb-2">Career Readiness Progress</div>
+          <div className="space-y-1.5">
+            {[
+              { label: 'Academic profile complete (GPA >= 6.0)', done: (analytics?.gpa || 0) >= 6.0 },
+              { label: 'Activity verified by Faculty Mentor', done: (analytics?.activities?.Approved || 0) > 0 },
+              { label: 'Support center desk registered', done: tickets.length > 0 }
+            ].map((item, idx) => (
+              <div key={idx} className="flex items-center gap-2 text-xs">
+                <span className={item.done ? 'text-green-400 font-bold' : 'text-slate-500'}>
+                  {item.done ? '✓' : '○'}
+                </span>
+                <span className={item.done ? 'text-slate-300' : 'text-slate-500'}>
+                  {item.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Ticket Summary Widget */}
+        <div className="card p-4 flex flex-col justify-between">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-yellow-400 mb-2">Support Ticket Summary</div>
+            <div className="grid grid-cols-3 gap-1.5 text-center">
+              <div className="p-1.5 rounded bg-blue-500/10">
+                <div className="text-base font-bold text-blue-400">
+                  {tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length}
+                </div>
+                <div className="text-[9px] subtle">Active</div>
+              </div>
+              <div className="p-1.5 rounded bg-green-500/10">
+                <div className="text-base font-bold text-green-400">
+                  {tickets.filter(t => t.status === 'resolved').length}
+                </div>
+                <div className="text-[9px] subtle">Resolved</div>
+              </div>
+              <div className="p-1.5 rounded bg-slate-500/10">
+                <div className="text-base font-bold text-slate-400">
+                  {tickets.filter(t => t.status === 'closed').length}
+                </div>
+                <div className="text-[9px] subtle">Closed</div>
+              </div>
+            </div>
+          </div>
+          <Link to="/student/support" className="text-xs mt-2 flex items-center justify-between text-blue-400 hover:underline">
+            <span>Access Support Desk</span> <ArrowRight size={12} />
+          </Link>
+        </div>
+      </div>
+
       {/* ─── Charts ─────────────────────────────────────────────────────────── */}
-      <div ref={chartsRef} className="grid lg:grid-cols-2 gap-4 gpu-accelerated">
-        <div className="card p-4">
-          <div className="font-medium mb-3 flex items-center gap-2"><TrendingUp size={16} /> Activity Performance</div>
-          <div className="h-64">
-            <Suspense fallback={<ChartSkeleton />}>
-              <AcademicActivityChart activities={analytics?.activities} />
-            </Suspense>
+      <div ref={chartsRef} className={`grid gap-4 gpu-accelerated ${(track && !track.enableCodingModule) ? 'lg:grid-cols-1' : 'lg:grid-cols-2'}`}>
+        {(!track || track.enableActivities) && (
+          <div className="card p-4">
+            <div className="font-medium mb-3 flex items-center gap-2"><TrendingUp size={16} /> Activity Performance</div>
+            <div className="h-64">
+              <Suspense fallback={<ChartSkeleton />}>
+                <AcademicActivityChart activities={analytics?.activities} />
+              </Suspense>
+            </div>
           </div>
-        </div>
-        <div className="card p-4">
-          <div className="font-medium mb-3 flex items-center gap-2"><BookOpen size={16} /> Daily Study (last 14 days)</div>
-          <div className="h-64">
-            <Suspense fallback={<ChartSkeleton />}>
-              <ContributionsChart contributions={contributions} />
-            </Suspense>
+        )}
+        {(!track || (track.enableCodingModule && track.enableDeveloperScore)) && (
+          <div className="card p-4">
+            <div className="font-medium mb-3 flex items-center gap-2"><BookOpen size={16} /> Daily Study (last 14 days)</div>
+            <div className="h-64">
+              <Suspense fallback={<ChartSkeleton />}>
+                <ContributionsChart contributions={contributions} />
+              </Suspense>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
@@ -518,9 +606,9 @@ export function DashboardPage() {
       <div className="grid md:grid-cols-3 gap-4">
         {[
           { title: 'Portfolio', desc: 'View and share your verified portfolio', to: '/student/portfolio', icon: <FileText size={18} /> },
-          { title: 'Coding Profiles', desc: 'See your coding stats across platforms', to: '/student/coding', icon: <Code2 size={18} /> },
+          { title: 'Coding Profiles', desc: 'See your coding stats across platforms', to: '/student/coding', icon: <Code2 size={18} />, enabled: !track || (track.enableCodingModule && track.enableDeveloperScore) },
           { title: 'Resume Analyzer', desc: 'Upload and analyze your resume with AI', to: '/student/resume-analyzer', icon: <UploadCloud size={18} /> },
-        ].map((c) => (
+        ].filter(item => item.enabled !== false).map((c) => (
           <Link key={c.title} to={c.to} className="card p-4 flex items-start gap-3 hover:opacity-90">
             <div className="grid h-9 w-9 place-items-center rounded-lg flex-shrink-0" style={{ background: 'var(--accent-soft)', color: 'var(--primary-blue)' }}>{c.icon}</div>
             <div>

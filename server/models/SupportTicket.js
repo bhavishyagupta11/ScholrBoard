@@ -45,12 +45,10 @@ const supportTicketSchema = new mongoose.Schema(
       enum: [
         'Academic',
         'Technical',
-        'Administrative',
-        'Attendance',
-        'Scholarship',
         'Placement',
+        'Administrative',
+        'Activity',
         'OD Request',
-        'Grievance',
         'Other',
       ],
       index: true,
@@ -59,7 +57,7 @@ const supportTicketSchema = new mongoose.Schema(
     // --- Status lifecycle ---
     status: {
       type: String,
-      enum: ['open', 'in_progress', 'waiting_for_response', 'resolved', 'closed'],
+      enum: ['unassigned', 'open', 'in_progress', 'waiting_for_response', 'resolved', 'closed'],
       default: 'open',
       index: true,
     },

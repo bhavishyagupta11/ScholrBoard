@@ -1,5 +1,6 @@
 import ContactMessage from '../models/ContactMessage.js';
 import { sendContactNotification } from '../services/emailService.js';
+import { escapeHtml } from '../utils/sanitize.js';
 
 /**
  * @desc    Submit a support contact query
@@ -17,10 +18,10 @@ export const createContactMessage = async (req, res) => {
       });
     }
 
-    const trimmedName = name.trim();
-    const trimmedEmail = email.trim();
-    const trimmedSubject = subject.trim();
-    const trimmedMessage = message.trim();
+    const trimmedName = escapeHtml(name.trim());
+    const trimmedEmail = email.trim(); // Emails handled by regex validation
+    const trimmedSubject = escapeHtml(subject.trim());
+    const trimmedMessage = escapeHtml(message.trim());
 
     if (!trimmedName || !trimmedEmail || !trimmedSubject || !trimmedMessage) {
       return res.status(400).json({
@@ -59,6 +60,7 @@ export const createContactMessage = async (req, res) => {
       subject: trimmedSubject,
       message: trimmedMessage,
       _id:     contactMessage._id,
+      createdAt: contactMessage.createdAt,
     });
 
     // Note: return is intentionally after res.json() to avoid double-send

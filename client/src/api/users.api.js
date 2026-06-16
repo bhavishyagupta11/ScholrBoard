@@ -21,6 +21,9 @@ export const usersApi = {
 
   /** Get advisor's assigned students (Faculty only) */
   getAssignedStudents: () => api.get('/users/advisor/students'),
+
+  /** Get advisor mapping health statistics (Admin only) */
+  getAdvisorHealth: () => api.get('/users/advisor/health'),
 };
 
 export default usersApi;

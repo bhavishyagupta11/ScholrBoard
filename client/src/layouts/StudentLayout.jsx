@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 
 export function StudentLayout() {
 	const navigate = useNavigate();
-	const { logout } = useAuth();
+	const { user, logout } = useAuth();
 	
 	const [isCollapsed, setIsCollapsed] = useState(() => {
 		return localStorage.getItem('sidebar-collapsed') === 'true';
@@ -30,6 +30,25 @@ export function StudentLayout() {
 		navigate('/', { replace: true });
 	};
 
+	const track = user?.trackId;
+
+	const isRouteEnabled = (routePath) => {
+		if (!track) return true;
+		if (routePath === '/student/coding' || routePath === '/student/developer') {
+			return track.enableCodingModule && track.enableDeveloperScore;
+		}
+		if (routePath === '/student/activities') {
+			return track.enableActivities;
+		}
+		if (routePath === '/student/certificates') {
+			return track.enableCertifications;
+		}
+		if (routePath === '/student/placements') {
+			return track.enablePlacements;
+		}
+		return true;
+	};
+	
 	const navItems = [
 		{ to: '/student/dashboard', label: 'Dashboard', icon: LayoutDashboard },
 		{ to: '/student/activities', label: 'Activities', icon: Table2 },
@@ -93,7 +112,7 @@ export function StudentLayout() {
 
 				{/* Nav Links */}
 				<nav className="flex flex-col space-y-1.5 overflow-y-auto flex-grow custom-scrollbar">
-					{navItems.map(({ to, label, icon: Icon }) => (
+					{navItems.filter(item => isRouteEnabled(item.to)).map(({ to, label, icon: Icon }) => (
 						<NavLink 
 							key={to} 
 							to={to} 
@@ -120,7 +139,7 @@ export function StudentLayout() {
 			</aside>
 
 			{/* Main Container */}
-			<div className="flex flex-col min-h-screen">
+			<div className="flex flex-col min-h-screen min-w-0">
 				<Topbar onMenuClick={toggleSidebar} />
 				<main className="flex-1 space-y-6 p-4 md:p-6">
 					<Outlet />

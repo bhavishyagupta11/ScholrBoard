@@ -14,7 +14,7 @@
  *              SupportTicket, Track
  *
  * V2 Changes (additive only — no migration required):
- *   - role enum: appended 'department_coordinator' (existing docs unaffected)
+ *   - role enum: 'department_coordinator' removed in V2.2 (unified to faculty + facultyLevel)
  *   - trackId: new optional field, default null (existing docs unaffected)
  */
 import mongoose from 'mongoose';
@@ -58,9 +58,9 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: {
-        // V2: 'department_coordinator' appended — existing docs unaffected
-        values: ['student', 'faculty', 'admin', 'department_coordinator'],
-        message: 'Role must be one of: student, faculty, admin, department_coordinator',
+        // V2.2: 'department_coordinator' removed — unified under 'faculty' + facultyLevel
+        values: ['student', 'faculty', 'admin'],
+        message: 'Role must be one of: student, faculty, admin',
       },
       required: [true, 'Role is required'],
       index: true,
@@ -69,6 +69,15 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
       index: true,           // admin queries often filter by verified status
+    },
+    facultyLevel: {
+      type: String,
+      enum: {
+        values: ['faculty', 'coordinator'],
+        message: 'facultyLevel must be one of: faculty, coordinator',
+      },
+      default: 'faculty',
+      index: true,
     },
 
     // --- Role-specific identifiers ---
@@ -100,11 +109,10 @@ const userSchema = new mongoose.Schema(
       trim: true,
       validate: {
         validator: function (v) {
-          // department_coordinator is treated like faculty for this requirement
-          if (this.role === 'student' || this.role === 'faculty' || this.role === 'department_coordinator') return !!v;
+          if (this.role === 'student' || this.role === 'faculty') return !!v;
           return true;
         },
-        message: 'Department is required for student, faculty, and department_coordinator accounts',
+        message: 'Department is required for student and faculty accounts',
       },
     },
     semester: {

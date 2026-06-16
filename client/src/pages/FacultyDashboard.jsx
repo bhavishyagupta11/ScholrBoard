@@ -10,6 +10,8 @@ import activitiesApi from '../api/activities.api.js';
 import { Users, Activity, CheckCircle, AlertCircle, LifeBuoy } from 'lucide-react';
 import announcementsApi from '../api/announcements.api.js';
 import ticketsApi from '../api/tickets.api.js';
+import { useAuth } from '../contexts/AuthContext.jsx';
+import { CoordinatorDashboard } from './CoordinatorDashboard.jsx';
 
 function StatCard({ label, value, color, icon, loading }) {
   return (
@@ -28,6 +30,13 @@ function StatCard({ label, value, color, icon, loading }) {
 }
 
 export function FacultyDashboard() {
+  const { user } = useAuth();
+  const isCoordinator = (user?.role === 'faculty' && user?.facultyLevel === 'coordinator');
+
+  if (isCoordinator) {
+    return <CoordinatorDashboard />;
+  }
+
   const navigate = useNavigate();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);

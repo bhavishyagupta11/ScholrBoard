@@ -9,6 +9,7 @@ import {
   getSystemAnalytics,
   getPlacementAnalytics,
   getFacultyActivityStats,
+  getCoordinatorAnalytics,
 } from '../controllers/analyticsController.js';
 
 const router = express.Router();
@@ -38,6 +39,10 @@ router.get('/system', requireRole('admin'), getSystemAnalytics);
 // @route   GET /api/analytics/faculty-activity-stats
 // @desc    Activity stats for faculty advisor advisees
 router.get('/faculty-activity-stats', requireRole('faculty'), getFacultyActivityStats);
+
+// @route   GET /api/analytics/coordinator
+// @desc    Coordinator-scoped analytics
+router.get('/coordinator', requireRole('faculty'), getCoordinatorAnalytics);
 
 // @route   GET /api/analytics/placements
 // @desc    Placement analytics for admin and faculty

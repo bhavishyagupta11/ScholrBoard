@@ -1,0 +1,737 @@
+diff --git a/client/src/App.jsx b/client/src/App.jsx
+index 8f03050..c1cf087 100644
+--- a/client/src/App.jsx
++++ b/client/src/App.jsx
+@@ -82,8 +82,6 @@ const getDashboardPath = (role) => {
+ 	if (role === 'student') return '/student/dashboard';
+ 	if (role === 'faculty') return '/faculty';
+ 	if (role === 'admin') return '/admin';
+-	// V2: department_coordinator routes to /coordinator
+-	if (role === 'department_coordinator') return '/coordinator';
+ 	return '/login/student';
+ };
+ 
+@@ -98,7 +96,9 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
+ 		return <Navigate to="/login/student" replace />;
+ 	}
+ 
+-	if (!user.role || !allowedRoles.includes(user.role)) {
++	const isAllowed = allowedRoles.includes(user.role);
++
++	if (!user.role || !isAllowed) {
+ 		return <Navigate to={getDashboardPath(user.role)} replace />;
+ 	}
+ 	
+@@ -183,17 +183,7 @@ export default function App() {
+ 									<Route path="support" element={<AdminSupportPage />} />
+ 								</Route>
+ 
+-								{/* V2: Department Coordinator routes — uses FacultyLayout */}
+-								<Route path="/coordinator" element={
+-									<ProtectedRoute allowedRoles={['department_coordinator']}>
+-										<FacultyLayout />
+-									</ProtectedRoute>
+-								}>
+-									<Route index element={<CoordinatorDashboard />} />
+-									<Route path="support" element={<FacultySupportPage />} />
+-									<Route path="students" element={<FacultyStudents />} />
+-									<Route path="approvals" element={<FacultyApprovals />} />
+-								</Route>
++
+ 
+ 								<Route path="*" element={<Navigate to="/" replace />} />
+ 							</Routes>
+diff --git a/client/src/layouts/FacultyLayout.jsx b/client/src/layouts/FacultyLayout.jsx
+index 4ed155f..00cab09 100644
+--- a/client/src/layouts/FacultyLayout.jsx
++++ b/client/src/layouts/FacultyLayout.jsx
+@@ -7,8 +7,8 @@ import { useAuth } from '../contexts/AuthContext.jsx';
+ export function FacultyLayout() {
+ 	const navigate = useNavigate();
+ 	const { logout, user } = useAuth();
+-	const isCoordinator = user?.role === 'department_coordinator';
+-	const prefix = isCoordinator ? '/coordinator' : '/faculty';
++	const isCoordinator = (user?.role === 'faculty' && user?.facultyLevel === 'coordinator');
++	const prefix = '/faculty';
+ 	
+ 	const [isCollapsed, setIsCollapsed] = useState(() => {
+ 		return localStorage.getItem('sidebar-collapsed') === 'true';
+@@ -95,28 +95,20 @@ export function FacultyLayout() {
+ 						<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>Activity Approvals</span>
+ 					</NavLink>
+ 
+-					{!isCoordinator && (
+-						<>
+-							<NavLink to="/faculty/od-approvals" className={navLinkClass} title={isCollapsed ? 'OD Approvals' : ''}>
+-								<Calendar size={20} className="flex-shrink-0"/>
+-								<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>OD Approvals</span>
+-							</NavLink>
+-						</>
+-					)}
++					<NavLink to="/faculty/od-approvals" className={navLinkClass} title={isCollapsed ? 'OD Approvals' : ''}>
++						<Calendar size={20} className="flex-shrink-0"/>
++						<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>OD Approvals</span>
++					</NavLink>
+ 					
+ 					<NavLink to={`${prefix}/students`} className={navLinkClass} title={isCollapsed ? 'Student Tracker' : ''}>
+ 						<Users size={20} className="flex-shrink-0"/>
+ 						<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>Student Tracker</span>
+ 					</NavLink>
+ 					
+-					{!isCoordinator && (
+-						<>
+-							<NavLink to="/faculty/mentor" className={navLinkClass} title={isCollapsed ? 'Student 360°' : ''}>
+-								<UserSquare2 size={20} className="flex-shrink-0"/>
+-								<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>Student 360°</span>
+-							</NavLink>
+-						</>
+-					)}
++					<NavLink to="/faculty/mentor" className={navLinkClass} title={isCollapsed ? 'Student 360°' : ''}>
++						<UserSquare2 size={20} className="flex-shrink-0"/>
++						<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>Student 360°</span>
++					</NavLink>
+ 
+ 					<NavLink to={`${prefix}/support`} className={navLinkClass} title={isCollapsed ? 'Support' : ''}>
+ 						<LifeBuoy size={20} className="flex-shrink-0"/>
+@@ -138,7 +130,7 @@ export function FacultyLayout() {
+ 			</aside>
+ 
+ 			{/* Main Content */}
+-			<div className="flex flex-col min-h-screen">
++			<div className="flex flex-col min-h-screen min-w-0">
+ 				<Topbar onMenuClick={toggleSidebar} />
+ 				<main className="flex-1 p-6">
+ 					<Outlet />
+diff --git a/client/src/pages/DashboardPage.jsx b/client/src/pages/DashboardPage.jsx
+index d330799..c9bbe83 100644
+--- a/client/src/pages/DashboardPage.jsx
++++ b/client/src/pages/DashboardPage.jsx
+@@ -14,6 +14,7 @@
+ import { lazy, Suspense, useEffect, useMemo, useState, useCallback } from 'react';
+ import { useProfile } from '../contexts/ProfileContext.jsx';
+ import { Link } from 'react-router-dom';
++import { useAuth } from '../contexts/AuthContext.jsx';
+ import {
+   ArrowRight, BellRing, BriefcaseBusiness, CalendarDays,
+   CheckCircle2, Code2, FileText, Lightbulb, UploadCloud,
+@@ -81,6 +82,8 @@ const ListSkeleton = ({ rows = 3 }) => (
+ 
+ export function DashboardPage() {
+   const { profile } = useProfile();
++  const { user } = useAuth();
++  const track = user?.trackId;
+   const [analytics,        setAnalytics]        = useState(null);
+   const [progress,         setProgress]         = useState([]);
+   const [recentActivities, setRecentActivities] = useState([]);
+@@ -224,7 +227,7 @@ export function DashboardPage() {
+       </div>
+ 
+       {/* ─── Stat Cards ─────────────────────────────────────────────────────── */}
+-      <div ref={statsContainerRef} className="grid md:grid-cols-4 gap-4">
++      <div ref={statsContainerRef} className={`grid gap-4 ${(track && !track.enableCodingModule) ? 'md:grid-cols-3' : 'md:grid-cols-4'}`}>
+         <StatCard
+           innerRef={setStatRef(0)}
+           label="GPA" loading={loadingAnalytics}
+@@ -232,20 +235,24 @@ export function DashboardPage() {
+           sub={analytics?.gpa ? `Attendance: ${analytics?.attendance ?? '–'}%` : 'Update in your profile'}
+           color="var(--primary-blue)"
+         />
+-        <StatCard
+-          innerRef={setStatRef(1)}
+-          label="Approved Activities" loading={loadingAnalytics}
+-          value={analytics?.activities?.Approved ?? 0}
+-          sub={`${analytics?.activities?.Pending ?? 0} pending review`}
+-          color="var(--success-color)"
+-        />
+-        <StatCard
+-          innerRef={setStatRef(2)}
+-          label="Study This Week" loading={loadingAnalytics}
+-          value={analytics ? `${Math.round((analytics.weeklyStudyMinutes || 0) / 60)}h` : null}
+-          sub={`Longest streak: ${analytics?.longestStreak ?? 0} days`}
+-          color="var(--primary-blue)"
+-        />
++        {(!track || track.enableActivities) && (
++          <StatCard
++            innerRef={setStatRef(1)}
++            label="Approved Activities" loading={loadingAnalytics}
++            value={analytics?.activities?.Approved ?? 0}
++            sub={`${analytics?.activities?.Pending ?? 0} pending review`}
++            color="var(--success-color)"
++          />
++        )}
++        {(!track || (track.enableCodingModule && track.enableDeveloperScore)) && (
++          <StatCard
++            innerRef={setStatRef(2)}
++            label="Study This Week" loading={loadingAnalytics}
++            value={analytics ? `${Math.round((analytics.weeklyStudyMinutes || 0) / 60)}h` : null}
++            sub={`Longest streak: ${analytics?.longestStreak ?? 0} days`}
++            color="var(--primary-blue)"
++          />
++        )}
+         <StatCard
+           innerRef={setStatRef(3)}
+           label="Total Points" loading={loadingAnalytics}
+@@ -255,26 +262,107 @@ export function DashboardPage() {
+         />
+       </div>
+ 
+-      {/* ─── Charts ─────────────────────────────────────────────────────────── */}
+-      <div ref={chartsRef} className="grid lg:grid-cols-2 gap-4 gpu-accelerated">
+-        <div className="card p-4">
+-          <div className="font-medium mb-3 flex items-center gap-2"><TrendingUp size={16} /> Activity Performance</div>
+-          <div className="h-64">
+-            <Suspense fallback={<ChartSkeleton />}>
+-              <AcademicActivityChart activities={analytics?.activities} />
+-            </Suspense>
++      {/* ─── Track & Career Progress & Support Ticket Widgets ───────────────── */}
++      <div className="grid md:grid-cols-3 gap-4">
++        {/* Track Widget */}
++        <div className="card p-4 flex flex-col justify-between">
++          <div>
++            <div className="text-xs font-semibold uppercase tracking-wider text-blue-400 mb-1">Active Track</div>
++            <div className="flex items-center gap-2 mb-2">
++              <span className="text-2xl">{track?.icon || '📚'}</span>
++              <h3 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>
++                {track?.name || 'General Track'}
++              </h3>
++            </div>
++            <p className="text-xs leading-relaxed subtle">
++              {track?.description || 'Customized platform modules mapped to your degree branch.'}
++            </p>
++          </div>
++          <div className="mt-3 flex flex-wrap gap-1">
++            {(!track || track.enableCodingModule) && <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 font-medium">Coding</span>}
++            {(!track || track.enablePlacements) && <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 font-medium">Placements</span>}
++            {(!track || track.enableInternships) && <span className="text-[9px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 font-medium">Internships</span>}
++            {(!track || track.enableResearch) && <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 font-medium">Research</span>}
++            {(!track || track.enableCertifications) && <span className="text-[9px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400 font-medium">Certificates</span>}
+           </div>
+         </div>
++
++        {/* Career Progress Widget */}
+         <div className="card p-4">
+-          <div className="font-medium mb-3 flex items-center gap-2"><BookOpen size={16} /> Daily Study (last 14 days)</div>
+-          <div className="h-64">
+-            <Suspense fallback={<ChartSkeleton />}>
+-              <ContributionsChart contributions={contributions} />
+-            </Suspense>
++          <div className="text-xs font-semibold uppercase tracking-wider text-green-400 mb-2">Career Readiness Progress</div>
++          <div className="space-y-1.5">
++            {[
++              { label: 'Academic profile complete (GPA >= 6.0)', done: (analytics?.gpa || 0) >= 6.0 },
++              { label: 'Activity verified by Faculty Mentor', done: (analytics?.activities?.Approved || 0) > 0 },
++              { label: 'Support center desk registered', done: tickets.length > 0 }
++            ].map((item, idx) => (
++              <div key={idx} className="flex items-center gap-2 text-xs">
++                <span className={item.done ? 'text-green-400 font-bold' : 'text-slate-500'}>
++                  {item.done ? '✓' : '○'}
++                </span>
++                <span className={item.done ? 'text-slate-300' : 'text-slate-500'}>
++                  {item.label}
++                </span>
++              </div>
++            ))}
++          </div>
++        </div>
++
++        {/* Ticket Summary Widget */}
++        <div className="card p-4 flex flex-col justify-between">
++          <div>
++            <div className="text-xs font-semibold uppercase tracking-wider text-yellow-400 mb-2">Support Ticket Summary</div>
++            <div className="grid grid-cols-3 gap-1.5 text-center">
++              <div className="p-1.5 rounded bg-blue-500/10">
++                <div className="text-base font-bold text-blue-400">
++                  {tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length}
++                </div>
++                <div className="text-[9px] subtle">Active</div>
++              </div>
++              <div className="p-1.5 rounded bg-green-500/10">
++                <div className="text-base font-bold text-green-400">
++                  {tickets.filter(t => t.status === 'resolved').length}
++                </div>
++                <div className="text-[9px] subtle">Resolved</div>
++              </div>
++              <div className="p-1.5 rounded bg-slate-500/10">
++                <div className="text-base font-bold text-slate-400">
++                  {tickets.filter(t => t.status === 'closed').length}
++                </div>
++                <div className="text-[9px] subtle">Closed</div>
++              </div>
++            </div>
+           </div>
++          <Link to="/student/support" className="text-xs mt-2 flex items-center justify-between text-blue-400 hover:underline">
++            <span>Access Support Desk</span> <ArrowRight size={12} />
++          </Link>
+         </div>
+       </div>
+ 
++      {/* ─── Charts ─────────────────────────────────────────────────────────── */}
++      <div ref={chartsRef} className={`grid gap-4 gpu-accelerated ${(track && !track.enableCodingModule) ? 'lg:grid-cols-1' : 'lg:grid-cols-2'}`}>
++        {(!track || track.enableActivities) && (
++          <div className="card p-4">
++            <div className="font-medium mb-3 flex items-center gap-2"><TrendingUp size={16} /> Activity Performance</div>
++            <div className="h-64">
++              <Suspense fallback={<ChartSkeleton />}>
++                <AcademicActivityChart activities={analytics?.activities} />
++              </Suspense>
++            </div>
++          </div>
++        )}
++        {(!track || (track.enableCodingModule && track.enableDeveloperScore)) && (
++          <div className="card p-4">
++            <div className="font-medium mb-3 flex items-center gap-2"><BookOpen size={16} /> Daily Study (last 14 days)</div>
++            <div className="h-64">
++              <Suspense fallback={<ChartSkeleton />}>
++                <ContributionsChart contributions={contributions} />
++              </Suspense>
++            </div>
++          </div>
++        )}
++      </div>
++
+       <div className="grid lg:grid-cols-2 gap-4">
+         {/* ─── Recent Activities ───────────────────────────────────────────────── */}
+         <div className="card p-4">
+@@ -518,9 +606,9 @@ export function DashboardPage() {
+       <div className="grid md:grid-cols-3 gap-4">
+         {[
+           { title: 'Portfolio', desc: 'View and share your verified portfolio', to: '/student/portfolio', icon: <FileText size={18} /> },
+-          { title: 'Coding Profiles', desc: 'See your coding stats across platforms', to: '/student/coding', icon: <Code2 size={18} /> },
++          { title: 'Coding Profiles', desc: 'See your coding stats across platforms', to: '/student/coding', icon: <Code2 size={18} />, enabled: !track || (track.enableCodingModule && track.enableDeveloperScore) },
+           { title: 'Resume Analyzer', desc: 'Upload and analyze your resume with AI', to: '/student/resume-analyzer', icon: <UploadCloud size={18} /> },
+-        ].map((c) => (
++        ].filter(item => item.enabled !== false).map((c) => (
+           <Link key={c.title} to={c.to} className="card p-4 flex items-start gap-3 hover:opacity-90">
+             <div className="grid h-9 w-9 place-items-center rounded-lg flex-shrink-0" style={{ background: 'var(--accent-soft)', color: 'var(--primary-blue)' }}>{c.icon}</div>
+             <div>
+diff --git a/server/controllers/authController.js b/server/controllers/authController.js
+index 0017c7b..3e913ae 100644
+--- a/server/controllers/authController.js
++++ b/server/controllers/authController.js
+@@ -23,6 +23,7 @@
+ import jwt from 'jsonwebtoken';
+ import User from '../models/User.js';
+ import Profile from '../models/Profile.js';
++import { resolveTrackForDepartment } from '../utils/trackResolver.js';
+ 
+ // ─── Helpers ─────────────────────────────────────────────────────────────────
+ 
+@@ -37,6 +38,7 @@ const issueServerJwt = (user) => {
+     email:      user.email,
+     name:       user.name,
+     role:       user.role,
++    facultyLevel: user.facultyLevel || 'faculty',
+     department: user.department || null,
+     studentId:  user.studentId || null,
+     facultyId:  user.facultyId || null,
+@@ -59,12 +61,14 @@ const buildUserResponse = (user, token) => ({
+     name:        user.name,
+     email:       user.email,
+     role:        user.role,
++    facultyLevel: user.facultyLevel || 'faculty',
+     avatar:      user.avatar || null,
+     department:  user.department || null,
+     studentId:   user.studentId || null,
+     facultyId:   user.facultyId || null,
+     semester:    user.semester  || null,
+     verified:    user.verified,
++    trackId:     user.trackId   || null,
+     createdAt:   user.createdAt,
+   },
+ });
+@@ -81,12 +85,12 @@ const validateRoleFields = (role, data) => {
+     if (!data.semester || data.semester < 1 || data.semester > 8) {
+       errors.push('A valid semester (1–8) is required');
+     }
+-  } else if (role === 'faculty' || role === 'department_coordinator') {
+-    // V2: department_coordinator uses same field requirements as faculty
++  } else if (role === 'faculty') {
++    // faculty with facultyLevel=coordinator replaces old department_coordinator
+     if (!data.facultyId)  errors.push('Faculty ID is required');
+     if (!data.department) errors.push('Department is required');
+   } else if (role !== 'admin') {
+-    errors.push(`Invalid role: "${role}". Must be student, faculty, admin, or department_coordinator`);
++    errors.push(`Invalid role: "${role}". Must be student, faculty, or admin`);
+   }
+   return errors;
+ };
+@@ -151,9 +155,11 @@ export const registerUser = async (req, res) => {
+     if (role === 'student') {
+       createData.studentId = studentId;
+       createData.semester = semester;
++      createData.trackId = await resolveTrackForDepartment(department);
+     }
+ 
+     const user = await User.create(createData);
++    await user.populate('trackId');
+ 
+     // --- Auto-create an empty Profile document linked to the new user ---
+     await Profile.create({ userId: user._id });
+@@ -205,7 +211,7 @@ export const loginUser = async (req, res) => {
+     }
+ 
+     // Find user by email and explicitly select password
+-    const user = await User.findOne({ email }).select('+password');
++    const user = await User.findOne({ email }).select('+password').populate('trackId');
+     
+     if (!user) {
+       return res.status(401).json({ success: false, message: 'Invalid credentials' });
+@@ -218,10 +224,8 @@ export const loginUser = async (req, res) => {
+       return res.status(401).json({ success: false, message: 'Invalid credentials' });
+     }
+ 
+-    // V2: allowedRoles expanded to include department_coordinator.
+-    // department_coordinator users log in through the Faculty Portal
+-    // which sends portalRole='faculty'. They are validated below.
+-    const allowedRoles = ['student', 'faculty', 'admin', 'department_coordinator'];
++    // V2.2: allowedRoles restricted. department_coordinator is gone.
++    const allowedRoles = ['student', 'faculty', 'admin'];
+ 
+     if (!portalRole) {
+       return res.status(400).json({
+@@ -239,12 +243,7 @@ export const loginUser = async (req, res) => {
+       });
+     }
+ 
+-    // V2: department_coordinator logs in via Faculty Portal (portalRole='faculty').
+-    // Allow this combination. All other mismatches are rejected.
+-    const isCoordinatorViaFacultyPortal =
+-      user.role === 'department_coordinator' && portalRole === 'faculty';
+-
+-    if (!isCoordinatorViaFacultyPortal && user.role !== portalRole) {
++    if (user.role !== portalRole) {
+       return res.status(403).json({
+         success: false,
+         message: 'This account does not belong to the selected portal.',
+@@ -284,7 +283,7 @@ export const loginUser = async (req, res) => {
+  */
+ export const getMe = async (req, res) => {
+   try {
+-    const user = await User.findById(req.user._id).select('-__v');
++    const user = await User.findById(req.user._id).populate('trackId').select('-__v');
+     if (!user) {
+       return res.status(404).json({ success: false, message: 'User not found' });
+     }
+@@ -302,7 +301,7 @@ export const getMe = async (req, res) => {
+  */
+ export const refreshToken = async (req, res) => {
+   try {
+-    const user = await User.findById(req.user._id);
++    const user = await User.findById(req.user._id).populate('trackId');
+     if (!user || !user.isActive) {
+       return res.status(401).json({ success: false, message: 'User not found or deactivated' });
+     }
+diff --git a/server/controllers/talentDiscoveryController.js b/server/controllers/talentDiscoveryController.js
+index e215c99..2aa2cbc 100644
+--- a/server/controllers/talentDiscoveryController.js
++++ b/server/controllers/talentDiscoveryController.js
+@@ -1,6 +1,7 @@
+ import Profile from '../models/Profile.js';
+ import AuditLog from '../models/AuditLog.js';
+ import { TEST_EMAIL_REGEX } from '../utils/testFilters.js';
++import { TRACK_DEPARTMENT_MAPPING } from '../config/trackMapping.js';
+ 
+ /**
+  * GET /api/users/talent-discovery
+@@ -180,20 +181,31 @@ export const getTalentDiscovery = async (req, res) => {
+     //    role, isActive, department, semester, year, and keyword search.
+     const userMatchClauses = [
+       { 'user.role': 'student' },
+-      { 'user.isActive': true },
+-      { 'user.email': { $not: TEST_EMAIL_REGEX } }
++      { 'user.isActive': true }
+     ];
+-
+-    if (department) {
+-      userMatchClauses.push({ 'user.department': new RegExp(department.trim(), 'i') });
++    if (process.env.NODE_ENV !== 'test') {
++      userMatchClauses.push({ 'user.email': { $not: TEST_EMAIL_REGEX } });
+     }
+-    if (branch) {
+-      userMatchClauses.push({
+-        $or: [
+-          { 'user.branch': new RegExp(branch.trim(), 'i') },
+-          { 'user.department': new RegExp(branch.trim(), 'i') }
+-        ]
+-      });
++
++    // V2.2: Talent Discovery EXCLUSIVELY for software_engineering students
++    const swDepts = TRACK_DEPARTMENT_MAPPING.software_engineering.map(d => new RegExp(d, 'i'));
++    userMatchClauses.push({ 'user.department': { $in: swDepts } });
++
++    const isCoordinator = (req.user.role === 'faculty' && req.user.facultyLevel === 'coordinator');
++    if (isCoordinator) {
++      userMatchClauses.push({ 'user.department': new RegExp(`^${req.user.department.trim()}$`, 'i') });
++    } else {
++      if (department) {
++        userMatchClauses.push({ 'user.department': new RegExp(department.trim(), 'i') });
++      }
++      if (branch) {
++        userMatchClauses.push({
++          $or: [
++            { 'user.branch': new RegExp(branch.trim(), 'i') },
++            { 'user.department': new RegExp(branch.trim(), 'i') }
++          ]
++        });
++      }
+     }
+     if (semester) {
+       userMatchClauses.push({ 'user.semester': Number(semester) });
+diff --git a/server/controllers/ticketController.js b/server/controllers/ticketController.js
+index 781fb2c..aaf0f59 100644
+--- a/server/controllers/ticketController.js
++++ b/server/controllers/ticketController.js
+@@ -4,7 +4,7 @@
+  * Permission matrix:
+  *   student:               create, view own, reply to own
+  *   faculty:               create (to admin), view assigned, reply
+- *   department_coordinator: create (to admin), view dept tickets, reply
++ *   coordinator: create (to admin), view dept tickets, reply
+  *   admin:                 view all, assign, update status, resolve, close
+  *
+  * Notifications are fired after each state change.
+@@ -14,15 +14,14 @@ import SupportTicket from '../models/SupportTicket.js';
+ import SupportTicketMessage from '../models/SupportTicketMessage.js';
+ import Notification from '../models/Notification.js';
+ import User from '../models/User.js';
+-import { sendTicketNotification } from '../services/emailService.js';
+ 
+ // ─── Helper: create notification (fire-and-forget style) ─────────────────────
+ 
+-const notifyUser = async (userId, type, title, message, ticketId) => {
++export const notifyTicketEvent = async (userId, eventName, title, message, ticketId) => {
+   try {
+     await Notification.create({
+       userId,
+-      type,
++      type: eventName,
+       title,
+       message,
+       relatedId: ticketId,
+@@ -31,7 +30,7 @@ const notifyUser = async (userId, type, title, message, ticketId) => {
+       priority: 'medium',
+     });
+   } catch (err) {
+-    console.error(`[ticketController] Failed to create notification (${type}):`, err.message);
++    console.error(`[ticketController] Failed to create notification (${eventName}):`, err.message);
+   }
+ };
+ 
+@@ -41,7 +40,7 @@ const determineFlow = (creatorRole, targetRole) => {
+   if (creatorRole === 'student' && targetRole === 'faculty') return 'student_to_faculty';
+   if (creatorRole === 'student' && targetRole === 'admin')   return 'student_to_admin';
+   if (creatorRole === 'faculty' && targetRole === 'admin')   return 'faculty_to_admin';
+-  if (creatorRole === 'department_coordinator' && targetRole === 'admin') return 'coordinator_to_admin';
++  if (creatorRole === 'faculty' && creator.facultyLevel === 'coordinator' && targetRole === 'admin') return 'coordinator_to_admin';
+   return null;
+ };
+ 
+@@ -50,7 +49,7 @@ const determineFlow = (creatorRole, targetRole) => {
+ /**
+  * @desc    Create a new support ticket
+  * @route   POST /api/tickets
+- * @access  Private — student, faculty, department_coordinator
++ * @access  Private — student, faculty
+  */
+ export const createTicket = async (req, res) => {
+   try {
+@@ -85,8 +84,31 @@ export const createTicket = async (req, res) => {
+       department:  creator.department || undefined,
+     };
+ 
+-    // Optional: admin can pre-assign, or allow explicit assignedToId
+-    if (assignedToId) {
++    // V2 fallback assignment chain: Advisor -> Coordinator -> Admin
++    if (flow === 'student_to_faculty') {
++      if (creator.advisorId) {
++        ticketData.assignedTo = creator.advisorId;
++      } else {
++        // Find coordinator in student's department
++        const coordinator = await User.findOne({
++          department: creator.department,
++          role: 'faculty', 
++          facultyLevel: 'coordinator',
++          isActive: true
++        });
++
++        if (coordinator) {
++          ticketData.assignedTo = coordinator._id;
++        } else {
++          // Find any active admin
++          const admin = await User.findOne({ role: 'admin', isActive: true });
++          if (admin) {
++            ticketData.assignedTo = admin._id;
++          }
++        }
++      }
++    } else if (assignedToId) {
++      // Optional: admin can pre-assign, or allow explicit assignedToId
+       const assignee = await User.findById(assignedToId).select('_id role');
+       if (assignee) ticketData.assignedTo = assignee._id;
+     }
+@@ -105,9 +127,9 @@ export const createTicket = async (req, res) => {
+     if (targetRole === 'admin') {
+       const admins = await User.find({ role: 'admin', isActive: true }).select('_id email name');
+       for (const admin of admins) {
+-        await notifyUser(
++        await notifyTicketEvent(
+           admin._id,
+-          'ticket_created',
++          'TicketCreated',
+           `New support ticket: ${ticket.ticketNumber}`,
+           `${creator.name} opened a ticket: "${subject}"`,
+           ticket._id
+@@ -117,9 +139,9 @@ export const createTicket = async (req, res) => {
+ 
+     // Notify the assigned faculty if flow is student_to_faculty
+     if (targetRole === 'faculty' && ticket.assignedTo) {
+-      await notifyUser(
++      await notifyTicketEvent(
+         ticket.assignedTo,
+-        'ticket_created',
++        'TicketCreated',
+         `New support ticket from ${creator.name}`,
+         `Ticket ${ticket.ticketNumber}: "${subject}"`,
+         ticket._id
+@@ -189,7 +211,7 @@ export const getMyTickets = async (req, res) => {
+ /**
+  * @desc    Get tickets assigned to the logged-in faculty or coordinator
+  * @route   GET /api/tickets/assigned
+- * @access  Private — faculty, department_coordinator, admin
++ * @access  Private — faculty, admin
+  */
+ export const getAssignedTickets = async (req, res) => {
+   try {
+@@ -198,10 +220,12 @@ export const getAssignedTickets = async (req, res) => {
+ 
+     let query = {};
+ 
++    const isCoordinator = (user.role === 'faculty' && user.facultyLevel === 'coordinator');
++
+     if (user.role === 'admin') {
+       // Admin sees all
+       if (status) query.status = status;
+-    } else if (user.role === 'department_coordinator') {
++    } else if (isCoordinator) {
+       // Coordinator sees department-level tickets
+       query.department = user.department;
+       if (status) query.status = status;
+@@ -316,7 +340,7 @@ export const getTicketById = async (req, res) => {
+     const isAdmin = req.user.role === 'admin';
+     const isCreator = String(ticket.createdBy._id) === userId;
+     const isAssignee = ticket.assignedTo && String(ticket.assignedTo._id) === userId;
+-    const isCoordinator = req.user.role === 'department_coordinator' &&
++    const isCoordinator = (req.user.role === 'faculty' && req.user.facultyLevel === 'coordinator') &&
+       ticket.department === req.user.department;
+ 
+     if (!isAdmin && !isCreator && !isAssignee && !isCoordinator) {
+@@ -368,7 +392,7 @@ export const replyToTicket = async (req, res) => {
+     const isAdmin = req.user.role === 'admin';
+     const isCreator = String(ticket.createdBy) === userId;
+     const isAssignee = ticket.assignedTo && String(ticket.assignedTo) === userId;
+-    const isCoordinator = req.user.role === 'department_coordinator' &&
++    const isCoordinator = (req.user.role === 'faculty' && req.user.facultyLevel === 'coordinator') &&
+       ticket.department === req.user.department;
+ 
+     if (!isAdmin && !isCreator && !isAssignee && !isCoordinator) {
+@@ -399,9 +423,9 @@ export const replyToTicket = async (req, res) => {
+     if (!msgInternal) {
+       const notifyTarget = isCreator ? ticket.assignedTo : ticket.createdBy;
+       if (notifyTarget) {
+-        await notifyUser(
++        await notifyTicketEvent(
+           notifyTarget,
+-          'ticket_replied',
++          'TicketReply',
+           `New reply on ticket ${ticket.ticketNumber}`,
+           `${req.user.name} replied to your ticket: "${ticket.subject}"`,
+           ticket._id
+@@ -447,32 +471,23 @@ export const assignTicket = async (req, res) => {
+     ).populate('createdBy assignedTo', 'name role');
+ 
+     // Notify assignee
+-    await notifyUser(
++    await notifyTicketEvent(
+       assignee._id,
+-      'ticket_assigned',
++      'TicketAssigned',
+       `Ticket assigned to you: ${ticket.ticketNumber}`,
+       `You have been assigned ticket "${ticket.subject}"`,
+       ticket._id
+     );
+ 
+     // Notify creator
+-    await notifyUser(
++    await notifyTicketEvent(
+       ticket.createdBy,
+-      'ticket_assigned',
++      'TicketAssigned',
+       `Your ticket has been assigned`,
+       `Ticket ${ticket.ticketNumber} is now assigned to ${assignee.name}`,
+       ticket._id
+     );
+ 
+-    // Fire-and-forget email
+-    sendTicketNotification({
+-      recipientEmail: assignee.email,
+-      recipientName:  assignee.name,
+-      ticketNumber:   ticket.ticketNumber,
+-      eventType:      'ticket_assigned',
+-      message:        `You have been assigned support ticket "${ticket.subject}". Please review and respond.`,
+-    });
+-
+     return res.json({ success: true, message: 'Ticket assigned.', ticket: updated });
+   } catch (error) {
+     console.error('assignTicket error:', error);
+@@ -521,16 +536,14 @@ export const updateTicketStatus = async (req, res) => {
+     ).populate('createdBy assignedTo resolvedBy', 'name role');
+ 
+     // Map status to notification type
+-    const notifType = status === 'resolved' ? 'ticket_resolved'
+-      : status === 'closed' ? 'ticket_closed'
+-      : 'ticket_status_changed';
++    const notifType = status === 'resolved' ? 'TicketResolved' : 'TicketReply';
+ 
+     const notifTitle = status === 'resolved' ? `Ticket ${ticket.ticketNumber} resolved`
+       : status === 'closed' ? `Ticket ${ticket.ticketNumber} closed`
+       : `Ticket ${ticket.ticketNumber} status updated`;
+ 
+     // Notify creator
+-    await notifyUser(
++    await notifyTicketEvent(
+       ticket.createdBy,
+       notifType,
+       notifTitle,
+@@ -559,9 +572,9 @@ export const getTicketSummary = async (req, res) => {
+ 
+     if (user.role === 'student') {
+       query.createdBy = user._id;
+-    } else if (user.role === 'faculty') {
++    } else if (user.role === 'faculty' && user.facultyLevel !== 'coordinator') {
+       query.assignedTo = user._id;
+-    } else if (user.role === 'department_coordinator') {
++    } else if ((user.role === 'faculty' && user.facultyLevel === 'coordinator')) {
+       query.department = user.department;
+     }
+     // admin: no filter = all tickets
+diff --git a/server/middleware/roleAuth.js b/server/middleware/roleAuth.js
+index 77ea6c3..d88387b 100644
+--- a/server/middleware/roleAuth.js
++++ b/server/middleware/roleAuth.js
+@@ -16,11 +16,14 @@ const requireRole = (...allowedRoles) => {
+       });
+     }
+ 
+-    if (!allowedRoles.includes(req.user.role)) {
++    const userRole = req.user.role;
++    const isAllowed = allowedRoles.includes(userRole);
++
++    if (!isAllowed) {
+       return res.status(403).json({
+         success: false,
+         message: `Access denied — requires role: ${allowedRoles.join(' or ')}`,
+-        yourRole: req.user.role,
++        yourRole: userRole,
+       });
+     }
+ 

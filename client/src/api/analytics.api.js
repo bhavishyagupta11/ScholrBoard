@@ -18,6 +18,9 @@ export const analyticsApi = {
 
   /** Faculty: faculty activity stats */
   getFacultyActivityStats: () => api.get('/analytics/faculty-activity-stats'),
+
+  /** Coordinator: coordinator-scoped analytics */
+  getCoordinatorAnalytics: () => api.get('/analytics/coordinator'),
 };
 
 export default analyticsApi;

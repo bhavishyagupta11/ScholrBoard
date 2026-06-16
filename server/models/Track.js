@@ -1,17 +1,5 @@
 /**
- * Track.js — Career Track for UI personalization (NOT authorization).
- *
- * IMPORTANT: Tracks are UI personalization ONLY.
- * A user's trackId controls which sidebar items and dashboard widgets are
- * shown by default. It does NOT:
- *   - block any API
- *   - remove any route
- *   - change any permission
- *   - delete any data
- *
- * If a user has trackId = null, ALL modules are shown (default behavior).
- *
- * Seeded tracks: Engineering, Management, Medical, Commerce, Arts, Law
+ * Track.js — Career Track for UI personalization
  */
 import mongoose from 'mongoose';
 
@@ -24,13 +12,26 @@ const trackSchema = new mongoose.Schema(
       unique: true,
       maxlength: [100, 'Track name cannot exceed 100 characters'],
     },
+    code: {
+      type: String,
+      required: [true, 'Track code is required'],
+      trim: true,
+      unique: true,
+      lowercase: true,
+      index: true,
+    },
     slug: {
       type: String,
       required: [true, 'Track slug is required'],
       trim: true,
       unique: true,
       lowercase: true,
-      match: [/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens'],
+    },
+    dashboardType: {
+      type: String,
+      required: [true, 'Dashboard type is required'],
+      enum: ['engineering', 'core_engineering'],
+      index: true,
     },
     description: {
       type: String,
@@ -39,16 +40,53 @@ const trackSchema = new mongoose.Schema(
     },
     icon: {
       type: String,
-      default: '📚',        // emoji icon for UI display
+      default: '📚',
     },
     color: {
       type: String,
-      default: '#3b82f6',  // hex color for UI theming
+      default: '#3b82f6',
     },
     isActive: {
       type: Boolean,
       default: true,
       index: true,
+    },
+    // --- Feature Toggles ---
+    enableCodingModule: {
+      type: Boolean,
+      default: true,
+    },
+    enableDeveloperScore: {
+      type: Boolean,
+      default: true,
+    },
+    enableTalentDiscovery: {
+      type: Boolean,
+      default: true,
+    },
+    enableInternships: {
+      type: Boolean,
+      default: true,
+    },
+    enableResearch: {
+      type: Boolean,
+      default: true,
+    },
+    enablePlacements: {
+      type: Boolean,
+      default: true,
+    },
+    enableActivities: {
+      type: Boolean,
+      default: true,
+    },
+    enableCertifications: {
+      type: Boolean,
+      default: true,
+    },
+    enableProjects: {
+      type: Boolean,
+      default: true,
     },
   },
   {

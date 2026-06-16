@@ -111,7 +111,10 @@ export const getPendingOds = async (req, res) => {
 
     // Find targeted advisees list
     const studentQuery = { role: 'student' };
-    if (scope === 'all') {
+    const isCoordinator = (req.user.role === 'faculty' && req.user.facultyLevel === 'coordinator');
+    if (isCoordinator) {
+      studentQuery.department = new RegExp(`^${req.user.department}$`, 'i');
+    } else if (scope === 'all') {
       if (req.user.department) {
         studentQuery.department = new RegExp(`^${req.user.department}$`, 'i');
       }

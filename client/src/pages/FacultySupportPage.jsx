@@ -140,7 +140,7 @@ export function FacultySupportPage() {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [filterStatus, setFilterStatus] = useState('');
 
-  const isCoordinator = user?.role === 'department_coordinator';
+  const isCoordinator = (user?.role === 'faculty' && user?.facultyLevel === 'coordinator');
 
   const loadTickets = useCallback(() => {
     setLoading(true);
