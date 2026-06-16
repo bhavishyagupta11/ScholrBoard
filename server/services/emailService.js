@@ -24,6 +24,12 @@ let _transporter = null;
 const getTransporter = () => {
   if (_transporter) return _transporter;
 
+  console.log('[EmailService Diagnostics]', {
+    EMAIL_USER_EXISTS: !!process.env.EMAIL_USER,
+    EMAIL_PASS_EXISTS: !!process.env.EMAIL_PASS,
+    ADMIN_CONTACT_EMAIL_EXISTS: !!process.env.ADMIN_CONTACT_EMAIL
+  });
+
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     console.warn('[EmailService] EMAIL_USER or EMAIL_PASS not configured. Email sending disabled.');
     return null;
@@ -40,6 +46,18 @@ const getTransporter = () => {
     maxConnections: 3,
     rateDelta: 1000,
     rateLimit: 5,
+  });
+
+  _transporter.verify((error, success) => {
+    if (error) {
+      console.error('[EmailService] Transporter Verification Failed:', {
+        code: error.code,
+        command: error.command,
+        message: error.message
+      });
+    } else {
+      console.log('[EmailService] Transporter verified successfully, ready to send emails.');
+    }
   });
 
   return _transporter;
@@ -116,7 +134,12 @@ export const sendContactNotification = async (data) => {
 
   } catch (err) {
     // Log only — never propagate to caller
-    console.error(`[EmailService] Failed to send contact notification: ${err.message}`);
+    console.error(`[EmailService] Failed to send contact notification:`, {
+      message: err.message,
+      code: err.code,
+      command: err.command,
+      response: err.response
+    });
   }
 };
 

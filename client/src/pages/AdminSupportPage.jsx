@@ -14,6 +14,7 @@ import {
   LifeBuoy, Users, CheckCircle, XCircle, ChevronRight, X, Send,
   RefreshCw, AlertCircle, Tag, Filter, UserCheck, Clock, MessageSquare
 } from 'lucide-react';
+import CustomSelect from '../components/common/CustomSelect';
 import ticketsApi from '../api/tickets.api.js';
 import supportApi from '../api/support.api.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
@@ -275,13 +276,21 @@ export function AdminSupportPage() {
               <Filter size={14} style={{ color: 'var(--text-secondary)' }} />
               <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Filter:</span>
             </div>
-            <select className="input text-sm py-1.5" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-              <option value="">All Statuses</option>
-              {Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-            </select>
-            <select className="input text-sm py-1.5" value={filterFlow} onChange={e => setFilterFlow(e.target.value)}>
-              {FLOWS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-            </select>
+            <CustomSelect
+              className="w-40 text-sm"
+              options={[
+                { value: '', label: 'All Statuses' },
+                ...Object.entries(STATUS_CONFIG).map(([k, v]) => ({ value: k, label: v.label }))
+              ]}
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+            />
+            <CustomSelect
+              className="w-48 text-sm"
+              options={FLOWS.map(f => ({ value: f.value, label: f.label }))}
+              value={filterFlow}
+              onChange={e => setFilterFlow(e.target.value)}
+            />
           </div>
 
           {error && (

@@ -11,6 +11,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { LifeBuoy, MessageSquare, Clock, ChevronRight, X, Send, RefreshCw, AlertCircle, Tag, User, Plus } from 'lucide-react';
+import CustomSelect from '../components/common/CustomSelect';
 import ticketsApi from '../api/tickets.api.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
@@ -81,18 +82,26 @@ function CreateTicketModal({ onClose, onCreated }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Category</label>
-              <select className="input w-full" value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}>
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+              <CustomSelect
+                options={CATEGORIES}
+                value={form.category}
+                onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
+                className="w-full"
+              />
             </div>
             <div>
               <label className="text-sm font-medium mb-1 block" style={{ color: 'var(--text-secondary)' }}>Priority</label>
-              <select className="input w-full" value={form.priority} onChange={e => setForm(p => ({ ...p, priority: e.target.value }))}>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
+              <CustomSelect
+                options={[
+                  { value: 'low', label: 'Low' },
+                  { value: 'medium', label: 'Medium' },
+                  { value: 'high', label: 'High' },
+                  { value: 'urgent', label: 'Urgent' }
+                ]}
+                value={form.priority}
+                onChange={e => setForm(p => ({ ...p, priority: e.target.value }))}
+                className="w-full"
+              />
             </div>
           </div>
           <div>
