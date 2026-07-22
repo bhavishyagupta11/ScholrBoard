@@ -103,9 +103,6 @@ export const fetchBlob = async (endpoint, options = {}) => {
   });
 
   if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
-      window.dispatchEvent(new CustomEvent('auth:session-expired'));
-    }
     const err = new Error(`Failed to fetch secure document`);
     err.status = response.status;
     err.contentType = response.headers.get('content-type') || 'Unknown';
