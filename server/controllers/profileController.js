@@ -166,31 +166,6 @@ export const updateMyProfile = async (req, res) => {
       { new: true, runValidators: true, upsert: true }
     ).populate('userId', 'name email role department semester studentId facultyId avatar verified');
 
-    // Sync to Monthly Analytics snapshot for dashboard consistency
-    if (gpa !== undefined || attendanceOverall !== undefined) {
-      try {
-        const { default: Analytics } = await import('../models/Analytics.js');
-        const now = new Date();
-        const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-        const analyticsUpdates = { computedAt: new Date() };
-        if (gpa !== undefined) {
-          analyticsUpdates.currentGPA = gpa === '' || gpa == null ? null : Number(gpa);
-        }
-        if (attendanceOverall !== undefined) {
-          analyticsUpdates.overallAttendance = attendanceOverall === '' || attendanceOverall == null ? null : Number(attendanceOverall);
-        }
-
-        await Analytics.findOneAndUpdate(
-          { userId: req.user._id, period: 'monthly', periodStart },
-          { $set: analyticsUpdates },
-          { upsert: true }
-        );
-      } catch (err) {
-        console.warn('[profile] Failed to sync GPA/attendance to monthly analytics:', err.message);
-      }
-    }
-
     let profileData = profile.toObject();
     if (req.user.role === 'faculty') {
       delete profileData.developerScore;
