@@ -146,7 +146,7 @@ export const getDashboardAnalytics = async (req, res) => {
 
     const weeklyStudyMinutes = weeklyProgress.reduce((s, r) => s + r.totalMinutesStudied, 0);
 
-    return res.json({
+    const responseData = {
       success: true,
       analytics: {
         activities:        activitySummary,
@@ -161,7 +161,8 @@ export const getDashboardAnalytics = async (req, res) => {
         aiInsight:         latestAnalytics?.aiInsight || null,
         subjectBreakdown:  latestAnalytics?.subjectBreakdown || [],
       },
-    });
+    };
+    return res.json(responseData);
   } catch (error) {
     console.error('getDashboardAnalytics error:', error);
     return res.status(500).json({ success: false, message: 'Failed to fetch analytics' });
