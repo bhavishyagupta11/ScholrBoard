@@ -141,6 +141,7 @@ export default function App() {
 									<Route path="profile" element={<ProfilePage />} />
 									<Route path="coding" element={<CodingPage />} />
 									<Route path="resume" element={<ResumeAnalyzerPage />} />
+									<Route path="resume/:id" element={<ResumeAnalyzerPage />} />
 									<Route path="resume-analyzer" element={<ResumeAnalyzerPage />} />
 									<Route path="developer" element={<DeveloperDashboard />} />
 									<Route path="certificates" element={<CertificatesPage />} />
