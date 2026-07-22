@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Eye, EyeOff, GraduationCap } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import CustomSelect from '../common/CustomSelect.jsx';
 
 export function SignupForm({ role, onToggleForm, additionalFields = [], presentation = 'page' }) {
   const navigate = useNavigate();
@@ -205,24 +206,14 @@ export function SignupForm({ role, onToggleForm, additionalFields = [], presenta
             <div key={field.name}>
               <label className="block text-sm mb-1 subtle">{field.label}</label>
               {field.type === 'select' ? (
-                <select
+                <CustomSelect
                   name={field.name}
                   value={formData[field.name]}
                   onChange={handleChange}
-                  className="w-full input-dark"
-                >
-                  <option value="">{field.placeholder}</option>
-                  {field.options?.map(option => {
-                    const isObj = typeof option === 'object' && option !== null;
-                    const val = isObj ? option.value : option;
-                    const label = isObj ? option.label : option;
-                    return (
-                      <option key={val} value={val}>
-                        {label}
-                      </option>
-                    );
-                  })}
-                </select>
+                  placeholder={field.placeholder || 'Select an option'}
+                  options={field.options || []}
+                  className="w-full"
+                />
               ) : (
                 <input
                   name={field.name}
