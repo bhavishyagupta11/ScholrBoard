@@ -14,8 +14,11 @@ import {
   UserMinus, 
   CheckSquare, 
   Square,
-  BookOpen
+  BookOpen,
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
+import CustomSelect from '../components/common/CustomSelect.jsx';
 
 export function AdminAdvisors() {
   const [students, setStudents] = useState([]);
@@ -241,16 +244,15 @@ export function AdminAdvisors() {
           </div>
           <div className="flex items-center gap-2">
             <Filter size={16} className="text-slate-400" />
-            <select
-              className="input-dark px-3 py-2"
+            <CustomSelect
+              options={[
+                { value: 'All', label: 'All Departments' },
+                ...departments.map(d => ({ value: d, label: d }))
+              ]}
               value={filterDept}
               onChange={(e) => setFilterDept(e.target.value)}
-            >
-              <option value="All">All Departments</option>
-              {departments.map(d => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
+              className="min-w-[180px]"
+            />
           </div>
         </div>
 
