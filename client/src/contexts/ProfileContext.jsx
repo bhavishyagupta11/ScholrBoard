@@ -96,16 +96,29 @@ export function ProfileProvider({ children }) {
     setError(null);
     try {
       const result = await profileApi.updateMyProfile(updates);
-      setProfile((prev) => ({
-        ...prev,
-        ...result.profile,
-        // Re-merge user-level fields
-        name:       result.profile.userId?.name       || prev.name,
-        email:      result.profile.userId?.email      || prev.email,
-        role:       result.profile.userId?.role       || prev.role,
-        avatar:     result.profile.userId?.avatar     || prev.avatar,
-        department: result.profile.userId?.department || prev.department,
-      }));
+      setProfile((prev) => {
+        if (!prev) return null;
+        
+        // Prevent async state leak across logouts (race condition)
+        const prevId = typeof prev.userId === 'object' ? prev.userId?._id : prev.userId;
+        const newId = typeof result.profile.userId === 'object' ? result.profile.userId?._id : result.profile.userId;
+        
+        if (String(prevId) !== String(newId)) {
+          console.warn('[ProfileContext] Discarding profile update for previous user.');
+          return prev;
+        }
+
+        return {
+          ...prev,
+          ...result.profile,
+          // Re-merge user-level fields
+          name:       result.profile.userId?.name       || prev.name,
+          email:      result.profile.userId?.email      || prev.email,
+          role:       result.profile.userId?.role       || prev.role,
+          avatar:     result.profile.userId?.avatar     || prev.avatar,
+          department: result.profile.userId?.department || prev.department,
+        };
+      });
       return result;
     } catch (err) {
       setError(err.message);
@@ -120,11 +133,22 @@ export function ProfileProvider({ children }) {
     setError(null);
     try {
       const result = await profileApi.updateBasicInfo(updates);
-      setProfile((prev) => ({
-        ...prev,
-        name:   result.user.name   || prev.name,
-        avatar: result.user.avatar || prev.avatar,
-      }));
+      setProfile((prev) => {
+        if (!prev) return null;
+        
+        // Prevent async state leak across logouts
+        const prevId = typeof prev.userId === 'object' ? prev.userId?._id : prev.userId;
+        if (String(prevId) !== String(result.user._id)) {
+          console.warn('[ProfileContext] Discarding basic info update for previous user.');
+          return prev;
+        }
+
+        return {
+          ...prev,
+          name:   result.user.name   || prev.name,
+          avatar: result.user.avatar || prev.avatar,
+        };
+      });
       return result;
     } catch (err) {
       setError(err.message);
