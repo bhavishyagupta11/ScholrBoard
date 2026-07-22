@@ -8,6 +8,7 @@ import { usePdfBlob } from '../hooks/usePdfBlob.js';
 import analyticsApi from '../api/analytics.api.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { AlertCircle, CheckCircle, XCircle, Clock, Search, ExternalLink, X } from 'lucide-react';
+import CustomSelect from '../components/common/CustomSelect.jsx';
 
 export function FacultyApprovals() {
   const { user } = useAuth();
@@ -154,17 +155,15 @@ export function FacultyApprovals() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <select
-          className="input-dark px-3 py-2"
+        <CustomSelect
+          options={[
+            { value: 'All', label: 'All Departments' },
+            ...Array.from(new Set(pendingList.map(p => p.userId?.department).filter(Boolean))).map(d => ({ value: d, label: d }))
+          ]}
           value={filterDept}
           onChange={(e) => setFilterDept(e.target.value)}
-        >
-          <option value="All">All Departments</option>
-          {/* Extract unique departments from the current list for dynamic filtering */}
-          {Array.from(new Set(pendingList.map(p => p.userId?.department).filter(Boolean))).map(d => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select>
+          className="min-w-[180px]"
+        />
       </div>
 
       {/* Approvals Table */}
