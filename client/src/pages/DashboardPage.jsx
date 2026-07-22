@@ -9,7 +9,7 @@
  *   - Events (upcoming personalized) → /api/events/my?limit=3
  *   - AI recommendations → /api/ai/recommendations
  *
- * No hardcoded data remains.
+ * Built with reusable Dashboard UI Primitives (DashboardState, EmptyStateCard, ProgressChecklist)
  */
 import { lazy, Suspense, useEffect, useMemo, useState, useCallback } from 'react';
 import { useProfile } from '../contexts/ProfileContext.jsx';
@@ -18,7 +18,7 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import {
   ArrowRight, BellRing, BriefcaseBusiness, CalendarDays,
   CheckCircle2, Code2, FileText, Lightbulb, UploadCloud,
-  ShieldCheck, RefreshCw, TrendingUp, Flame, BookOpen, LifeBuoy,
+  ShieldCheck, RefreshCw, TrendingUp, Flame, BookOpen, LifeBuoy, Sparkles
 } from 'lucide-react';
 import { useScrollAnimation, useStaggeredAnimation } from '../hooks/useScrollAnimation.js';
 import analyticsApi from '../api/analytics.api.js';
@@ -29,6 +29,10 @@ import aiApi from '../api/ai.api.js';
 import announcementsApi from '../api/announcements.api.js';
 import ticketsApi from '../api/tickets.api.js';
 
+import {
+  ProgressChecklist, DashboardCard, DashboardState, SkeletonCard, ActionCTA
+} from '../components/dashboard/DashboardPrimitives.jsx';
+
 const AcademicActivityChart = lazy(() =>
   import('../components/StudentDashboardCharts.jsx').then((m) => ({ default: m.AcademicActivityChart }))
 );
@@ -36,7 +40,7 @@ const ContributionsChart = lazy(() =>
   import('../components/StudentDashboardCharts.jsx').then((m) => ({ default: m.ContributionsChart }))
 );
 
-const ChartSkeleton = () => <div className="skeleton h-full min-h-48 w-full" />;
+const ChartSkeleton = () => <SkeletonCard height="h-full min-h-48" />;
 
 // ─── Reusable stat card ────────────────────────────────────────────────────────
 function StatCard({ label, value, sub, color, loading, innerRef }) {
@@ -71,35 +75,30 @@ function StatCard({ label, value, sub, color, loading, innerRef }) {
   );
 }
 
-// ─── Loading skeleton for list items ──────────────────────────────────────────
-const ListSkeleton = ({ rows = 3 }) => (
-  <div className="space-y-3">
-    {Array.from({ length: rows }).map((_, i) => (
-      <div key={i} className="skeleton h-16 w-full rounded-md" />
-    ))}
-  </div>
-);
-
 export function DashboardPage() {
   const { profile } = useProfile();
   const { user } = useAuth();
   const track = user?.trackId;
+
   const [analytics,        setAnalytics]        = useState(null);
   const [progress,         setProgress]         = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
   const [placements,       setPlacements]       = useState([]);
   const [events,           setEvents]           = useState([]);
   const [recommendations,  setRecommendations]  = useState([]);
+  const [announcements,    setAnnouncements]    = useState([]);
+  const [tickets,          setTickets]          = useState([]);
+
   const [loadingAnalytics, setLoadingAnalytics] = useState(true);
   const [loadingActivities,setLoadingActivities]= useState(true);
   const [loadingPlacements,setLoadingPlacements]= useState(true);
   const [loadingEvents,    setLoadingEvents]    = useState(true);
   const [loadingRecs,      setLoadingRecs]      = useState(true);
-  const [recsError,        setRecsError]        = useState(false);
-  const [announcements,    setAnnouncements]    = useState([]);
   const [loadingAnns,      setLoadingAnns]      = useState(true);
-  const [tickets,          setTickets]          = useState([]);
   const [loadingTickets,   setLoadingTickets]   = useState(true);
+
+  const [analyticsError,   setAnalyticsError]   = useState(null);
+  const [recsError,        setRecsError]        = useState(null);
   const [dashboardError,   setDashboardError]   = useState(null);
 
   const headerRef = useScrollAnimation({ direction: 'up', delay: 0.1 });
@@ -126,18 +125,17 @@ export function DashboardPage() {
   // Fetch all dashboard data in parallel
   const fetchDashboard = useCallback(async () => {
     setDashboardError(null);
+    setAnalyticsError(null);
+    setRecsError(null);
+
     // Analytics + progress
     Promise.all([
-      analyticsApi.getDashboard().catch(() => null),
+      analyticsApi.getDashboard().catch((err) => { setAnalyticsError(err.message); return null; }),
       analyticsApi.getProgress(14).catch(() => ({ progress: [] })),
     ]).then(([analyticsData, progressData]) => {
       setAnalytics(analyticsData?.analytics || null);
       setProgress(progressData?.progress || []);
-      setLoadingAnalytics(false);
-    }).catch((err) => {
-      setDashboardError(err.message || 'Failed to load dashboard analytics');
-      setLoadingAnalytics(false);
-    });
+    }).finally(() => setLoadingAnalytics(false));
 
     // Recent activities
     activitiesApi.getMyActivities({ limit: 3 }).then((data) => {
@@ -157,8 +155,8 @@ export function DashboardPage() {
     // AI Recommendations
     aiApi.getRecommendations().then((data) => {
       setRecommendations(data?.recommendations || []);
-    }).catch(() => {
-      setRecsError(true);
+    }).catch((err) => {
+      setRecsError(err.message || 'AI recommendations unavailable');
     }).finally(() => setLoadingRecs(false));
 
     // Targeted Announcements
@@ -172,9 +170,10 @@ export function DashboardPage() {
     }).catch((err) => console.error('Failed to load support tickets', err)).finally(() => setLoadingTickets(false));
   }, []);
 
+  // Reactive Auto-Sync: Re-fetch dashboard data whenever profile updates in Context!
   useEffect(() => {
     fetchDashboard();
-  }, [fetchDashboard]);
+  }, [fetchDashboard, profile]);
 
   const nextActions = [
     { title: 'Upload activity proof', desc: 'Upload certificates or event photos while they are easy to find.', to: '/student/upload', icon: <UploadCloud size={18} /> },
@@ -189,6 +188,7 @@ export function DashboardPage() {
           <BellRing size={16} /> {dashboardError}
         </div>
       )}
+
       {/* ─── Header ─────────────────────────────────────────────────────────── */}
       <div ref={headerRef} className="gpu-accelerated rounded-xl border p-5 md:p-6" style={{ background: 'var(--surface-card)', borderColor: 'var(--border-color)', boxShadow: 'var(--shadow-soft)' }}>
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
@@ -214,7 +214,7 @@ export function DashboardPage() {
               <div className="flex items-start gap-3">
                 <div className="grid h-9 w-9 place-items-center rounded-lg flex-shrink-0" style={{ background: 'var(--accent-soft)', color: 'var(--primary-blue)' }}>{action.icon}</div>
                 <div>
-                  <div className="flex items-center gap-2 font-semibold">
+                  <div className="flex items-center gap-2 font-semibold text-sm">
                     <span>{action.title}</span>
                     <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
                   </div>
@@ -225,6 +225,9 @@ export function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* ─── Onboarding Checklist & Progress Card ─────────────────────────── */}
+      <ProgressChecklist profile={profile} analytics={analytics} ticketsCount={tickets.length} />
 
       {/* ─── Stat Cards ─────────────────────────────────────────────────────── */}
       <div ref={statsContainerRef} className={`grid gap-4 ${(track && !track.enableCodingModule) ? 'md:grid-cols-3' : 'md:grid-cols-4'}`}>
@@ -262,39 +265,35 @@ export function DashboardPage() {
         />
       </div>
 
-      {/* ─── Track & Career Progress & Support Ticket Widgets ───────────────── */}
+      {/* ─── Track & Career Progress & Support Ticket Summary ───────────────── */}
       <div className="grid md:grid-cols-3 gap-4">
         {/* Track Widget */}
-        <div className="card p-4 flex flex-col justify-between">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-blue-400 mb-1">Active Track</div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-2xl">{track?.icon || '📚'}</span>
-              <h3 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>
-                {track?.name || 'Assigned Track'}
-              </h3>
-            </div>
-            <p className="text-xs leading-relaxed subtle">
-              {track?.description || 'Customized platform modules mapped to your degree branch.'}
-            </p>
+        <DashboardCard title="Active Track">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-2xl">{track?.icon || '📚'}</span>
+            <h3 className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>
+              {track?.name || 'Assigned Track'}
+            </h3>
           </div>
-          <div className="mt-3 flex flex-wrap gap-1">
+          <p className="text-xs leading-relaxed subtle mb-3">
+            {track?.description || 'Customized platform modules mapped to your degree branch.'}
+          </p>
+          <div className="flex flex-wrap gap-1">
             {(!track || track.enableCodingModule) && <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 font-medium">Coding</span>}
             {(!track || track.enablePlacements) && <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 font-medium">Placements</span>}
             {(!track || track.enableInternships) && <span className="text-[9px] px-1.5 py-0.5 rounded bg-orange-500/10 text-orange-400 font-medium">Internships</span>}
             {(!track || track.enableResearch) && <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 font-medium">Research</span>}
             {(!track || track.enableCertifications) && <span className="text-[9px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400 font-medium">Certificates</span>}
           </div>
-        </div>
+        </DashboardCard>
 
         {/* Career Progress Widget */}
-        <div className="card p-4">
-          <div className="text-xs font-semibold uppercase tracking-wider text-green-400 mb-2">Career Readiness Progress</div>
-          <div className="space-y-1.5">
+        <DashboardCard title="Career Readiness Progress">
+          <div className="space-y-2">
             {[
-              { label: 'Academic profile complete (GPA >= 6.0)', done: (analytics?.gpa || 0) >= 6.0 },
+              { label: 'Academic profile complete (GPA set)', done: Boolean(analytics?.gpa && analytics?.gpa > 0) },
               { label: 'Activity verified by Faculty Mentor', done: (analytics?.activities?.Approved || 0) > 0 },
-              { label: 'Support center desk registered', done: tickets.length > 0 }
+              { label: 'Support desk registered', done: tickets.length > 0 }
             ].map((item, idx) => (
               <div key={idx} className="flex items-center gap-2 text-xs">
                 <span className={item.done ? 'text-green-400 font-bold' : 'text-slate-500'}>
@@ -306,75 +305,75 @@ export function DashboardPage() {
               </div>
             ))}
           </div>
-        </div>
+        </DashboardCard>
 
         {/* Ticket Summary Widget */}
-        <div className="card p-4 flex flex-col justify-between">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-yellow-400 mb-2">Support Ticket Summary</div>
-            <div className="grid grid-cols-3 gap-1.5 text-center">
-              <div className="p-1.5 rounded bg-blue-500/10">
-                <div className="text-base font-bold text-blue-400">
-                  {tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length}
-                </div>
-                <div className="text-[9px] subtle">Active</div>
+        <DashboardCard title="Support Ticket Summary">
+          <div className="grid grid-cols-3 gap-1.5 text-center mb-3">
+            <div className="p-1.5 rounded bg-blue-500/10">
+              <div className="text-base font-bold text-blue-400">
+                {tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length}
               </div>
-              <div className="p-1.5 rounded bg-green-500/10">
-                <div className="text-base font-bold text-green-400">
-                  {tickets.filter(t => t.status === 'resolved').length}
-                </div>
-                <div className="text-[9px] subtle">Resolved</div>
+              <div className="text-[9px] subtle">Active</div>
+            </div>
+            <div className="p-1.5 rounded bg-green-500/10">
+              <div className="text-base font-bold text-green-400">
+                {tickets.filter(t => t.status === 'resolved').length}
               </div>
-              <div className="p-1.5 rounded bg-slate-500/10">
-                <div className="text-base font-bold text-slate-400">
-                  {tickets.filter(t => t.status === 'closed').length}
-                </div>
-                <div className="text-[9px] subtle">Closed</div>
+              <div className="text-[9px] subtle">Resolved</div>
+            </div>
+            <div className="p-1.5 rounded bg-slate-500/10">
+              <div className="text-base font-bold text-slate-400">
+                {tickets.filter(t => t.status === 'closed').length}
               </div>
+              <div className="text-[9px] subtle">Closed</div>
             </div>
           </div>
-          <Link to="/student/support" className="text-xs mt-2 flex items-center justify-between text-blue-400 hover:underline">
+          <Link to="/student/support" className="text-xs flex items-center justify-between text-blue-400 hover:underline">
             <span>Access Support Desk</span> <ArrowRight size={12} />
           </Link>
-        </div>
+        </DashboardCard>
       </div>
 
       {/* ─── Charts ─────────────────────────────────────────────────────────── */}
       <div ref={chartsRef} className={`grid gap-4 gpu-accelerated ${(track && !track.enableCodingModule) ? 'lg:grid-cols-1' : 'lg:grid-cols-2'}`}>
         {(!track || track.enableActivities) && (
-          <div className="card p-4">
-            <div className="font-medium mb-3 flex items-center gap-2"><TrendingUp size={16} /> Activity Performance</div>
+          <DashboardCard title="Activity Distribution" icon={TrendingUp}>
             <div className="h-64">
               <Suspense fallback={<ChartSkeleton />}>
                 <AcademicActivityChart activities={analytics?.activities} />
               </Suspense>
             </div>
-          </div>
+          </DashboardCard>
         )}
         {(!track || (track.enableCodingModule && track.enableDeveloperScore)) && (
-          <div className="card p-4">
-            <div className="font-medium mb-3 flex items-center gap-2"><BookOpen size={16} /> Daily Study (last 14 days)</div>
+          <DashboardCard title="Daily Study (last 14 days)" icon={BookOpen}>
             <div className="h-64">
               <Suspense fallback={<ChartSkeleton />}>
                 <ContributionsChart contributions={contributions} />
               </Suspense>
             </div>
-          </div>
+          </DashboardCard>
         )}
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
         {/* ─── Recent Activities ───────────────────────────────────────────────── */}
-        <div className="card p-4">
-          <div className="font-medium mb-3 flex items-center justify-between">
-            <span>Recent Activity Submissions</span>
-            <Link to="/student/activities" className="text-xs" style={{ color: 'var(--primary-blue)' }}>View all →</Link>
-          </div>
-          {loadingActivities ? (
-            <ListSkeleton rows={3} />
-          ) : recentActivities.length === 0 ? (
-            <div className="text-sm subtle py-4 text-center">No activities yet — <Link to="/student/upload" style={{ color: 'var(--primary-blue)' }}>submit your first one</Link></div>
-          ) : (
+        <DashboardCard
+          title="Recent Activity Submissions"
+          headerAction={<Link to="/student/activities" className="text-xs text-blue-400 hover:underline">View all →</Link>}
+        >
+          <DashboardState
+            loading={loadingActivities}
+            error={null}
+            isEmpty={recentActivities.length === 0}
+            emptyIcon={UploadCloud}
+            emptyTitle="No activity submissions found"
+            emptyExplanation="You haven't submitted any activities or certificates yet."
+            emptyRecommendation="Upload certificates, workshop proofs, or competition achievements."
+            emptyCtaLabel="Upload Activity"
+            emptyCtaTo="/student/upload"
+          >
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -399,23 +398,26 @@ export function DashboardPage() {
                 </tbody>
               </table>
             </div>
-          )}
-        </div>
+          </DashboardState>
+        </DashboardCard>
 
         {/* ─── Support Tickets ───────────────────────────────────────────────── */}
-        <div className="card p-4">
-          <div className="font-medium mb-3 flex items-center justify-between">
-            <span className="flex items-center gap-2"><LifeBuoy size={16} /> My Support Tickets</span>
-            <Link to="/student/support" className="text-xs" style={{ color: 'var(--primary-blue)' }}>View all / Create →</Link>
-          </div>
-          {loadingTickets ? (
-            <ListSkeleton rows={3} />
-          ) : tickets.length === 0 ? (
-            <div className="text-sm subtle py-4 text-center">
-              No support tickets yet. Need help?{' '}
-              <Link to="/student/support" style={{ color: 'var(--primary-blue)' }}>Create a ticket</Link>
-            </div>
-          ) : (
+        <DashboardCard
+          title="My Support Tickets"
+          icon={LifeBuoy}
+          headerAction={<Link to="/student/support" className="text-xs text-blue-400 hover:underline">View all / Create →</Link>}
+        >
+          <DashboardState
+            loading={loadingTickets}
+            error={null}
+            isEmpty={tickets.length === 0}
+            emptyIcon={LifeBuoy}
+            emptyTitle="No support tickets requested"
+            emptyExplanation="Have questions about activity verification or platform features?"
+            emptyRecommendation="Open a support ticket to get help from your department admin."
+            emptyCtaLabel="Create Ticket"
+            emptyCtaTo="/student/support"
+          >
             <div className="space-y-3">
               {tickets.map((t) => (
                 <div key={t._id} className="p-3 rounded-md border" style={{ background: 'var(--bg-medium)', borderColor: 'var(--border-color)' }}>
@@ -441,27 +443,32 @@ export function DashboardPage() {
                 </div>
               ))}
             </div>
-          )}
-        </div>
+          </DashboardState>
+        </DashboardCard>
       </div>
 
       {/* ─── AI Recommendations ──────────────────────────────────────────────── */}
-      <div className="card p-4">
-        <div className="font-medium mb-3 flex items-center justify-between gap-2">
-          <span className="flex items-center gap-2"><Lightbulb size={18} /> AI Smart Suggestions</span>
-          {recsError && (
-            <button onClick={() => { setRecsError(false); setLoadingRecs(true); aiApi.getRecommendations().then((d) => setRecommendations(d?.recommendations || [])).catch(() => setRecsError(true)).finally(() => setLoadingRecs(false)); }} className="flex items-center gap-1 text-xs" style={{ color: 'var(--primary-blue)' }}>
-              <RefreshCw size={12} /> Retry
-            </button>
-          )}
-        </div>
-        {loadingRecs ? (
-          <ListSkeleton rows={3} />
-        ) : recsError ? (
-          <div className="text-sm subtle py-4 text-center">AI suggestions unavailable — configure your GEMINI_API_KEY to enable this feature.</div>
-        ) : recommendations.length === 0 ? (
-          <div className="text-sm subtle py-4 text-center">Complete your profile to get personalized AI recommendations.</div>
-        ) : (
+      <DashboardCard
+        title="AI Smart Suggestions"
+        icon={Lightbulb}
+        headerAction={recsError ? (
+          <button onClick={() => { setRecsError(null); setLoadingRecs(true); aiApi.getRecommendations().then((d) => setRecommendations(d?.recommendations || [])).catch((err) => setRecsError(err.message)).finally(() => setLoadingRecs(false)); }} className="flex items-center gap-1 text-xs text-blue-400">
+            <RefreshCw size={12} /> Retry
+          </button>
+        ) : null}
+      >
+        <DashboardState
+          loading={loadingRecs}
+          error={recsError}
+          isEmpty={recommendations.length === 0}
+          onRetry={() => { setRecsError(null); setLoadingRecs(true); aiApi.getRecommendations().then((d) => setRecommendations(d?.recommendations || [])).catch((err) => setRecsError(err.message)).finally(() => setLoadingRecs(false)); }}
+          emptyIcon={Sparkles}
+          emptyTitle="No AI suggestions available"
+          emptyExplanation="Personalized AI recommendations require profile details and activities."
+          emptyRecommendation="Fill out your bio, skills, and target career goals in your profile."
+          emptyCtaLabel="Complete Profile"
+          emptyCtaTo="/student/profile"
+        >
           <div className="space-y-3">
             {recommendations.map((rec, i) => (
               <div key={i} className="p-3 rounded-md border-l-4" style={{
@@ -476,19 +483,20 @@ export function DashboardPage() {
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </DashboardState>
+      </DashboardCard>
 
       {/* ─── Announcements ─────────────────────────────────────────────────── */}
-      <div className="card p-4">
-        <div className="font-medium mb-3 flex items-center justify-between">
-          <span className="flex items-center gap-2">📢 Targeted Announcements</span>
-        </div>
-        {loadingAnns ? (
-          <ListSkeleton rows={3} />
-        ) : announcements.length === 0 ? (
-          <div className="text-sm subtle py-4 text-center">No announcements for your department today.</div>
-        ) : (
+      <DashboardCard title="Targeted Announcements" icon={BellRing}>
+        <DashboardState
+          loading={loadingAnns}
+          error={null}
+          isEmpty={announcements.length === 0}
+          emptyIcon={BellRing}
+          emptyTitle="No announcements today"
+          emptyExplanation="There are no active announcements posted for your department right now."
+          emptyRecommendation="Check back later for university updates and deadline notifications."
+        >
           <div className="space-y-3 max-h-60 overflow-y-auto custom-scrollbar">
             {announcements.map((ann) => (
               <div key={ann._id} className="p-3 rounded-md border" style={{ background: 'var(--bg-medium)', borderColor: 'var(--border-color)' }}>
@@ -510,25 +518,31 @@ export function DashboardPage() {
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </DashboardState>
+      </DashboardCard>
 
       {/* ─── Placements + Events ─────────────────────────────────────────────── */}
       <div className="grid lg:grid-cols-2 gap-4">
         {/* Personalized Placements */}
-        <div className="card p-4">
-          <div className="font-medium mb-3 flex items-center justify-between">
-            <span className="flex items-center gap-2"><BriefcaseBusiness size={18} /> Placements &amp; Internships</span>
-            <Link to="/student/placements" className="text-xs" style={{ color: 'var(--primary-blue)' }}>View all →</Link>
-          </div>
-          {loadingPlacements ? (
-            <ListSkeleton rows={3} />
-          ) : placements.length === 0 ? (
-            <div className="text-sm subtle py-4 text-center">No active placements for your profile right now.</div>
-          ) : (
+        <DashboardCard
+          title="Placements & Internships"
+          icon={BriefcaseBusiness}
+          headerAction={<Link to="/student/placements" className="text-xs text-blue-400 hover:underline">View all →</Link>}
+        >
+          <DashboardState
+            loading={loadingPlacements}
+            error={null}
+            isEmpty={placements.length === 0}
+            emptyIcon={BriefcaseBusiness}
+            emptyTitle="No placement drives found"
+            emptyExplanation="No active placement drives matching your profile currently."
+            emptyRecommendation="Keep your profile skills and resume updated for upcoming recruiter postings."
+            emptyCtaLabel="View Placements"
+            emptyCtaTo="/student/placements"
+          >
             <div className="space-y-3">
               {placements.map((job) => (
-                <div key={job._id} className="p-3 rounded-md border hover:border-blue-500/30 transition-colors cursor-pointer" style={{ background: 'var(--bg-medium)', border: '1px solid var(--border-color)' }}>
+                <div key={job._id} className="p-3 rounded-md border hover:border-blue-500/30 transition-colors" style={{ background: 'var(--bg-medium)', border: '1px solid var(--border-color)' }}>
                   <div className="flex justify-between items-start">
                     <div>
                       <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{job.company}</div>
@@ -553,20 +567,26 @@ export function DashboardPage() {
                 </div>
               ))}
             </div>
-          )}
-        </div>
+          </DashboardState>
+        </DashboardCard>
 
         {/* Upcoming Events */}
-        <div className="card p-4">
-          <div className="font-medium mb-3 flex items-center justify-between">
-            <span className="flex items-center gap-2"><CalendarDays size={18} /> Upcoming Events</span>
-            <Link to="/student/events" className="text-xs" style={{ color: 'var(--primary-blue)' }}>View all →</Link>
-          </div>
-          {loadingEvents ? (
-            <ListSkeleton rows={3} />
-          ) : events.length === 0 ? (
-            <div className="text-sm subtle py-4 text-center">No upcoming events right now.</div>
-          ) : (
+        <DashboardCard
+          title="Upcoming Events"
+          icon={CalendarDays}
+          headerAction={<Link to="/student/events" className="text-xs text-blue-400 hover:underline">View all →</Link>}
+        >
+          <DashboardState
+            loading={loadingEvents}
+            error={null}
+            isEmpty={events.length === 0}
+            emptyIcon={CalendarDays}
+            emptyTitle="No upcoming events"
+            emptyExplanation="There are no upcoming hackathons, guest lectures, or workshops scheduled right now."
+            emptyRecommendation="Check back soon for university events."
+            emptyCtaLabel="Browse Events"
+            emptyCtaTo="/student/events"
+          >
             <div className="space-y-3">
               {events.map((event) => (
                 <div key={event._id} className="p-3 rounded-md border hover:border-green-500/30 transition-colors" style={{ background: 'var(--bg-medium)', border: '1px solid var(--border-color)' }}>
@@ -598,8 +618,8 @@ export function DashboardPage() {
                 </div>
               ))}
             </div>
-          )}
-        </div>
+          </DashboardState>
+        </DashboardCard>
       </div>
 
       {/* ─── Quick Links ─────────────────────────────────────────────────────── */}
@@ -612,8 +632,8 @@ export function DashboardPage() {
           <Link key={c.title} to={c.to} className="card p-4 flex items-start gap-3 hover:opacity-90">
             <div className="grid h-9 w-9 place-items-center rounded-lg flex-shrink-0" style={{ background: 'var(--accent-soft)', color: 'var(--primary-blue)' }}>{c.icon}</div>
             <div>
-              <div className="font-semibold">{c.title}</div>
-              <div className="text-sm subtle">{c.desc}</div>
+              <div className="font-semibold text-sm">{c.title}</div>
+              <div className="text-xs subtle">{c.desc}</div>
             </div>
           </Link>
         ))}

@@ -1,25 +1,37 @@
 import { Bell, Search, User2, X, LogOut, Sun, Moon, Menu } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useTheme } from '../contexts/ThemeContext.jsx';
 import notificationsApi from '../api/notifications.api.js';
 
 export function Topbar({ onMenuClick }) {
 	const navigate = useNavigate();
+	const location = useLocation();
 	const { user, logout } = useAuth();
 	const { theme, toggleTheme } = useTheme();
 	const role = user?.role || localStorage.getItem('role');
 	const profilePath = role === 'student' ? '/student/profile' : '/login';
+
 	const [open, setOpen] = useState(false);
 	const [q, setQ] = useState('');
 	const [showSearch, setShowSearch] = useState(false);
 	const [showProfileMenu, setShowProfileMenu] = useState(false);
 	const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+	const [selectedIndex, setSelectedIndex] = useState(0);
+
 	const [notifications, setNotifications] = useState([]);
 	const [unreadCount, setUnreadCount] = useState(0);
 	const [notificationError, setNotificationError] = useState(null);
 
+	const searchContainerRef = useRef(null);
+	const mobileSearchContainerRef = useRef(null);
+	const searchInputRef = useRef(null);
+	const mobileSearchInputRef = useRef(null);
+	const notifRef = useRef(null);
+	const profileMenuRef = useRef(null);
+
+	// Fetch notifications
 	useEffect(() => {
 		if (!user?._id) {
 			setNotifications([]);
@@ -52,18 +64,41 @@ export function Topbar({ onMenuClick }) {
 		navigate('/', { replace: true });
 	};
 
+	// 1. Route Change: Automatically close search dropdown & overlays on route change
 	useEffect(() => {
-		const onKey = (e) => {
-			if (e.key === '/' && !showSearch) {
-				e.preventDefault();
-				setShowSearch(true);
-			} else if (e.key === 'Escape') {
+		setShowSearch(false);
+		setIsMobileSearchOpen(false);
+		setOpen(false);
+		setShowProfileMenu(false);
+		setQ('');
+		setSelectedIndex(0);
+	}, [location.pathname]);
+
+	// 2. Click Outside: Listen for mousedown / pointerdown outside elements
+	useEffect(() => {
+		const handleClickOutside = (e) => {
+			if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
 				setShowSearch(false);
 			}
+			if (mobileSearchContainerRef.current && !mobileSearchContainerRef.current.contains(e.target)) {
+				setIsMobileSearchOpen(false);
+			}
+			if (notifRef.current && !notifRef.current.contains(e.target)) {
+				setOpen(false);
+			}
+			if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
+				setShowProfileMenu(false);
+			}
 		};
-		window.addEventListener('keydown', onKey);
-		return () => window.removeEventListener('keydown', onKey);
-	}, [showSearch]);
+
+		document.addEventListener('pointerdown', handleClickOutside);
+		document.addEventListener('mousedown', handleClickOutside);
+
+		return () => {
+			document.removeEventListener('pointerdown', handleClickOutside);
+			document.removeEventListener('mousedown', handleClickOutside);
+		};
+	}, []);
 
 	const suggestions = useMemo(() => {
 		const common = [
@@ -107,34 +142,106 @@ export function Topbar({ onMenuClick }) {
 		if (!q) return suggestions;
 		return suggestions.filter(s => s.label.toLowerCase().includes(q.toLowerCase()));
 	}, [q, suggestions]);
+
+	// Reset selectedIndex on search query change
+	useEffect(() => {
+		setSelectedIndex(0);
+	}, [q]);
+
+	// 3. Global '/' and Escape key handler
+	useEffect(() => {
+		const onKey = (e) => {
+			if (e.key === '/' && !showSearch && !isMobileSearchOpen && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+				e.preventDefault();
+				setShowSearch(true);
+				setTimeout(() => searchInputRef.current?.focus(), 0);
+			} else if (e.key === 'Escape') {
+				setShowSearch(false);
+				setIsMobileSearchOpen(false);
+				setOpen(false);
+				setShowProfileMenu(false);
+				searchInputRef.current?.blur();
+				mobileSearchInputRef.current?.blur();
+			}
+		};
+		window.addEventListener('keydown', onKey);
+		return () => window.removeEventListener('keydown', onKey);
+	}, [showSearch, isMobileSearchOpen]);
+
+	// 4. Navigation handler: Closes search before navigating
+	const handleSelectResult = (path) => {
+		setShowSearch(false);
+		setIsMobileSearchOpen(false);
+		setQ('');
+		setSelectedIndex(0);
+		navigate(path);
+	};
+
+	// Keyboard navigation within search input
+	const handleKeyDown = (e) => {
+		if (e.key === 'ArrowDown') {
+			e.preventDefault();
+			if (!showSearch) setShowSearch(true);
+			setSelectedIndex((prev) => (prev < Math.min(filtered.length, 7) - 1 ? prev + 1 : 0));
+		} else if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			setSelectedIndex((prev) => (prev > 0 ? prev - 1 : Math.min(filtered.length, 7) - 1));
+		} else if (e.key === 'Enter') {
+			e.preventDefault();
+			const activeItem = filtered[selectedIndex] || filtered[0];
+			if (activeItem) {
+				handleSelectResult(activeItem.path);
+			}
+		} else if (e.key === 'Escape') {
+			e.preventDefault();
+			setShowSearch(false);
+			setIsMobileSearchOpen(false);
+			e.target.blur();
+		}
+	};
+
 	return (
 		<header className="topbar-shell sticky top-0 z-30 border-b border-[var(--border-color)]">
 			<div className="px-4 md:px-6 h-16 flex items-center justify-between gap-4 relative">
 				{isMobileSearchOpen ? (
-					<div className="absolute inset-x-0 inset-y-0 z-20 px-4 flex items-center gap-3" style={{ background: 'var(--surface)' }}>
+					<div ref={mobileSearchContainerRef} className="absolute inset-x-0 inset-y-0 z-20 px-4 flex items-center gap-3" style={{ background: 'var(--surface)' }}>
 						<div className="flex-1 relative">
-							<div className="topbar-search-container w-full">
+							<div className="topbar-search-container w-full flex items-center">
 								<div className="flex items-center justify-center w-10 h-10">
 									<Search size={18} color="var(--text-secondary)" />
 								</div>
 								<input
+									ref={mobileSearchInputRef}
 									className="flex-1 min-w-0 bg-transparent px-3 py-2 text-sm focus:outline-none"
 									style={{ color: 'var(--text-primary)' }}
 									value={q}
 									autoFocus
-									onChange={e=>{ setQ(e.target.value); setShowSearch(true); }}
-									onKeyDown={(e)=>{ if (e.key==='Enter' && filtered[0]) { navigate(filtered[0].path); setShowSearch(false); setIsMobileSearchOpen(false); } }}
+									onChange={(e) => { setQ(e.target.value); setShowSearch(true); }}
+									onClick={(e) => {
+										e.stopPropagation();
+										setShowSearch((prev) => !prev);
+									}}
+									onFocus={() => setShowSearch(true)}
+									onKeyDown={handleKeyDown}
 									placeholder="Search pages and tools"
 								/>
 							</div>
 							{showSearch && (
-								<div className="absolute mt-2 w-full surface p-2 z-20 shadow-lg">
+								<div className="absolute mt-2 w-full surface p-2 z-20 shadow-lg rounded-xl border" style={{ borderColor: 'var(--border-color)' }}>
 									{filtered.length === 0 ? (
-										<div className="text-sm subtle px-2 py-1">No results</div>
+										<div className="text-sm subtle px-3 py-2">No results</div>
 									) : (
-										filtered.slice(0,7).map((s) => (
-											<button key={s.path} className="w-full text-left px-3 py-2 rounded-md text-sm nav-item-muted" onClick={()=>{ navigate(s.path); setShowSearch(false); setIsMobileSearchOpen(false); }}>
-												{s.label}
+										filtered.slice(0, 7).map((s, index) => (
+											<button
+												key={s.path}
+												className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between ${
+													index === selectedIndex ? 'bg-blue-500/15 text-blue-400 font-semibold' : 'nav-item-muted'
+												}`}
+												onMouseEnter={() => setSelectedIndex(index)}
+												onClick={() => handleSelectResult(s.path)}
+											>
+												<span>{s.label}</span>
+												<span className="text-[10px] opacity-60 subtle">{s.path}</span>
 											</button>
 										))
 									)}
@@ -143,7 +250,7 @@ export function Topbar({ onMenuClick }) {
 						</div>
 						<button 
 							className="header-action-btn flex-shrink-0"
-							onClick={() => { setIsMobileSearchOpen(false); setQ(''); }}
+							onClick={() => { setIsMobileSearchOpen(false); setShowSearch(false); setQ(''); }}
 							aria-label="Close search"
 						>
 							<X size={18} />
@@ -169,32 +276,53 @@ export function Topbar({ onMenuClick }) {
 							</div>
 
 							{/* Desktop Search Bar */}
-							<div className="hidden lg:block flex-1 max-w-2xl relative min-w-[280px]">
-								<div className="topbar-search-container">
-									<div className="flex items-center justify-center w-10 h-10">
+							<div ref={searchContainerRef} className="hidden lg:block flex-1 max-w-2xl relative min-w-[280px]">
+								<div className="topbar-search-container flex items-center">
+									<div className="flex items-center justify-center w-10 h-10 cursor-pointer" onClick={() => setShowSearch(prev => !prev)}>
 										<Search size={18} color="var(--text-secondary)" />
 									</div>
 									<input
+										ref={searchInputRef}
 										className="topbar-search-input flex-1 min-w-0 bg-transparent px-3 py-2 text-sm focus:outline-none"
 										style={{ color: 'var(--text-primary)' }}
 										value={q}
-										onChange={e=>{ setQ(e.target.value); setShowSearch(true); }}
-										onFocus={()=>setShowSearch(true)}
-										onKeyDown={(e)=>{ if (e.key==='Enter' && filtered[0]) { navigate(filtered[0].path); setShowSearch(false); } }}
+										onChange={(e) => {
+											setQ(e.target.value);
+											if (!showSearch) setShowSearch(true);
+										}}
+										onClick={(e) => {
+											e.stopPropagation();
+											setShowSearch((prev) => !prev);
+										}}
+										onFocus={() => setShowSearch(true)}
+										onKeyDown={handleKeyDown}
 										placeholder="Search pages and tools"
+										role="combobox"
+										aria-expanded={showSearch}
+										aria-autocomplete="list"
 									/>
 									<kbd className="hidden lg:inline-flex items-center justify-center h-5 w-5 mr-3 text-[10px] font-semibold rounded border select-none pointer-events-none" style={{ backgroundColor: 'var(--bg-soft)', borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}>
 										/
 									</kbd>
 								</div>
 								{showSearch && (
-									<div className="absolute mt-2 w-full surface p-2 z-20 shadow-lg">
+									<div className="absolute mt-2 w-full surface p-2 z-20 shadow-lg rounded-xl border" style={{ borderColor: 'var(--border-color)' }} role="listbox">
 										{filtered.length === 0 ? (
-											<div className="text-sm subtle px-2 py-1">No results</div>
+											<div className="text-sm subtle px-3 py-2">No results found for "{q}"</div>
 										) : (
-											filtered.slice(0,7).map((s) => (
-												<button key={s.path} className="w-full text-left px-3 py-2 rounded-md text-sm nav-item-muted" onClick={()=>{ navigate(s.path); setShowSearch(false); }}>
-													{s.label}
+											filtered.slice(0, 7).map((s, index) => (
+												<button
+													key={s.path}
+													role="option"
+													aria-selected={index === selectedIndex}
+													className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between ${
+														index === selectedIndex ? 'bg-blue-500/15 text-blue-400 font-semibold' : 'nav-item-muted'
+													}`}
+													onMouseEnter={() => setSelectedIndex(index)}
+													onClick={() => handleSelectResult(s.path)}
+												>
+													<span>{s.label}</span>
+													<span className="text-[10px] opacity-60 subtle">{s.path}</span>
 												</button>
 											))
 										)}
@@ -208,7 +336,10 @@ export function Topbar({ onMenuClick }) {
 							{/* Mobile Search button */}
 							<button 
 								className="header-action-btn lg:hidden"
-								onClick={() => setIsMobileSearchOpen(true)}
+								onClick={() => {
+									setIsMobileSearchOpen(true);
+									setShowSearch(true);
+								}}
 								aria-label="Open search"
 							>
 								<Search size={18} />
@@ -225,7 +356,7 @@ export function Topbar({ onMenuClick }) {
 							</button>
 
 							{/* Notifications button */}
-							<div className="relative">
+							<div ref={notifRef} className="relative">
 								<button 
 									className="header-action-btn" 
 									title="Notifications" 
@@ -241,8 +372,8 @@ export function Topbar({ onMenuClick }) {
 								</button>
 								{open && (
 									<div 
-										className="absolute right-0 mt-2 w-80 max-w-none surface p-3 z-20 shadow-lg"
-										style={{ width: '20rem', maxWidth: 'calc(100vw - 2rem)' }}
+										className="absolute right-0 mt-2 w-80 max-w-none surface p-3 z-20 shadow-lg rounded-xl border"
+										style={{ width: '20rem', maxWidth: 'calc(100vw - 2rem)', borderColor: 'var(--border-color)' }}
 									>
 										<div className="flex items-center justify-between mb-2">
 											<div className="font-medium">Notifications</div>
@@ -291,7 +422,7 @@ export function Topbar({ onMenuClick }) {
 							</div>
 
 							{/* Profile dropdown button */}
-							<div className="relative">
+							<div ref={profileMenuRef} className="relative">
 								<button 
 									className="header-action-btn" 
 									title="Profile" 
@@ -301,7 +432,7 @@ export function Topbar({ onMenuClick }) {
 									<User2 size={18} />
 								</button>
 								{showProfileMenu && (
-									<div className="absolute right-0 mt-2 w-60 min-w-[15rem] max-w-none surface p-2.5 z-20 shadow-lg">
+									<div className="absolute right-0 mt-2 w-60 min-w-[15rem] max-w-none surface p-2.5 z-20 shadow-lg rounded-xl border" style={{ borderColor: 'var(--border-color)' }}>
 										<div className="p-2 border-b mb-2" style={{borderColor:'var(--border-color)'}}>
 											<div className="text-sm" style={{color:'var(--text-primary)'}}>Signed in as</div>
 											<div className="text-xs font-semibold truncate" style={{color:'var(--text-secondary)'}}>{(role || 'USER').toUpperCase()}</div>
