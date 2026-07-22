@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import usersApi from '../api/users.api.js';
 import { AlertCircle, Search, Users, ExternalLink } from 'lucide-react';
+import CustomSelect from '../components/common/CustomSelect.jsx';
 
 export function FacultyStudents() {
   const navigate = useNavigate();
@@ -93,16 +94,15 @@ export function FacultyStudents() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <select
-          className="input-dark px-3 py-2"
+        <CustomSelect
+          options={[
+            { value: 'All', label: 'All Departments' },
+            ...Array.from(new Set(students.map(s => s.department).filter(Boolean))).map(d => ({ value: d, label: d }))
+          ]}
           value={filterDept}
           onChange={(e) => setFilterDept(e.target.value)}
-        >
-          <option value="All">All Departments</option>
-          {Array.from(new Set(students.map(s => s.department).filter(Boolean))).map(d => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select>
+          className="min-w-[180px]"
+        />
       </div>
 
       {/* Students Table */}
