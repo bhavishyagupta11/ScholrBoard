@@ -7,6 +7,7 @@ import { Upload, AlertCircle, FileText, Check } from 'lucide-react';
 import activitiesApi from '../api/activities.api.js';
 import uploadApi from '../api/upload.api.js';
 import aiApi from '../api/ai.api.js';
+import CustomSelect from '../components/common/CustomSelect.jsx';
 
 const CATEGORIES = {
   'Technical': ['Hackathon', 'Coding Competition', 'Open Source', 'Project Exhibition'],
@@ -230,22 +231,32 @@ export function UploadPage() {
 
         <div>
           <label className="block text-sm mb-1 subtle">Category *</label>
-          <select 
-            name="category" value={formData.category} onChange={handleInputChange} 
-            className="w-full input-dark py-2 px-3"
-          >
-            {Object.keys(CATEGORIES).map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <CustomSelect 
+            name="category"
+            options={Object.keys(CATEGORIES)}
+            value={formData.category}
+            onChange={(e) => {
+              const newCategory = e.target.value;
+              const subOpts = CATEGORIES[newCategory] || [];
+              setFormData((prev) => ({
+                ...prev,
+                category: newCategory,
+                subCategory: subOpts[0] || '',
+              }));
+            }}
+            className="w-full"
+          />
         </div>
 
         <div>
           <label className="block text-sm mb-1 subtle">Sub-Category</label>
-          <select 
-            name="subCategory" value={formData.subCategory} onChange={handleInputChange} 
-            className="w-full input-dark py-2 px-3"
-          >
-            {CATEGORIES[formData.category].map(sc => <option key={sc} value={sc}>{sc}</option>)}
-          </select>
+          <CustomSelect 
+            name="subCategory"
+            options={CATEGORIES[formData.category] || []}
+            value={formData.subCategory}
+            onChange={handleInputChange}
+            className="w-full"
+          />
         </div>
 
         <div className="md:col-span-2">

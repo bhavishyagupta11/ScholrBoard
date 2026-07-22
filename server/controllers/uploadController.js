@@ -203,7 +203,7 @@ export const proxyPdf = async (req, res) => {
       return res.status(400).send('URL is required');
     }
 
-    // 1. Handle non-Cloudinary / local file URLs safely
+    // 1. Handle local file URLs safely
     if (!url.includes('res.cloudinary.com')) {
       if (url.startsWith('http://') || url.startsWith('https://')) {
         const relativePath = url.replace(/^https?:\/\/[^\/]+/, '');
@@ -225,16 +225,29 @@ export const proxyPdf = async (req, res) => {
       return res.status(404).send('Local document not found');
     }
 
-    // 2. Handle Cloudinary raw URLs (generate signed download URL if private)
+    // 2. Handle Cloudinary asset URLs
     let fetchUrl = url;
     try {
-      const match = url.match(/\/(?:raw|image|video)\/upload\/(?:v\d+\/)?(.+)$/);
+      const match = url.match(/\/(raw|image|video)\/upload\/(?:v\d+\/)?(.+)$/);
       if (match) {
-        const publicId = decodeURIComponent(match[1]);
-        const ext = publicId.split('.').pop() || '';
+        const resourceType = match[1]; // 'image', 'raw', or 'video'
+        let publicId = decodeURIComponent(match[2]);
+        const ext = publicId.split('.').pop() || 'pdf';
+
+        // Cloudinary stores 'image' assets with public_id WITHOUT extension
+        if (resourceType === 'image' && publicId.toLowerCase().endsWith('.' + ext.toLowerCase())) {
+          publicId = publicId.slice(0, -(ext.length + 1));
+        }
+
         const { v2: cloudinary } = await import('cloudinary');
+        cloudinary.config({
+          cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+          api_key: process.env.CLOUDINARY_API_KEY,
+          api_secret: process.env.CLOUDINARY_API_SECRET,
+        });
+
         fetchUrl = cloudinary.utils.private_download_url(publicId, ext, {
-          resource_type: 'raw',
+          resource_type: resourceType,
           type: 'upload',
         });
       }
@@ -246,8 +259,6 @@ export const proxyPdf = async (req, res) => {
     const response = await fetch(fetchUrl);
     if (!response.ok) {
       console.error(`[proxyPdf] Upstream storage fetch failed with status ${response.status} for URL: ${url}`);
-      // Distinguish upstream storage errors from client JWT auth errors.
-      // Do NOT forward Cloudinary 401 directly to frontend as user 401.
       const mappedStatus = response.status === 404 ? 404 : 502;
       return res.status(mappedStatus).send(`Storage proxy error (${response.status}): ${response.statusText || 'Unable to retrieve document'}`);
     }
