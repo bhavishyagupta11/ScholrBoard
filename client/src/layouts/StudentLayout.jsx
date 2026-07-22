@@ -83,7 +83,7 @@ export function StudentLayout() {
 
 			{/* Sidebar */}
 			<aside 
-				className={`sidebar-panel flex flex-col p-4 border-r md:h-screen sticky top-0
+				className={`sidebar-panel flex flex-col p-4 border-r md:h-screen md:sticky md:top-0
 					fixed inset-y-0 left-0 z-50 w-[260px] md:w-auto md:translate-x-0 md:z-20 transition-all duration-300
 					${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
 					${isCollapsed ? 'md:w-20 md:p-3' : 'md:w-[248px]'}
