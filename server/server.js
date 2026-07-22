@@ -1,13 +1,61 @@
 import './config/env.js';
+
+// ─── STARTUP LOGGING ──────────────────────────────────────────────────────────
+const logStartup = (msg) => console.log('[STARTUP]', JSON.stringify({ timestamp: new Date().toISOString(), message: msg }));
+const logConfig = (msg) => console.log('[CONFIG]', JSON.stringify({ timestamp: new Date().toISOString(), message: msg }));
+const logWarning = (msg) => console.log('[WARNING]', JSON.stringify({ timestamp: new Date().toISOString(), message: msg }));
+const logShutdown = (msg) => console.log('[SHUTDOWN]', JSON.stringify({ timestamp: new Date().toISOString(), message: msg }));
+const logError = (msg, err) => console.error('[ERROR]', JSON.stringify({ timestamp: new Date().toISOString(), message: msg, error: err?.message || String(err) }));
+
+logStartup('INITIALIZING');
+logStartup('CONFIG_VALIDATION');
+
+// ─── CONFIGURATION VALIDATION ─────────────────────────────────────────────────
+// CATEGORY A: Required Variables
+const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET'];
+const missingRequired = requiredEnvVars.filter((key) => !process.env[key]);
+
+if (missingRequired.length > 0) {
+  console.error('\n==================================');
+  console.error('Configuration Error');
+  console.error('Missing Required Environment Variables:');
+  missingRequired.forEach(v => console.error(`- ${v}`));
+  console.error('==================================\n');
+  process.exit(1);
+}
+
+// Validate MONGODB_URI format
+const mongoUri = process.env.MONGODB_URI;
+if (!mongoUri.startsWith('mongodb://') && !mongoUri.startsWith('mongodb+srv://')) {
+  console.error('\n==================================');
+  console.error('Configuration Error');
+  console.error('Invalid MONGODB_URI format. Must start with mongodb:// or mongodb+srv://');
+  console.error('==================================\n');
+  process.exit(1);
+}
+if (/\s/.test(mongoUri)) {
+  console.error('\n==================================');
+  console.error('Configuration Error');
+  console.error('Invalid MONGODB_URI. Contains whitespace.');
+  console.error('==================================\n');
+  process.exit(1);
+}
+
+// CATEGORY B: Optional Features
+const checkOptionalFeature = (name, keys) => {
+  const missing = keys.filter(k => !process.env[k]);
+  if (missing.length > 0) {
+    logWarning(`${name} disabled. Missing: ${missing.join(', ')}`);
+  }
+};
+checkOptionalFeature('Cloudinary', ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET']);
+checkOptionalFeature('Gemini AI', ['GEMINI_API_KEY']);
+checkOptionalFeature('Email Service', ['EMAIL_USER', 'EMAIL_PASS']);
+
+logStartup('LOGGER_READY');
+
 /**
  * server.js — Production-ready Express server
- *
- * Security stack applied in order:
- *   1. helmet()        — sets secure HTTP headers
- *   2. cors()          — only allows whitelisted origins
- *   3. express-rate-limit — throttles requests per IP
- *   4. express-mongo-sanitize — strips $ and . from user inputs (NoSQL injection)
- *   5. express.json({ limit }) — request body size limit
  */
 import express from 'express';
 import cors from 'cors';
@@ -15,6 +63,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import mongoose from 'mongoose';
 
 import connectDB from './config/db.js';
 import { errorHandler, notFound } from './middleware/error.js';
@@ -40,29 +89,22 @@ import applicationRoutes  from './routes/applications.js';
 import scholarshipRoutes  from './routes/scholarships.js';
 import developerSyncRoutes from './routes/developerSync.js';
 import supportRoutes       from './routes/support.js';
-// V2 additions:
 import ticketRoutes        from './routes/tickets.js';
 import trackRoutes         from './routes/tracks.js';
 
-// ─── Validate critical environment variables ──────────────────────────────────
-const requiredEnvVars = ['MONGODB_URI', 'JWT_SECRET'];
-const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
-if (missingEnvVars.length > 0) {
-  console.error(`❌ Missing required environment variables: ${missingEnvVars.join(', ')}`);
-  process.exit(1);
-}
-
-process.on('unhandledRejection', (reason) => {
-  console.error('[unhandledRejection]', reason instanceof Error ? reason.message : reason);
-});
-
-process.on('uncaughtException', (err) => {
-  console.error('[uncaughtException]', err.message);
-  process.exit(1);
-});
-
 const app = express();
 app.set('trust proxy', 1);
+app.set('server_listening', false);
+
+// ─── STARTUP: DATABASE ────────────────────────────────────────────────────────
+logStartup('DATABASE_CONNECTING');
+try {
+  await connectDB();
+  logStartup('DATABASE_CONNECTED');
+} catch (err) {
+  logError('Startup failed due to fatal database error', err);
+  process.exit(1);
+}
 
 // ─── Security: HTTP headers ───────────────────────────────────────────────────
 app.use(helmet({
@@ -74,23 +116,13 @@ const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
   .split(',')
   .map((o) => o.trim());
 
-// Ensure localhost development origins are always allowed
-if (!allowedOrigins.includes('http://localhost:5173')) {
-  allowedOrigins.push('http://localhost:5173');
-}
-if (!allowedOrigins.includes('http://localhost:3000')) {
-  allowedOrigins.push('http://localhost:3000');
-}
+if (!allowedOrigins.includes('http://localhost:5173')) allowedOrigins.push('http://localhost:5173');
+if (!allowedOrigins.includes('http://localhost:3000')) allowedOrigins.push('http://localhost:3000');
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (direct browser access, curl, health checks)
-    if (!origin) {
-      return callback(null, true);
-    }
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
     callback(new Error(`CORS: origin "${origin}" not allowed`));
   },
   credentials: true,
@@ -100,32 +132,28 @@ app.use(cors({
 
 // ─── Security: Rate limiting ──────────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {
-  // General API rate limit
   app.use('/api/', rateLimit({
-    windowMs: 15 * 60 * 1000,   // 15 minutes
-    max: process.env.NODE_ENV === 'production' ? 300 : 10000,                    // 300 requests per window per IP
+    windowMs: 15 * 60 * 1000,
+    max: process.env.NODE_ENV === 'production' ? 300 : 10000,
     standardHeaders: true,
     legacyHeaders: false,
     message: { success: false, message: 'Too many requests. Please try again in 15 minutes.' },
   }));
 
-  // Stricter limit for auth routes (prevent brute force)
   app.use('/api/auth/', rateLimit({
     windowMs: 15 * 60 * 1000,
     max: process.env.NODE_ENV === 'production' ? 20 : 10000,
     message: { success: false, message: 'Too many authentication attempts. Please try again in 15 minutes.' },
   }));
 
-  // AI routes — limited to prevent API key abuse
   app.use('/api/ai/', rateLimit({
-    windowMs: 60 * 1000,        // 1 minute
-    max: process.env.NODE_ENV === 'production' ? 20 : 10000,                    // 20 AI requests per minute per IP
+    windowMs: 60 * 1000,
+    max: process.env.NODE_ENV === 'production' ? 20 : 10000,
     message: { success: false, message: 'AI rate limit reached. Please wait a moment.' },
   }));
 }
 
 // ─── Request parsing ──────────────────────────────────────────────────────────
-// Large enough for profile/projects/roadmap JSON; uploads use multipart (multer), not this limit.
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 const uploadsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'uploads');
@@ -168,12 +196,12 @@ app.use((req, _res, next) => {
   next();
 });
 
+logStartup('MIDDLEWARE_READY');
+
 app.use(requestLogger);
 
-// ─── Health check ─────────────────────────────────────────────────────────────
-app.use('/api/health', healthRoutes);
-
 // ─── API Routes ───────────────────────────────────────────────────────────────
+app.use('/api/health',        healthRoutes);
 app.use('/api/auth',          authRoutes);
 app.use('/api/users',         userRoutes);
 app.use('/api/profile',       profileRoutes);
@@ -192,19 +220,77 @@ app.use('/api/applications',  applicationRoutes);
 app.use('/api/scholarships',  scholarshipRoutes);
 app.use('/api/developer',     developerSyncRoutes);
 app.use('/api/support',       supportRoutes);
-// V2 additions:
 app.use('/api/tickets',       ticketRoutes);
 app.use('/api/tracks',        trackRoutes);
+
+logStartup('ROUTES_READY');
 
 // ─── 404 + Global Error Handler ───────────────────────────────────────────────
 app.use(notFound);
 app.use(errorHandler);
 
-// ─── Start server ─────────────────────────────────────────────────────────────
-await connectDB();
+// ─── GRACEFUL SHUTDOWN ────────────────────────────────────────────────────────
+let server;
 
+const shutdown = async (signal) => {
+  logShutdown(`Received ${signal}. Starting graceful shutdown...`);
+  
+  app.set('server_listening', false);
+  
+  if (server) {
+    await new Promise(resolve => {
+      server.close(() => {
+        logShutdown('HTTP server closed.');
+        resolve();
+      });
+    });
+  }
+
+  try {
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.connection.close(false);
+      logShutdown('MongoDB connection closed.');
+    }
+  } catch (err) {
+    logError('Error closing MongoDB connection', err);
+  }
+
+  logShutdown('Shutdown complete. Exiting.');
+  process.exit(0);
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+process.on('unhandledRejection', (reason) => {
+  logError('unhandledRejection', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  logError('uncaughtException', err);
+  shutdown('uncaughtException');
+});
+
+// ─── STARTUP ─────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
-  console.log(`📡 API available at http://localhost:${PORT}/api`);
+server = app.listen(PORT, () => {
+  app.set('server_listening', true);
+  logStartup('SERVER_LISTENING');
+  logStartup('APPLICATION_READY');
+  
+  console.log('\n==================================================');
+  console.log('ScholrBoard Backend');
+  console.log(`Version:       ${process.env.npm_package_version || '1.0.0'}`);
+  console.log(`Environment:   ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Node Version:  ${process.version}`);
+  console.log(`Port:          ${PORT}`);
+  console.log(`MongoDB Status:${mongoose.connection.readyState === 1 ? ' Connected' : ' Disconnected'}`);
+  console.log('==================================================');
+  console.log('Configuration Loaded');
+  console.log('Environment Validated');
+  console.log('Database Connected');
+  console.log('Routes Registered');
+  console.log('HTTP Server Listening');
+  console.log('Application Ready');
+  console.log('==================================================\n');
 });

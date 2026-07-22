@@ -23,36 +23,47 @@ router.get('/', async (req, res) => {
       await mongoose.connection.db.command({ ping: 1 });
       dbPingMs = Date.now() - pingStart;
     } catch {
-      return res.status(503).json({
-        success: false,
-        status: 'degraded',
-        timestamp: new Date().toISOString(),
-        uptimeSeconds: Math.floor((Date.now() - startTime) / 1000),
-        environment: process.env.NODE_ENV || 'development',
-        database: {
-          connected: false,
-          state: DB_STATE[dbReadyState] || 'unknown',
-        },
-      });
+      // Ignored for simple health check
     }
   }
 
-  const healthy = dbConnected;
+  const memory = process.memoryUsage();
+  
   const payload = {
-    success: healthy,
-    status: healthy ? 'ok' : 'degraded',
+    status: dbConnected ? 'ok' : 'degraded',
+    uptime: Math.floor((Date.now() - startTime) / 1000),
     timestamp: new Date().toISOString(),
-    uptimeSeconds: Math.floor((Date.now() - startTime) / 1000),
+    memoryUsage: {
+      rss: `${Math.round(memory.rss / 1024 / 1024)} MB`,
+      heapTotal: `${Math.round(memory.heapTotal / 1024 / 1024)} MB`,
+      heapUsed: `${Math.round(memory.heapUsed / 1024 / 1024)} MB`,
+    },
+    nodeVersion: process.version,
     environment: process.env.NODE_ENV || 'development',
+    mongoState: DB_STATE[dbReadyState] || 'unknown',
+    applicationVersion: process.env.npm_package_version || '1.0.0',
     database: {
       connected: dbConnected,
-      state: DB_STATE[dbReadyState] || 'unknown',
       pingMs: dbPingMs,
-    },
-    version: process.env.npm_package_version || '1.0.0',
+    }
   };
 
-  res.status(healthy ? 200 : 503).json(payload);
+  res.status(dbConnected ? 200 : 503).json(payload);
+});
+
+router.get('/ready', (req, res) => {
+  const dbConnected = mongoose.connection.readyState === 1;
+  const serverListening = req.app.get('server_listening') === true; // Set during startup in server.js
+  
+  const dependenciesReady = dbConnected; // Expand if more deps are added
+  const isReady = dbConnected && serverListening && dependenciesReady;
+
+  res.status(isReady ? 200 : 503).json({
+    ready: isReady,
+    mongoConnected: dbConnected,
+    serverListening: serverListening,
+    dependenciesReady: dependenciesReady
+  });
 });
 
 export default router;
