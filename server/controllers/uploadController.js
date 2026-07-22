@@ -1,6 +1,8 @@
 /**
  * uploadController.js — File upload endpoints
  */
+import fs from 'fs';
+import path from 'path';
 import Profile from '../models/Profile.js';
 import User from '../models/User.js';
 import ResumeAnalysis from '../models/ResumeAnalysis.js';
@@ -201,30 +203,63 @@ export const proxyPdf = async (req, res) => {
       return res.status(400).send('URL is required');
     }
 
-    if (!url.startsWith('http')) {
-      return res.status(400).send('Invalid URL format');
-    }
-
-    // Enforce that we only proxy trusted domains (Cloudinary) to prevent SSRF
+    // 1. Handle non-Cloudinary / local file URLs safely
     if (!url.includes('res.cloudinary.com')) {
-      // If it's not cloudinary, we can just redirect to it since it likely doesn't have the attachment issue
-      return res.redirect(url);
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        const relativePath = url.replace(/^https?:\/\/[^\/]+/, '');
+        const filePath = path.join(process.cwd(), relativePath.startsWith('/') ? relativePath.slice(1) : relativePath);
+        if (fs.existsSync(filePath)) {
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', 'inline; filename="document.pdf"');
+          return res.sendFile(filePath);
+        }
+      } else if (url.startsWith('/uploads/') || url.startsWith('uploads/')) {
+        const cleanPath = url.startsWith('/') ? url.slice(1) : url;
+        const filePath = path.join(process.cwd(), cleanPath);
+        if (fs.existsSync(filePath)) {
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', 'inline; filename="document.pdf"');
+          return res.sendFile(filePath);
+        }
+      }
+      return res.status(404).send('Local document not found');
     }
 
-    const response = await fetch(url);
+    // 2. Handle Cloudinary raw URLs (generate signed download URL if private)
+    let fetchUrl = url;
+    try {
+      const match = url.match(/\/(?:raw|image|video)\/upload\/(?:v\d+\/)?(.+)$/);
+      if (match) {
+        const publicId = decodeURIComponent(match[1]);
+        const ext = publicId.split('.').pop() || '';
+        const { v2: cloudinary } = await import('cloudinary');
+        fetchUrl = cloudinary.utils.private_download_url(publicId, ext, {
+          resource_type: 'raw',
+          type: 'upload',
+        });
+      }
+    } catch (cldErr) {
+      console.warn('[proxyPdf] Could not generate signed Cloudinary URL, attempting direct fetch:', cldErr.message);
+    }
+
+    // 3. Fetch from storage
+    const response = await fetch(fetchUrl);
     if (!response.ok) {
-      return res.status(response.status).send('Failed to fetch file from storage');
+      console.error(`[proxyPdf] Upstream storage fetch failed with status ${response.status} for URL: ${url}`);
+      // Distinguish upstream storage errors from client JWT auth errors.
+      // Do NOT forward Cloudinary 401 directly to frontend as user 401.
+      const mappedStatus = response.status === 404 ? 404 : 502;
+      return res.status(mappedStatus).send(`Storage proxy error (${response.status}): ${response.statusText || 'Unable to retrieve document'}`);
     }
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'inline; filename="document.pdf"');
     
-    // We get it as an ArrayBuffer, convert to Buffer, and send
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     return res.send(buffer);
   } catch (error) {
     console.error('proxyPdf error:', error);
-    return res.status(500).send('Failed to proxy PDF file');
+    return res.status(502).send('Failed to proxy storage document');
   }
 };

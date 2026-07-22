@@ -16,12 +16,30 @@ build/
 firebase-service-account.json
 server/uploads/
 
-# Logs
+# Logs and debug text files
 *.log
 npm-debug.log*
+diff_output*.txt
 
-# Test output and cache
+# Specific generated test screenshots & artifacts
+mobile_test_*.png
+vreg_*.png
+user_b_*.png
+trace_dummy.pdf
+verification_dummy.pdf
+
+# Temporary test scripts & test framework outputs
+test_*.js
+debug_*.js
+trace_*.js
+audit_*.js
+verify_*.js
+instrument_*.js
+inspect_*.js
+e2e_*.js
+visual_regression_*.js
 coverage/
 playwright-report/
 test-results/
 .cache/
+.test-users.json

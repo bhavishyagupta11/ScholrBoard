@@ -1,0 +1,33 @@
+{
+  "name": "scholrboard-v2",
+  "version": "1.0.0",
+  "description": "> **A Production-Ready Full-Stack Academic & Portfolio Management Platform**",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bhavishyagupta11/ScholrBoard.git"
+  },
+  "keywords": [
+    "education",
+    "portfolio",
+    "academic-management",
+    "react",
+    "express",
+    "mongodb"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bhavishyagupta11/ScholrBoard/issues"
+  },
+  "homepage": "https://github.com/bhavishyagupta11/ScholrBoard#readme",
+  "devDependencies": {
+    "puppeteer": "^25.3.0"
+  }
+}

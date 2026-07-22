@@ -69,6 +69,7 @@ export function AppRoutes() {
         <Route path="coding" element={<CodingPage />} />
         <Route path="activities" element={<ActivitiesPage />} />
         <Route path="resume" element={<ResumeAnalyzerPage />} />
+        <Route path="resume/:id" element={<ResumeAnalyzerPage />} />
         <Route path="resume-analyzer" element={<ResumeAnalyzerPage />} />
         <Route path="events" element={<StudentEvents />} />
       </Route>

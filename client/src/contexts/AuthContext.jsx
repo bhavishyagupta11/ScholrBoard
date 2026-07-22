@@ -59,6 +59,7 @@ const clearUserCache = () => {
 export function AuthProvider({ children }) {
   const [user, setUser]             = useState(() => getCachedUser());
   const [loading, setLoading]       = useState(true);
+  const [role, setRole] = useState(localStorage.getItem('role') || null);
   const [error, setError]           = useState(null);
   const [resilientMode, setResilientMode] = useState(false);
 
