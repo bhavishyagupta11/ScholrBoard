@@ -118,6 +118,7 @@ export const getDashboardAnalytics = async (req, res) => {
     // Run all queries in parallel for speed
     const [
       activityCounts,
+      categoryCounts,
       weeklyProgress,
       latestAnalytics,
       profile,
@@ -126,6 +127,12 @@ export const getDashboardAnalytics = async (req, res) => {
       Activity.aggregate([
         { $match: { userId: userObjectId, isArchived: false } },
         { $group: { _id: '$status', count: { $sum: 1 } } },
+      ]),
+
+      // Activity category breakdown
+      Activity.aggregate([
+        { $match: { userId: userObjectId, isArchived: false } },
+        { $group: { _id: '$category', count: { $sum: 1 } } },
       ]),
 
       // Last 7 days study time
@@ -137,14 +144,20 @@ export const getDashboardAnalytics = async (req, res) => {
       // Latest pre-computed analytics snapshot
       Analytics.findOne({ userId, period: 'monthly' }).sort({ periodStart: -1 }),
 
-      // User Profile (for GPA and overall attendance fallbacks)
+      // User Profile (single source of truth for GPA)
       Profile.findOne({ userId }),
     ]);
 
-    const activitySummary = { Pending: 0, Approved: 0, Rejected: 0 };
-    activityCounts.forEach(({ _id, count }) => { if (_id in activitySummary) activitySummary[_id] = count; });
+    const activitySummary = { Pending: 0, Approved: 0, Rejected: 0, byCategory: {}, total: 0 };
+    activityCounts.forEach(({ _id, count }) => {
+      if (_id in activitySummary) activitySummary[_id] = count;
+      activitySummary.total += count;
+    });
+    categoryCounts.forEach(({ _id, count }) => {
+      if (_id) activitySummary.byCategory[_id] = count;
+    });
 
-    const weeklyStudyMinutes = weeklyProgress.reduce((s, r) => s + r.totalMinutesStudied, 0);
+    const weeklyStudyMinutes = weeklyProgress.reduce((s, r) => s + (r.totalMinutesStudied || 0), 0);
 
     const responseData = {
       success: true,
@@ -152,11 +165,11 @@ export const getDashboardAnalytics = async (req, res) => {
         activities:        activitySummary,
         weeklyStudyMinutes,
         weeklyProgress,
-        gpa:               latestAnalytics?.currentGPA || profile?.gpa || null,
-        attendance:        latestAnalytics?.overallAttendance || profile?.attendanceOverall || null,
+        gpa:               profile?.gpa ?? null,
+        attendance:        profile?.attendanceOverall ?? latestAnalytics?.overallAttendance ?? null,
         currentStreak:     latestAnalytics?.currentStreak || 0,
         longestStreak:     latestAnalytics?.longestStreak || 0,
-        totalPoints:       latestAnalytics?.totalPointsEarned || profile?.achievementPoints || 0,
+        totalPoints:       profile?.achievementPoints || latestAnalytics?.totalPointsEarned || 0,
         percentileRank:    latestAnalytics?.percentileRank || null,
         aiInsight:         latestAnalytics?.aiInsight || null,
         subjectBreakdown:  latestAnalytics?.subjectBreakdown || [],
