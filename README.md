@@ -1,354 +1,488 @@
 # ScholrBoard
 
-> **A Production-Ready Full-Stack Academic & Portfolio Management Platform**
+Full-stack academic operations, credential verification, and student portfolio management system.
 
-[![Tech Stack: MERN](https://img.shields.io/badge/Tech%20Stack-MERN-0052CC?style=flat-square&logo=react)](https://github.com)
-[![Frontend: React 19](https://img.shields.io/badge/Frontend-React%2019%20%7C%20Vite%207-61DAFB?style=flat-square&logo=react)](https://react.dev)
-[![Backend: Express 5](https://img.shields.io/badge/Backend-Node.js%20%7C%20Express%205-339933?style=flat-square&logo=nodedotjs)](https://expressjs.com)
-[![Database: MongoDB](https://img.shields.io/badge/Database-MongoDB%20%7C%20Mongoose-47A248?style=flat-square&logo=mongodb)](https://www.mongodb.com)
-[![Auth: JWT](https://img.shields.io/badge/Auth-JWT-FFCA28?style=flat-square)](https://jwt.io)
+[![Node.js](https://img.shields.io/badge/Node.js-v20+-339933?style=flat-square&logo=nodedotjs)](https://nodejs.org)
+[![React](https://img.shields.io/badge/React-19.1-61DAFB?style=flat-square&logo=react)](https://react.dev)
+[![Express](https://img.shields.io/badge/Express-5.1-000000?style=flat-square&logo=express)](https://expressjs.com)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose%208.18-47A248?style=flat-square&logo=mongodb)](https://www.mongodb.com)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-v4.1-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com)
+[![Playwright](https://img.shields.io/badge/Playwright-E2E%20Tests-2EAD33?style=flat-square&logo=playwright)](https://playwright.dev)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue?style=flat-square)](LICENSE)
 
 ---
 
-## 📖 Overview
+## Overview
 
-**ScholrBoard** is a specialized full-stack educational operations and portfolio management web application designed to bridge the operational gaps between **Students**, **Faculty Mentors**, and **Administrators**. 
+ScholrBoard is a web application designed to manage student credentials, extracurricular achievement verification, and placement readiness across universities and colleges.
 
 ### The Problem
-In standard academic environments, student progress tracking, extra-curricular verifications, coding profiles, and placement preparations are often scattered across isolated Google Forms, fragmented spreadsheets, and physical printouts. This leads to manual verification bottlenecks, outdated resumes, and high-latency compliance reporting.
+Colleges and universities often track extracurricular activities, certifications, coding profiles, on-duty attendance, and placement preparation across disconnected spreadsheets, paper records, and Google Forms. This causes administrative bottlenecks, unverified resume claims, delayed faculty reviews, and slow institutional reporting for accreditation frameworks such as NAAC and NIRF.
 
 ### The Solution
-ScholrBoard provides unified, secure, role-based workflows operating from a shared source of truth. It implements structured extra-curricular activity capture, one-click faculty verification queues, automated portfolio assembly, cross-platform coding statistics tracking, and audit-ready institutional report generation (NAAC, NIRF).
+ScholrBoard provides a role-based platform with distinct interfaces for students, faculty advisors, department coordinators, and administrators. It implements structured activity submission queues with atomic database updates, automated developer profile aggregation across coding platforms, AI-assisted resume evaluation, and an index-optimized talent discovery search engine.
 
 ---
 
-## ✨ Features & Capabilities
+## Core Modules
 
-### 🧑‍🎓 Student Portal
-* **Centralized Academic Workspace**: Track cumulative GPA, semester attendance metrics, and priority-ranked smart suggestions based on profile gaps.
-* **Evidence-Backed Activity Log**: Submit hackathon achievements, certifications, volunteer work, and projects with proof URLs for immediate faculty review.
-* **Dynamic Portfolio Assembly**: Instantly generate digital web portfolios featuring interactive skill sets, project repositories, and downloadable PDF versions via `jsPDF` / `html2canvas`.
-* **Cross-Platform Coding Aggregator**: Track automated or manual synchronizations of competitive programming statistics across platforms like **LeetCode**, **CodeChef**, **Codeforces**, and **HackerRank**.
-* **Placement & Event Discovery**: Explore internal placement opportunities, apply directly, and track registration schedules for upcoming technical symposiums.
+ScholrBoard provides 4 role-scoped workspaces:
 
-### 👨‍🏫 Faculty Portal
-* **Verification Queues**: Streamlined dashboard to review, approve, or reject student activity submissions with one-click updates to keep institutional records tamper-proof.
-* **Student 360° View**: Deep-dive analytics into assigned mentees detailing academic history, assignment progress bars, live portfolio grades, and granular cross-platform programming ratings.
-* **Mentorship Outreach**: Direct review mechanisms to contact students and guide technical and extra-curricular paths.
+### 1. Student Portal (`/student/*`)
+* **Academic Overview**: View cumulative GPA, attendance percentages, and profile completeness recommendations.
+* **Activity Logging**: Submit hackathons, certifications, research publications, internships, and workshop proofs with document attachments for faculty review.
+* **Developer Scoring**: Synchronize public statistics from GitHub, LeetCode, and Codeforces to calculate a unified developer score.
+* **Resume Analyzer**: Upload PDF or DOCX resumes for ATS compatibility scoring, keyword gap analysis, and section feedback using Google Gemini AI.
+* **Digital Portfolio**: Assemble verified activities and technical skills into a shareable web portfolio with client-side PDF export (`jsPDF` / `html2canvas`).
+* **On-Duty (OD) Requests**: Submit and track attendance leave requests for academic and technical events.
+* **Placement Drives**: Browse institutional placement drives, verify eligibility criteria, and submit applications.
+* **Support**: Submit and track academic and technical helpdesk tickets.
 
-### 🏢 Administrator Portal
-* **Institutional Analytics**: High-level statistical visualizations powered by `Recharts`, evaluating department-wise distributions, activity type ratios, and overall placement success rates.
-* **Compliance Report Generators**: Dedicated workflows for instant, data-backed **NAAC** and **NIRF** compliance file structures, alongside one-click global data exports to `.xlsx` Excel spreadsheets.
-* **Opportunity Engine**: Full CRUD interfaces to manage new campus placement drives, internships, and cross-departmental technical events.
+### 2. Faculty Advisor Portal (`/faculty/*`)
+* **Advisee Roster**: View academic standing, GPA records, and activity histories for assigned students.
+* **Activity Verification Queue**: Review pending student activity submissions in FIFO order with Approve, Reject, or Request Revision actions.
+* **Student 360 View**: Inspect individual student records, verified credentials, and linked coding platform metrics.
+* **On-Duty Approvals**: Evaluate and approve student OD attendance requests with audit-logged feedback.
+* **Advisee Support Tickets**: Review and respond to support inquiries submitted by assigned students.
 
----
+### 3. Department Coordinator Portal (`/faculty/*` with Coordinator Level)
+* **Department Analytics**: Track verification throughput, review queues, and submission trends across the department.
+* **Faculty Review Oversight**: Monitor review turnaround times and activity distribution across department faculty advisors.
+* **Cohort Metrics**: Analyze placement readiness and academic distribution across student batches and sections.
 
-## Key Features
-
-* **Multi-portal authentication**: Role-segmented login gateways for Student, Faculty, and Admin users.
-* **Student performance tracking**: Monitor cumulative GPA, achievements points, and custom placement readiness metrics.
-* **Activity approval workflow**: Standardized logging of extra-curricular activities with proof files and faculty reviews.
-* **Faculty advisee management**: Visual 360-degree mentee tracking covering student accomplishments and GPA progress.
-* **Placement and talent discovery**: Complete admin placement management and candidate filtering based on developer score.
-* **Coding profile integrations**: Automatic aggregation of student competitive ratings across LeetCode, Codeforces, and GitHub.
-* **Announcements and notifications**: System-wide notifications and target announcements broadcasting.
-* **Contact and support system**: Contact forms with fire-and-forget email notifications to administrative teams.
-* **Dashboard analytics**: Interactive Recharts layouts visualizing department statistics and student distribution charts.
-* **Role-based access control**: Secure token verification restricting api routes and workspace layouts by user roles.
-
----
-
-## 🛠️ Technical Stack
-
-### **Frontend Architecture**
-* **Core**: React 19, Vite 7
-* **Routing**: React Router v7 (Implementing optimized `lazy` chunk loading and nested layouts)
-* **Styling**: Tailwind CSS v4 alongside Vanilla CSS custom properties (`index.css`) optimized for high-performance GPU acceleration and native CSS Glassmorphism.
-* **Data Visualization**: Recharts v3.2 for interactive SVG charts.
-* **Document Processing**: `xlsx` for Excel parsing/exports, `jspdf` & `html2canvas` for responsive client-side PDF document generation.
-* **Icons**: `lucide-react` for clean, professional iconography.
-
-### **Backend Architecture**
-* **Runtime & Framework**: Node.js v18+, Express v5.1
-* **Database & ORM**: MongoDB, Mongoose v8.18 for schema definitions, relational multi-role indexing, and lifecycle validations.
-* **Authentication Pipeline**: Secure authentication utilizing server-issued JSON Web Tokens (**JWT**).
-* **Security & Utilities**: `bcrypt` for local cryptographic processing, `cors`, `dotenv` for localized multi-environment configs.
-* **Media Handling**: Native `multer` parsing coupled with `cloudinary` integration for persistent static assets and user document proofs.
+### 4. Administrator Portal (`/admin/*`)
+* **Talent Discovery Engine**: Filter student profiles by developer score, GPA, competitive programming ratings, and technical skills for placement drives.
+* **Placement Management**: Create, publish, and close campus recruitment opportunities with department, GPA, and backlog criteria.
+* **Event Management**: Create and manage institutional hackathons, seminars, and technical workshops with attendee registration limits.
+* **Announcements**: Publish department-scoped or campus-wide notices.
+* **Advisor Allocation**: Map students to faculty advisors individually or in bulk.
+* **Support Ticket Triage**: Assign, reassign, and resolve support tickets across departments.
 
 ---
 
-## System Architecture
+## Key Workflows
+
+### 1. Student Activity Submission and Review
+1. The student submits an activity with title, category, date, organization, and proof file URL (uploaded to Cloudinary).
+2. The submission enters the assigned faculty advisor's verification queue in `Pending` status.
+3. The faculty advisor inspects the proof and selects `Approve`, `Reject`, or `Revise`.
+4. When approved, a multi-document MongoDB transaction calculates category points via `scoringService.js`, increments the student's cumulative points, creates an immutable audit record in `AuditLog`, and dispatches an in-app notification to the student.
+
+### 2. Developer Profile Synchronization and Scoring
+1. The student provides public profile handles for GitHub, LeetCode, and Codeforces.
+2. The student triggers synchronization via `/api/developer/sync/*`.
+3. An atomic lock (`syncLockService.js`) prevents concurrent sync calls for the profile.
+4. Backend service adapters fetch public profile metrics from external APIs, compute component sub-scores, calculate the composite developer score, update the student's `Profile` record, and release the lock.
+
+### 3. Talent Discovery and Placement Filtering
+1. Administrators access the talent discovery interface (`/admin/talent-discovery`).
+2. Search queries apply criteria for minimum developer score, GPA range, minimum LeetCode rating, and skill keywords.
+3. The backend executes a Profile-first aggregation pipeline that leverages the compound index on `{ developerScore: -1, gpa: -1 }` before paginating and joining user data.
+4. Filtered candidate rosters can be exported as Excel spreadsheets (`.xlsx`).
+
+### 4. On-Duty (OD) Leave Management
+1. The student submits an OD request with date range, reason, event details, and document proof.
+2. The request appears in the faculty advisor's OD approval queue.
+3. The advisor approves or rejects the request with an optional remark.
+4. The system logs the decision and updates the student's attendance record.
+
+---
+
+## Architecture
 
 ```mermaid
 graph TD
-    %% Portal Flow
-    Student["🧑‍🎓 Student"] -->|Submits Activity / OD / Support Ticket| Faculty["👨‍🏫 Faculty"]
-    Faculty -->|Oversight / Pending Reviews| Admin["🏢 Admin"]
-
-    subgraph Technical Stack
-        Frontend["Frontend: React.js + Tailwind CSS"]
-        Backend["Backend: Node.js + Express.js"]
-        Database["Database: MongoDB"]
-        Auth["Authentication: JWT + Role Based Access Control"]
-        Support["Support: MongoDB + Contact Email Notifications"]
+    subgraph Client ["Frontend: React 19 + Vite + Tailwind CSS"]
+        StudentUI["Student Portal (/student/*)"]
+        FacultyUI["Faculty Portal (/faculty/*)"]
+        AdminUI["Admin Portal (/admin/*)"]
+        PublicUI["Public & Auth Pages"]
     end
 
-    Student & Faculty & Admin --> Frontend
-    Frontend --> Backend
-    Backend --> Auth
-    Auth --> Database
-    Backend --> Support
+    subgraph Server ["Backend: Node.js + Express 5"]
+        AuthMid["JWT Auth & RBAC Middleware"]
+        SanitizeMid["NoSQL & XSS Sanitizer"]
+        RateLimitMid["Tiered Rate Limiters"]
+        
+        Controllers["Domain Controllers (20)"]
+        Services["Business Logic Services (11)"]
+    end
+
+    subgraph Database ["Data Layer: MongoDB + Mongoose 8.18"]
+        MongoModels["21 Mongoose Models"]
+        Indexes["36 Custom Indexes"]
+    end
+
+    subgraph Integrations ["External Services & APIs"]
+        GeminiAI["Google Gemini AI"]
+        GitHubAPI["GitHub REST API"]
+        LeetCodeAPI["LeetCode GraphQL API"]
+        CFAPI["Codeforces REST API"]
+        CloudinaryAPI["Cloudinary CDN"]
+        SMTPService["Nodemailer SMTP"]
+    end
+
+    Client -->|HTTP REST + Bearer JWT| RateLimitMid
+    RateLimitMid --> SanitizeMid
+    SanitizeMid --> AuthMid
+    AuthMid --> Controllers
+    Controllers --> Services
+    Services --> MongoModels
+    MongoModels --> Indexes
+    Services --> Integrations
 ```
 
-### **Authentication & Session Workflow**
-1. **Credentials Submission**: The user submits their email and password via login/registration.
-2. **Token Issuance**: The server authenticates the credentials against the MongoDB User document and issues a native JWT.
-3. **Subsequent API Requests**: The client stores the JWT in localStorage and appends it as a `Bearer <token>` to the `Authorization` header of all subsequent API calls.
-4. **Middleware Verification**: The backend `auth.js` middleware validates token signature, expiration, and loads the active user record from MongoDB.
+---
+
+## Technical Highlights
+
+### 1. Unified Developer Scoring Engine
+The platform implements an automated scoring algorithm (`server/services/developerScoringService.js`) that normalizes metrics across multiple coding platforms into a 0–100 developer score:
+
+$$\text{Unified Score} = \min\left(100, \frac{0.30 \cdot S_{\text{GH}} + 0.35 \cdot S_{\text{DSA}} + 0.20 \cdot S_{\text{CP}}}{\text{Active Weight Sum}} + \text{Bonus}_{\text{Academic}} + \text{Bonus}_{\text{Readiness}}\right)$$
+
+* **GitHub Sub-Score ($S_{\text{GH}}$)**: Evaluates repository count (20%), stars with logarithmic scaling (40%), forks with logarithmic scaling (20%), followers (10%), and topic keywords (10%).
+* **LeetCode Sub-Score ($S_{\text{DSA}}$)**: Evaluates easy problems (20%), medium and hard problems weighted 2.5x (30%), and contest rating scaled from 1,000 to 2,000 (50%).
+* **Codeforces Sub-Score ($S_{\text{CP}}$)**: Evaluates contest rating scaled from 800 to 2,000, combined with an activity decay multiplier based on the last contest date ($>6\text{ months}: 0.90\times$, $>12\text{ months}: 0.75\times$, $>24\text{ months}: 0.50\times$).
+* **Dynamic Re-weighting**: If a student links only 1 or 2 platforms, the denominator adjusts to the sum of active platform weights, avoiding score penalization for unlinked platforms.
+* **Concurrency Locking**: Distributed locking (`server/services/syncLockService.js`) prevents duplicate simultaneous sync requests and reclaims expired locks after 10 minutes.
+
+### 2. Talent Discovery Query Optimization
+In `server/controllers/talentDiscoveryController.js`, the talent search aggregation pipeline is optimized for index efficiency:
+* **Pipeline Design**: Aggregation starts on the `Profile` collection instead of `User`, allowing the `$sort` stage on `developerScore` to use the compound B-tree index `{ developerScore: -1, gpa: -1 }` (`IXSCAN`) before joining user identity data via `$lookup`.
+* **Benchmark Results**: Benchmarking scripts (`server/scripts/benchmarkTalentDiscovery.js`) demonstrate execution times of 42 ms at 10,000 synthetic records compared to 2,340 ms for an unindexed post-lookup sort (98.2% latency reduction).
+
+### 3. ACID Activity Approval Workflow
+To prevent partial state updates during activity review:
+* **Rule-Based Points**: Point allocations follow category rules in `server/services/scoringService.js` (Patent: 50 pts, Research Paper: 30 pts, Hackathon Winner: 25 pts, Internship: 20 pts, Certification: 10 pts, Workshop: 5 pts).
+* **Atomic Transactions**: Multi-document operations run inside `withTransaction.js`, ensuring activity status update, points recalculation, audit log persistence, and notification dispatch commit together.
+
+### 4. Multi-Model AI Service Fallback
+Google Gemini AI services in `server/controllers/aiController.js` implement a fault-tolerant request pipeline:
+* **Fallback Hierarchy**: Automatically cascades through models if a provider fails or rate-limits: `GEMINI_MODEL` -> `gemini-flash-lite-latest` -> `gemini-2.5-flash` -> `gemini-2.0-flash`.
+* **Retry Strategy**: Up to 3 retry attempts per model with exponential backoff ($1000\text{ ms} \times 2^{\text{attempt}-1}$).
+* **Document Parsers**: Extracts structured text from uploaded PDF resumes (`pdf-parse`) and Word documents (`mammoth`) before schema-validated JSON extraction.
+
+### 5. Multi-Layer Security Controls
+1. **Stateless JWT Authentication**: Signed Bearer token validation on all protected routes.
+2. **Password Hashing**: 10-round salted bcrypt hashing with `select: false` on user password fields.
+3. **Declarative RBAC**: Route middleware enforcing role boundaries (`student`, `faculty`, `admin`).
+4. **Relationship-Based Access Control (ABAC)**: Verifies student-advisor assignments to prevent unauthorized faculty reviews.
+5. **NoSQL Injection Sanitization**: Middleware recursively strips object keys starting with `$` or containing `.`.
+6. **XSS Sanitization**: Input sanitizer strips `<script>` tags, inline event attributes, and `javascript:` URIs.
+7. **Security Headers**: Helmet sets HTTP security headers and enforces CORS policy matching.
+8. **Tiered Rate Limiting**: Enforces rate limits across general endpoints (300 req/15m), auth endpoints (20 req/15m), and AI routes (20 req/1m).
+9. **MIME Type Validation**: Multer whitelist restricted to PDF, PNG, JPG, and JPEG with a 10MB limit.
+10. **Sync Locks**: Atomic lock acquisition prevents race conditions during external API syncs.
 
 ---
 
-## Performance & Scale
+## Tech Stack
 
-* Managed and tested using a simulated dataset of 1,000+ student records.
-* Designed and implemented 100+ REST API endpoints across authentication, analytics, activities, placements, notifications, support, and administration workflows.
-* MongoDB indexing used to improve retrieval performance by approximately 20%.
-* Role-based access control across Student, Faculty, and Admin portals.
-* Full-stack architecture using React.js, Node.js, Express.js, and MongoDB.
+### Frontend
+* **Core Framework**: React 19.1, Vite 7.3
+* **Routing**: React Router 7.1 (Code-split with `React.lazy()` and `Suspense`)
+* **Styling**: Tailwind CSS 4.1, custom CSS design tokens
+* **Data Visualization**: Recharts 3.2
+* **Document Generation**: jsPDF 4.2, html2canvas 1.4, xlsx 0.20
+* **Icons**: Lucide React 0.544
+
+### Backend
+* **Runtime**: Node.js 20+
+* **Framework**: Express 5.1
+* **Database / ODM**: MongoDB, Mongoose 8.18
+* **Authentication**: JSON Web Tokens (jsonwebtoken 9.0), bcryptjs 3.0
+* **AI & Document Processing**: Google Generative AI SDK 0.24, pdf-parse 2.4, mammoth 1.12
+* **Storage & Email**: Cloudinary SDK 2.7, Multer 2.0, Nodemailer 9.0
+* **Security**: Helmet 8.1, express-rate-limit 8.5, CORS 2.8
+
+### Testing & Tooling
+* **E2E Testing**: Playwright 1.50+ (15 test suites)
+* **CI/CD**: GitHub Actions with MongoDB 7 service containers
+* **Linting**: ESLint 9
 
 ---
 
-## 📁 Repository & Folder Structure
-
-The project is structured as a decoupled monorepo directly optimizing full-stack deployment workflows:
+## Project Structure
 
 ```text
 ScholrBoard/
-├── client/                             # React 19 Frontend Web Application
-│   ├── public/                         # Static Web Assets & Previews
-│   └── src/
-│       ├── assets/                     # Media & Styling dependencies
-│       ├── components/                 # Reusable UI blocks (Topbar, Dynamic Charts)
-│       ├── config/                     # Client configuration settings
-│       ├── contexts/                   # State Providers (Auth context, Active Profile)
-│       ├── hooks/                      # Custom reactive hooks (useScrollAnimation)
-│       ├── layouts/                    # Role-segmented routing shells
-│       ├── pages/                      # Application route components (Dashboard, 360 View)
-│       └── routes/                     # Router configurations
-│
-└── server/                             # Express 5 / Node.js API Backend
-    ├── config/                         # Database connection configuration
-    ├── controllers/                    # Core business logic execution handlers
-    ├── middleware/                     # Token validation, Role assertions, Error interception
-    ├── models/                         # Mongoose Data Schemas (User models)
-    └── routes/                         # Express API route declarations
+├── .github/
+│   └── workflows/
+│       └── e2e.yml                     # GitHub Actions CI/CD pipeline
+├── client/                             # React 19 Frontend
+│   ├── src/
+│   │   ├── api/                        # API client wrappers (22 modules)
+│   │   ├── components/                 # Reusable UI primitives and components
+│   │   ├── contexts/                   # AuthContext, ProfileContext, ThemeContext
+│   │   ├── hooks/                      # Custom hooks (usePlatformSync, useScrollAnimation)
+│   │   ├── layouts/                    # StudentLayout, FacultyLayout, AdminLayout
+│   │   ├── pages/                      # 39 routed page views and dashboards
+│   │   ├── routes/                     # React Router configurations
+│   │   ├── App.jsx                     # Root router component
+│   │   └── main.jsx                    # Application entry point
+│   ├── package.json
+│   └── vite.config.js
+├── server/                             # Express 5 API Backend
+│   ├── config/                         # Database and environment initialization
+│   ├── controllers/                    # 20 request controllers
+│   ├── middleware/                     # Auth, RBAC, error handling, upload, sanitization
+│   ├── models/                         # 21 Mongoose schemas and models
+│   ├── routes/                         # 21 mounted Express route modules
+│   ├── scripts/                        # Database migrations and benchmark tools
+│   ├── services/                       # 11 business logic and integration services
+│   │   └── providers/                  # GitHub, LeetCode, Codeforces API adapters
+│   ├── utils/                          # Transaction helper and test filters
+│   ├── package.json
+│   └── server.js                       # Express application entry point
+├── testing/                            # Playwright E2E & Performance Test Suite
+│   ├── e2e/                            # 15 Playwright spec files
+│   ├── load/                           # Load testing scripts
+│   └── scripts/                        # Scoring, locking, and determinism test scripts
+├── docs/
+│   └── screenshots/                    # Application preview images
+├── LICENSE                             # ISC License file
+└── README.md                           # Main documentation
 ```
 
 ---
 
-## 🚀 Installation & Local Setup
+## Installation and Local Setup
 
-### **Prerequisites**
-* **Node.js**: v18.0.0 or higher
-* **Package Manager**: `npm` v9+
-* **Database**: Running local MongoDB server (`mongodb://localhost:27017`) or dedicated Atlas Cluster URL.
-* **Firebase**: Active project setup with Authentication (Email/Password provider enabled) and an generated Service Account JSON key.
+### Prerequisites
+* **Node.js**: v20.0.0 or higher
+* **npm**: v9.0.0 or higher
+* **MongoDB**: Running local instance (`mongodb://localhost:27017`) or MongoDB Atlas connection URI
 
-### **1. Repository Cloning**
+### 1. Clone the Repository
 ```bash
 git clone https://github.com/bhavishyagupta11/ScholrBoard.git
 cd ScholrBoard
 ```
 
-### **2. Backend Configuration & Execution**
-Navigate to the server workspace, install dependencies, and setup secure credentials:
-
+### 2. Backend Setup
 ```bash
 cd server
 npm install
-
-# Setup environment variables
-copy firebase-service-account.template.json firebase-service-account.json
 ```
-*Note: Edit `firebase-service-account.json` to insert your explicit private key credentials.*
 
-Create an operational `.env` file within `server/`:
+Create a `.env` file in the `server/` directory:
 ```env
 PORT=5000
 MONGODB_URI=mongodb://localhost:27017/scholrboard
-JWT_SECRET=production_ready_cryptographic_secret_key
+JWT_SECRET=your_secure_jwt_secret_key_minimum_32_characters
+CLIENT_ORIGIN=http://localhost:5173
 NODE_ENV=development
+
+# Optional Integrations
+GEMINI_API_KEY=your_gemini_api_key
+CLOUDINARY_CLOUD_NAME=your_cloudinary_name
+CLOUDINARY_API_KEY=your_cloudinary_key
+CLOUDINARY_API_SECRET=your_cloudinary_secret
+EMAIL_USER=your_smtp_email
+EMAIL_PASS=your_smtp_password
 ```
 
-Start the backend API server:
+Start the backend server:
 ```bash
 npm run server
 ```
+The server will bind to `http://localhost:5000`.
 
-### **3. Frontend Configuration & Execution**
-Open a terminal instance targeting the client environment:
-
+### 3. Frontend Setup
+In a separate terminal window:
 ```bash
 cd client
 npm install
-
-# Duplicate the template environment structure
-copy .env.example .env
 ```
 
-Populate the `client/.env` file with accurate Firebase API access parameters (refer to the Environment Variables section below).
+Create a `.env` file in the `client/` directory:
+```env
+VITE_API_URL=http://localhost:5000/api
+```
 
-Boot up the high-speed Vite development environment:
+Start the Vite development server:
 ```bash
 npm run dev
 ```
-The application will instantly bind and serve locally (typically accessible at `http://localhost:5173`).
+The client will be accessible at `http://localhost:5173`.
 
 ---
 
-## 🔐 Environment Variables Reference
+## Environment Variables
 
-### **Server (.env)**
-| Variable | Description | Example Value |
-| :--- | :--- | :--- |
-| `PORT` | Local network binding port for Express API | `5000` |
-| `MONGODB_URI` | Full connection connection path to database | `mongodb://localhost:27017/scholrboard` |
-| `JWT_SECRET` | Cryptographic secret for signing API auth state | `super_secret_jwt_signature_key` |
-| `NODE_ENV` | Runtime stage controller (`development` / `production`) | `development` |
+### Server Configuration (`server/.env`)
+| Variable | Required | Description | Example |
+| :--- | :---: | :--- | :--- |
+| `PORT` | No | Express server port (defaults to 5000) | `5000` |
+| `MONGODB_URI` | **Yes** | MongoDB connection string | `mongodb://localhost:27017/scholrboard` |
+| `JWT_SECRET` | **Yes** | Secret for signing JWT tokens | `secure_random_string_32_chars` |
+| `CLIENT_ORIGIN` | No | Whitelisted CORS origin URL | `http://localhost:5173` |
+| `NODE_ENV` | No | Runtime environment mode | `development` / `production` |
+| `GEMINI_API_KEY` | No | API key for Google Gemini AI features | `AIzaSy...` |
+| `CLOUDINARY_CLOUD_NAME` | No | Cloudinary cloud name for uploads | `scholrboard-cdn` |
+| `CLOUDINARY_API_KEY` | No | Cloudinary API key | `123456789012345` |
+| `CLOUDINARY_API_SECRET` | No | Cloudinary API secret | `abcdef123456` |
+| `EMAIL_USER` | No | SMTP email address for notifications | `notifications@scholrboard.edu` |
+| `EMAIL_PASS` | No | SMTP password | `app_specific_password` |
 
-### **Client (.env)**
-| Variable | Description | Example Value |
-| :--- | :--- | :--- |
-| `VITE_API_URL` | Base endpoint path addressing the server backend | `http://localhost:5000/api` |
-
----
-
-## Core API Endpoints (Sample)
-
-### Authentication
-* `POST /api/auth/register` - Registers a new user account with role validations.
-* `POST /api/auth/login` - Authenticates user credentials and returns a secure JWT.
-
-### Users
-* `GET /api/users` - Retrieves a list of active users scoped by role and department.
-* `GET /api/users/:id` - Fetches detailed database payload for a specific user.
-
-### Activities
-* `GET /api/activities` - Retrieves activity lists filtered by category and page indexes.
-* `POST /api/activities` - Submits a new student activity along with proof URLs.
-* `PUT /api/activities/:id/review` - Approves, rejects, or flags an activity for revision.
-
-### Analytics
-* `GET /api/analytics/system` - Aggregates system-wide analytics for administrator dashboards.
-* `GET /api/analytics/faculty-activity-stats` - Gathers activity point metrics for assigned advisees.
-
-### Announcements
-* `GET /api/announcements/my` - Lists target announcements matching student departments.
-* `POST /api/announcements` - Creates a system-wide announcement (admin only).
-
-### Notifications
-* `GET /api/notifications` - Fetches the authenticated user's notification timeline.
-
-### Support
-* `POST /api/support/contact` - Submits a public contact form message (saves to DB and triggers email).
-* `GET /api/support/contact` - Lists paginated contact queries (admin only).
+### Client Configuration (`client/.env`)
+| Variable | Required | Description | Example |
+| :--- | :---: | :--- | :--- |
+| `VITE_API_URL` | **Yes** | Base URL for backend Express API | `http://localhost:5000/api` |
 
 ---
 
-## Platform Previews
+## Database Models and Indexing
+
+The database layer consists of 21 Mongoose models backed by 36 custom indexes:
+
+| Model | Source File | Description | Primary Indexes |
+| :--- | :--- | :--- | :--- |
+| `User` | `server/models/User.js` | Core authentication, identity, and role data | `{ role: 1, department: 1 }`, `{ email: 1, role: 1 }`, unique partial IDs |
+| `Profile` | `server/models/Profile.js` | Academic GPA, developer scores, and coding metrics | `{ developerScore: -1, gpa: -1 }` |
+| `Activity` | `server/models/Activity.js` | Extracurricular submissions and approval status | `{ userId: 1, status: 1 }`, `{ status: 1, createdAt: -1 }` |
+| `OdRequest` | `server/models/OdRequest.js` | On-Duty attendance requests and review decisions | `{ studentId: 1, status: 1 }`, `{ status: 1, createdAt: -1 }` |
+| `Opportunity` | `server/models/Opportunity.js` | Placement and internship drive listings | `{ status: 1, deadline: 1 }`, text index on company and title |
+| `Application` | `server/models/Application.js` | Student job applications and interview status | `{ opportunityId: 1, studentId: 1 }` (unique), `{ studentId: 1, status: 1 }` |
+| `Scholarship` | `server/models/Scholarship.js` | Institutional scholarship listings and criteria | `{ status: 1, deadline: 1 }` |
+| `ScholarshipApplication` | `server/models/ScholarshipApplication.js` | Student scholarship applications and status | `{ scholarshipId: 1, studentId: 1 }` (unique) |
+| `Event` | `server/models/Event.js` | Campus events, hackathons, and registrations | `{ isPublished: 1, startDate: 1, isCancelled: 1 }` |
+| `SupportTicket` | `server/models/SupportTicket.js` | Helpdesk tickets, category triage, and assignment | `{ createdBy: 1, status: 1 }`, `{ assignedTo: 1, status: 1 }` |
+| `SupportTicketMessage` | `server/models/SupportTicketMessage.js` | Conversational messages within support tickets | `{ ticketId: 1, createdAt: 1 }` |
+| `ResumeAnalysis` | `server/models/ResumeAnalysis.js` | Gemini AI resume scores, gaps, and suggestions | `{ userId: 1, createdAt: -1 }`, `{ userId: 1, isCurrent: 1 }` |
+| `AiChatHistory` | `server/models/AiChatHistory.js` | Multi-turn conversational AI chat sessions | `{ userId: 1, type: 1, createdAt: -1 }` |
+| `LearningProgress` | `server/models/LearningProgress.js` | Daily study and problem-solving logs | `{ userId: 1, date: 1 }` (unique), 2-year TTL index |
+| `Notification` | `server/models/Notification.js` | In-app alerts, activity approvals, and updates | `{ userId: 1, isRead: 1 }`, 180-day partial TTL index |
+| `Announcement` | `server/models/Announcement.js` | Department broadcasts and notices | `{ 'filters.role': 1, 'filters.department': 1, createdAt: -1 }` |
+| `AuditLog` | `server/models/AuditLog.js` | Immutable system audit trails for all approvals | `{ targetModel: 1, targetId: 1 }`, `{ performedBy: 1, createdAt: -1 }` |
+| `Analytics` | `server/models/Analytics.js` | Pre-aggregated KPI caches and department metrics | `{ userId: 1, period: 1, periodStart: -1 }` (unique) |
+| `Track` | `server/models/Track.js` | Career track definitions for UI personalization | None (Reference collection) |
+| `ContactMessage` | `server/models/ContactMessage.js` | Public landing page inquiries | None |
+| `Placement` | `server/models/Placement.js` | Placement drive records and historical statistics | `{ isActive: 1, deadline: 1, eligibleDepartments: 1 }` |
+
+---
+
+## REST API Reference
+
+The backend exposes 117 mounted production endpoints across 21 domain routers:
+
+* **GET**: 52 endpoints
+* **POST**: 33 endpoints
+* **PUT**: 21 endpoints
+* **DELETE**: 8 endpoints
+* **PATCH**: 3 endpoints
+
+### Key Endpoint Groups
+
+| Domain | Route Prefix | Key Methods & Endpoints | Access Scope |
+| :--- | :--- | :--- | :--- |
+| **Authentication** | `/api/auth` | `POST /register`, `POST /login`, `GET /me`, `POST /refresh-token` | Public / Bearer Token |
+| **User Management** | `/api/users` | `GET /`, `GET /talent-discovery`, `GET /advisor/students`, `PUT /assign-advisor` | Role-Scored / Admin / Faculty |
+| **Student Profiles** | `/api/profile` | `GET /me`, `PUT /me`, `PUT /me/basic`, `PUT /me/coding`, `GET /:userId` | Authenticated |
+| **Activities** | `/api/activities` | `POST /`, `GET /my`, `GET /pending/all`, `PUT /:id/review`, `DELETE /:id` | Role-Scored |
+| **On-Duty Requests** | `/api/od` | `POST /`, `GET /my`, `GET /pending`, `PUT /:id/review` | Student / Faculty / Admin |
+| **Developer Sync** | `/api/developer` | `POST /sync/github`, `POST /sync/leetcode`, `POST /sync/codeforces`, `POST /sync/all` | Student |
+| **AI Services** | `/api/ai` | `POST /chat`, `POST /recommend`, `POST /roadmap`, `GET /chats`, `DELETE /chats/:id` | Authenticated |
+| **Uploads** | `/api/upload` | `POST /avatar`, `POST /resume`, `POST /proof`, `POST /certificate`, `GET /resume/view/:id` | Authenticated |
+| **Opportunities** | `/api/opportunities` | `GET /matching`, `POST /`, `PUT /:id/publish`, `PUT /:id/close` | Student / Admin |
+| **Applications** | `/api/applications` | `POST /opportunity/:id/apply`, `GET /my`, `PUT /:id/status`, `PUT /:id/interview` | Student / Admin |
+| **Scholarships** | `/api/scholarships` | `GET /matching`, `POST /:id/apply`, `GET /my`, `POST /`, `PUT /:id/publish` | Student / Admin |
+| **Support Tickets** | `/api/tickets` | `GET /`, `POST /`, `GET /assigned`, `GET /all`, `POST /:id/reply`, `PATCH /:id/assign` | Role-Scored |
+| **Analytics** | `/api/analytics` | `GET /dashboard`, `GET /system`, `GET /faculty-activity-stats`, `GET /placement` | Role-Scored |
+| **Announcements** | `/api/announcements`| `GET /my`, `POST /`, `DELETE /:id` | Role-Filtered / Admin |
+| **Events** | `/api/events` | `GET /`, `POST /`, `POST /:id/register`, `PUT /:id`, `DELETE /:id` | Role-Scored |
+| **Tracks** | `/api/tracks` | `GET /`, `PATCH /set` | Authenticated |
+| **Health** | `/api/health` | `GET /`, `GET /liveness` | Public |
+
+---
+
+## Screenshots
 
 ### Landing Page
 ![Landing Page](docs/screenshots/landing_page.png)
-Multi-portal entry point for Student, Faculty, and Admin users.
+*Public landing page with role-specific authentication gateways and feature overviews.*
 
 ---
 
 ### Student Dashboard
 ![Student Dashboard](docs/screenshots/student_dashboard.png)
-Track academic progress, activities, coding profiles, placements, and notifications.
+*Student dashboard displaying academic metrics, activity distribution, and coding platform sync.*
 
 ---
 
-### Faculty Dashboard
+### Faculty Advisor Dashboard
 ![Faculty Dashboard](docs/screenshots/faculty_dashboard.png)
-Review student activities, monitor advisees, and manage approval workflows.
+*Faculty advisor interface displaying advisee statistics, pending reviews, and activity queues.*
 
 ---
 
-### Admin Dashboard
+### Administrator Dashboard
 ![Admin Dashboard](docs/screenshots/admin_dashboard.png)
-Centralized analytics, announcements, user management, and platform oversight.
+*Administrator overview with institutional KPI tracking, placement success rates, and user metrics.*
 
 ---
 
-### Activity Approval Workflow
+### Activity Approval Queue
 ![Activity Approval Workflow](docs/screenshots/activity_approval.png)
-Faculty and administrators can approve, reject, or request revisions for student activities.
+*Faculty review interface for inspecting proof documents and submitting approval decisions.*
 
 ---
 
-### Talent Discovery Module
+### Talent Discovery Engine
 ![Talent Discovery Module](docs/screenshots/talent_discovery.png)
-Identify students using coding profiles, developer scores, academic metrics, and placement readiness indicators.
+*Multi-parameter candidate search engine supporting filtering by GPA, developer score, and skills.*
 
 ---
 
-## 🧠 Engineering Challenges & Learnings
+## Testing and Quality Assurance
 
-1. **Native JWT Authentication Strategy**: Migrating from external providers to a self-contained, native JWT architecture required careful handling of token lifecycle states, secure local storage caching structures, and request-level user activity validation to protect role-based access.
-2. **GPU-Accelerated CSS Architecture**: Designing custom CSS layouts loaded with micro-animations and smooth scroll progression hooks often introduces repaint latency. Implementing hardware-accelerated transforms (`translate3d` and strict declarative classes) within our custom animation hooks (`useScrollAnimation.js`) maintained standard 60 FPS transitions across highly dense analytics dashboards.
-3. **Decoupled Multi-Role Security Routing**: To support multiple access levels cleanly, we architected dynamic authorization boundary wrappers (`ProtectedRoute.jsx`). This approach eliminated UI layout flickering during authentication validation by wrapping asynchronous data fetch states with minimal React Suspense fallbacks.
+The repository includes end-to-end and automated audit test suites:
 
----
+### End-to-End Tests (Playwright)
+Located in `testing/e2e/` (15 spec files):
+* `mandatory_workflow.spec.js`: End-to-end student submission and faculty approval flow.
+* `auth_resilience.spec.js`: Multi-role login, token refresh, and session expiration handling.
+* `security_penetration.spec.js`: Injection, parameter tampering, and route authorization checks.
+* `admin.spec.js`, `faculty.spec.js`, `student.spec.js`: Role-specific workspace assertions.
+* `accessibility.spec.js`, `responsive_overflow.spec.js`: UI viewport and accessibility testing.
 
-## ⚡ Performance & Optimizations
+Run E2E tests:
+```bash
+cd testing
+npm install
+npx playwright test
+```
 
-* **Code Splitting & Lazy Routing**: Heavy dashboard views, charting elements, and PDF export logic modules are loaded asynchronously via React `lazy()` wrappers. This keeps the initial JavaScript bundle footprint minimal.
-* **Component Memoization**: Heavy computing loops (such as continuous sorting operations across student coding metrics and cumulative contribution heatmaps) utilize `useMemo` hooks to prevent redundant virtual DOM reconciliations.
-* **Optimized Observer Lifecycle Handling**: Infinite window listeners are replaced with native `IntersectionObserver` patterns inside our UI hooks. This allows DOM elements to fade in gracefully only when crossing the active viewport boundary, drastically reducing idle background CPU overhead.
+### Performance & Hardening Scripts
+Located in `testing/scripts/` and `server/scripts/`:
+* `benchmarkTalentDiscovery.js`: Tests talent search aggregation across 10k, 25k, 50k, and 100k synthetic datasets.
+* `run-scoring-hardening-tests.js`: Tests developer score formulas against edge cases and malformed inputs.
+* `run-lock-audit.js`: Tests distributed sync lock acquisition and timeout reclamation.
+* `transaction-failure-simulation.js`: Simulates mid-transaction network drops to verify rollback integrity.
 
----
-
-## 🛡️ Security Best Practices Implemented
-
-* **JWT Signature Validations**: Frontend actions require active authorization Bearer credentials. The API authenticates incoming requests strictly via cryptographically secure JSON Web Tokens (`jwt.verify`) prior to routing logic.
-* **Schema Integrity Enforcement**: Strict server-side field presence validations inside `authController.js` reject bad input payloads. This prevents untrusted accounts from executing privilege escalations across protected student or faculty boundaries.
-* **Environment Sandboxing**: Production logic blocks access paths depending on current stage definitions, separating local testing secrets from live cloud setups.
-
----
-
-## 🔮 Future Roadmap
-
-* **Real-time WebSockets Integration**: Introducing native Socket.IO communication paths to stream real-time visual alerts to faculty when priority assignment verification files are submitted.
-* **Automated Coding Profile Scrapers**: Moving manual API metrics collection to automated background Cron job pipelines running cloud-based worker pools.
-* **Plagiarism & Proof AI Verification**: Implementing computer vision parsing layers to automatically identify overlapping text segments or fraudulent verification certificates during file uploads.
-
----
-
-## 🤝 Contributing Guidelines
-
-We welcome community collaboration! To contribute:
-
-1. Fork the repository directly via GitHub.
-2. Create a targeted branch referencing the task (`git checkout -b feature/enhanced-dashboard`).
-3. Commit clean, concise source tracking records (`git commit -m "feat: updated reporting layouts"`).
-4. Push updates to your fork (`git push origin feature/enhanced-dashboard`).
-5. Open a well-documented Pull Request detailing target logic updates.
+### CI/CD Pipeline
+GitHub Actions workflow (`.github/workflows/e2e.yml`) automatically boots an isolated MongoDB 7 container, builds the frontend, starts the API, and runs the Playwright test suite on all pushes and pull requests.
 
 ---
 
-## 👨‍💻 Author Section
+## Known Limitations
 
-**Bhavishya Gupta**  
-*Full-Stack Software Engineer*
-
-* **GitHub**: [@bhavishyagupta11](https://github.com/bhavishyagupta11)
-* **LinkedIn**: [Bhavishya Gupta](https://linkedin.com/in/bhavishyagupta11)
-* **Specialization**: Scalable Web Application Development, Cloud Architectures, and Highly Responsive User Interfaces.
+* **External API Rate Limits**: Synchronizing GitHub, LeetCode, and Codeforces profiles makes live HTTP calls to third-party endpoints. In rapid successive sync attempts, upstream platform rate limits may apply. A 10-minute cooldown lock per user mitigates unnecessary requests.
+* **Resume Parsing Duration**: Document extraction and Gemini AI evaluation response times vary based on PDF layout complexity and upstream API latency (typically 2–5 seconds).
+* **Local Cloudinary Requirement**: Uploading proof documents and avatars requires active Cloudinary credentials; local filesystem fallback is available for development in `server/uploads`.
 
 ---
 
-## 📄 License
+## Author
 
-This software is publicly released and maintained under the terms of the **ISC License**. Refer to the underlying [LICENSE](LICENSE) structure for direct text references.
+**Bhavishya Gupta**
+* Full-Stack Software Engineer
+* GitHub: [@bhavishyagupta11](https://github.com/bhavishyagupta11)
+* LinkedIn: [Bhavishya Gupta](https://linkedin.com/in/bhavishyagupta11)
+
+---
+
+## License
+
+This project is licensed under the terms of the [ISC License](LICENSE).
