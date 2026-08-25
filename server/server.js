@@ -91,6 +91,7 @@ import developerSyncRoutes from './routes/developerSync.js';
 import supportRoutes       from './routes/support.js';
 import ticketRoutes        from './routes/tickets.js';
 import trackRoutes         from './routes/tracks.js';
+import publicRoutes        from './routes/public.js';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -222,6 +223,7 @@ app.use('/api/developer',     developerSyncRoutes);
 app.use('/api/support',       supportRoutes);
 app.use('/api/tickets',       ticketRoutes);
 app.use('/api/tracks',        trackRoutes);
+app.use('/api/public',        publicRoutes);
 
 logStartup('ROUTES_READY');
 
