@@ -489,35 +489,86 @@ export function LandingPage() {
             </div>
           </div>
 
-          {/* ─── Value Steps ─────────────────────────────────────────────── */}
-          <div ref={valueStepsContainerRef} className="grid gap-5 md:grid-cols-3 mt-24">
-            {[
-              { 
-                t: 'Activity Logging', 
-                d: 'Students submit certifications, research papers, projects, and achievements with Cloudinary file attachments.', 
-                icon: <Award className="w-5 h-5" /> 
-              },
-              { 
-                t: 'Faculty Verification', 
-                d: 'Advisors review submissions, verify documentation, and approve credentials or request revisions in a FIFO queue.', 
-                icon: <CheckCircle2 className="w-5 h-5" /> 
-              },
-              { 
-                t: 'Talent Discovery', 
-                d: 'Administrators filter student portfolios, developer scores, and academic metrics for campus placement drives.', 
-                icon: <Target className="w-5 h-5" /> 
-              },
-            ].map((v, index) => (
-              <div key={v.t} ref={setValueStepRef(index)} className="card p-6 flex items-start gap-4 border feature-card group" style={{ borderColor: 'var(--border-color)' }}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300 group-hover:scale-110" style={{ background: 'rgba(var(--primary-rgb), 0.12)', color: 'var(--accent)' }}>
-                  {v.icon}
-                </div>
-                <div className="space-y-1">
-                  <h3 className="font-bold text-base" style={{ fontFamily: 'var(--font-display)' }}>{v.t}</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{v.d}</p>
-                </div>
+          {/* ─── Operational Workflow Trace ──────────────────────────────── */}
+          <div ref={valueStepsContainerRef} className="mt-28 space-y-10">
+            {/* Section Header */}
+            <div className="space-y-2 pb-6 border-b" style={{ borderColor: 'var(--border-color)' }}>
+              <div className="text-xs font-mono font-bold uppercase tracking-widest" style={{ color: 'var(--accent)' }}>
+                Core Workflow
               </div>
-            ))}
+              <div className="flex flex-col md:flex-row md:items-baseline justify-between gap-2">
+                <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
+                  From submission to verified academic records
+                </h2>
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  Three-stage verification pipeline and institutional audit trail
+                </p>
+              </div>
+            </div>
+
+            {/* Workflow Steps Trace */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8 relative">
+              {[
+                {
+                  index: '01',
+                  actor: 'Student',
+                  title: 'Student Submission',
+                  desc: 'Students submit certifications, research papers, projects, and achievements with supporting documentation.',
+                  artifacts: ['ACTIVITY LOG', 'DOCUMENT PROOF', 'SUBMISSION TIME'],
+                },
+                {
+                  index: '02',
+                  actor: 'Faculty Advisor',
+                  title: 'Faculty Verification',
+                  desc: 'Advisors review submissions, inspect attached documentation, and approve credentials or request revisions in a FIFO queue.',
+                  artifacts: ['REVIEW QUEUE', 'DECISION LOG', 'POINTS VALIDATION'],
+                },
+                {
+                  index: '03',
+                  actor: 'Administrator',
+                  title: 'Institutional Access',
+                  desc: 'Administrators search and filter verified student records using academic metrics, developer scores, and placement criteria.',
+                  artifacts: ['GPA FILTER', 'DEV SCORE', 'DRIVE SHORTLIST'],
+                },
+              ].map((step, idx) => (
+                <div
+                  key={step.index}
+                  ref={setValueStepRef(idx)}
+                  className="space-y-4 relative group"
+                >
+                  {/* Step Index & Connector Line */}
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-xs font-bold tracking-widest" style={{ color: 'var(--accent)' }}>
+                      {step.index}
+                    </span>
+                    <div className="h-px flex-1" style={{ background: 'var(--border-color)' }} />
+                    <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                      {step.actor}
+                    </span>
+                  </div>
+
+                  {/* Step Title & Description */}
+                  <div className="space-y-2">
+                    <h3 className="font-bold text-base tracking-tight" style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+                      {step.title}
+                    </h3>
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                      {step.desc}
+                    </p>
+                  </div>
+
+                  {/* System Metadata Trace */}
+                  <div className="pt-2 flex flex-wrap gap-2 text-[10px] font-mono tracking-wider" style={{ color: 'var(--text-secondary)' }}>
+                    {step.artifacts.map((art, aIdx) => (
+                      <span key={aIdx} className="inline-flex items-center gap-1.5 opacity-80">
+                        {aIdx > 0 && <span style={{ color: 'var(--border-color)' }}>/</span>}
+                        <span>{art}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
