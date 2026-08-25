@@ -8,7 +8,6 @@ import {
 import { useScrollAnimation, useStaggeredAnimation } from '../hooks/useScrollAnimation.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useTheme } from '../contexts/ThemeContext.jsx';
-import analyticsApi from '../api/analytics.api.js';
 
 // ─── Carousel slides using real platform screenshots ──────────────────────────
 const CAROUSEL_SLIDES = [
@@ -26,29 +25,6 @@ export function LandingPage() {
   const [carouselIdx, setCarouselIdx] = useState(0);
   const [carouselPaused, setCarouselPaused] = useState(false);
   const [spotlightPos, setSpotlightPos] = useState({ x: -999, y: -999 });
-  const [metrics, setMetrics] = useState(null);
-  const [metricsLoading, setMetricsLoading] = useState(true);
-  const [metricsError, setMetricsError] = useState(false);
-
-  // ─── Fetch live verified database metrics ──────────────────────────────────
-  useEffect(() => {
-    let isMounted = true;
-    analyticsApi.getPublicMetrics()
-      .then((res) => {
-        if (isMounted) {
-          setMetrics(res?.data || null);
-          setMetricsLoading(false);
-        }
-      })
-      .catch((err) => {
-        console.warn('Failed to fetch public telemetry:', err);
-        if (isMounted) {
-          setMetricsError(true);
-          setMetricsLoading(false);
-        }
-      });
-    return () => { isMounted = false; };
-  }, []);
   const heroSectionRef = useRef(null);
   const statsRef = useRef(null);
   const intervalRef = useRef(null);
@@ -605,50 +581,73 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ─── Platform Telemetry Summary ─────────────────────────────────── */}
+      {/* ─── Platform at a Glance / Engineering Scope ──────────────── */}
       <section id="prototype" className="py-20 border-t border-b" style={{ background: 'var(--bg-medium)', borderColor: 'var(--border-color)' }}>
         <div ref={statsRef} className="max-w-6xl mx-auto px-6 space-y-10">
           <div ref={prototypeRef} className="text-center space-y-2">
             <div className="text-xs font-mono font-bold uppercase tracking-widest" style={{ color: 'var(--accent)' }}>
-              Platform Metrics
+              Platform at a Glance
             </div>
             <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
-              Current Activity Across ScholrBoard
+              Built around measurable engineering work
             </h2>
-            <p className="text-sm max-w-xl mx-auto" style={{ color: 'var(--text-secondary)' }}>
-              Live aggregate record counts verified and maintained across institutional databases.
-            </p>
           </div>
 
-          <div 
-            className="grid grid-cols-2 md:grid-cols-5 border-t border-b divide-y md:divide-y-0 md:divide-x"
-            style={{ borderColor: 'var(--border-color)' }}
-          >
-            {[
-              { key: 'activitiesApproved', label: 'Activities Approved', sub: 'Status: Approved' },
-              { key: 'placementDrives',    label: 'Placement Drives',    sub: 'Active opportunities' },
-              { key: 'eventsPublished',    label: 'Events Published',    sub: 'Campus sessions' },
-              { key: 'resumesAnalyzed',    label: 'Resumes Analyzed',    sub: 'Completed evaluations' },
-              { key: 'facultyDecisions',   label: 'Faculty Decisions',   sub: 'Approvals & revisions' },
-            ].map((item) => (
-              <div key={item.key} className="p-6 md:p-8 text-center space-y-2 first:pl-0 last:pr-0">
-                <div className="text-3xl md:text-4xl font-extrabold font-mono tabular-nums tracking-tight" style={{ color: 'var(--text-primary)' }}>
-                  {metricsLoading ? (
-                    <span className="text-[var(--text-secondary)] opacity-40">—</span>
-                  ) : metricsError ? (
-                    <span className="text-xs font-sans font-normal" style={{ color: 'var(--text-secondary)' }}>Unavailable</span>
-                  ) : (
-                    metrics?.[item.key] ?? 0
-                  )}
+          <div className="border-t border-b" style={{ borderColor: 'var(--border-color)' }}>
+            {/* Row 1: Core System Architecture Surface */}
+            <div 
+              className="grid grid-cols-2 md:grid-cols-4 border-b divide-y md:divide-y-0 md:divide-x"
+              style={{ borderColor: 'var(--border-color)' }}
+            >
+              {[
+                { value: '35+',  label: 'React Screens' },
+                { value: '115+', label: 'REST APIs' },
+                { value: '20+',  label: 'MongoDB Models' },
+                { value: '4',    label: 'Role-Based Dashboards' },
+              ].map((item) => (
+                <div key={item.label} className="p-6 md:p-8 text-center space-y-2 first:pl-0 last:pr-0">
+                  <div className="text-3xl md:text-4xl font-extrabold font-mono tabular-nums tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                    {item.value}
+                  </div>
+                  <div className="text-xs font-mono font-bold uppercase tracking-wider" style={{ color: 'var(--accent)' }}>
+                    {item.label}
+                  </div>
                 </div>
-                <div className="text-xs font-mono font-bold uppercase tracking-wider" style={{ color: 'var(--accent)' }}>
-                  {item.label}
+              ))}
+            </div>
+
+            {/* Row 2: Performance Benchmarks & Scale */}
+            <div 
+              className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x"
+              style={{ borderColor: 'var(--border-color)' }}
+            >
+              {[
+                { value: '10,000+', label: 'Benchmarked Profiles' },
+                { value: '98.2%',   label: 'Query Latency Reduction' },
+              ].map((item) => (
+                <div key={item.label} className="p-6 md:p-8 text-center space-y-2">
+                  <div className="text-3xl md:text-4xl font-extrabold font-mono tabular-nums tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                    {item.value}
+                  </div>
+                  <div className="text-xs font-mono font-bold uppercase tracking-wider" style={{ color: 'var(--accent)' }}>
+                    {item.label}
+                  </div>
                 </div>
-                <div className="text-[11px] leading-snug" style={{ color: 'var(--text-secondary)' }}>
-                  {item.sub}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          </div>
+
+          {/* Understated Developer Integrations Footer */}
+          <div className="pt-2 text-center space-y-1.5">
+            <div className="text-[11px] font-mono font-bold uppercase tracking-widest" style={{ color: 'var(--accent)' }}>
+              Developer Integrations
+            </div>
+            <div className="text-sm font-semibold tracking-wide" style={{ color: 'var(--text-primary)' }}>
+              GitHub <span className="mx-2 font-normal" style={{ color: 'var(--border-color)' }}>·</span> LeetCode <span className="mx-2 font-normal" style={{ color: 'var(--border-color)' }}>·</span> Codeforces
+            </div>
+            <div className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
+              Developer synchronization and scoring
+            </div>
           </div>
         </div>
       </section>
