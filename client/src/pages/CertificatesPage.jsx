@@ -30,9 +30,9 @@ function CertCard({ cert, onDelete }) {
   const [fetchingPdf, setFetchingPdf] = useState(false);
 
   const handleViewProof = async (url) => {
+    const proxyEndpoint = `/upload/proxy?url=${encodeURIComponent(url)}`;
     try {
       setFetchingPdf(true);
-      const proxyEndpoint = `/upload/proxy?url=${encodeURIComponent(url)}`;
       const { blob, contentType } = await fetchBlob(proxyEndpoint);
       if (!contentType.toLowerCase().includes('application/pdf')) {
         throw new Error('Invalid content type received.');
