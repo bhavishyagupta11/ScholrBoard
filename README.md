@@ -17,7 +17,7 @@ Full-stack academic operations, credential verification, and student portfolio m
 ScholrBoard is a web application designed to manage student credentials, extracurricular achievement verification, and placement readiness across universities and colleges.
 
 ### The Problem
-Colleges and universities often track extracurricular activities, certifications, coding profiles, on-duty attendance, and placement preparation across disconnected spreadsheets, paper records, and Google Forms. This causes administrative bottlenecks, unverified resume claims, delayed faculty reviews, and slow institutional reporting for accreditation frameworks such as NAAC and NIRF.
+Colleges and universities often track extracurricular activities, certifications, coding profiles, on-duty attendance, and placement preparation across disconnected spreadsheets, paper records, and Google Forms. This causes administrative bottlenecks, unverified resume claims, delayed faculty reviews, and slow institutional reporting for institutional reviews and departmental reporting.
 
 ### The Solution
 ScholrBoard provides a role-based platform with distinct interfaces for students, faculty advisors, department coordinators, and administrators. It implements structured activity submission queues with atomic database updates, automated developer profile aggregation across coding platforms, AI-assisted resume evaluation, and an index-optimized talent discovery search engine.
