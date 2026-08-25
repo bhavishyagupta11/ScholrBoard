@@ -83,9 +83,9 @@ export function StudentOdPage() {
   };
 
   const handleViewProof = async (od) => {
+    const proxyEndpoint = `/upload/proxy?url=${encodeURIComponent(od.proofUrl)}`;
     try {
       setFetchingPdfId(od._id);
-      const proxyEndpoint = `/upload/proxy?url=${encodeURIComponent(od.proofUrl)}`;
       const { blob, contentType } = await fetchBlob(proxyEndpoint);
       if (!contentType.toLowerCase().includes('application/pdf')) {
         throw new Error('Invalid content type received.');
