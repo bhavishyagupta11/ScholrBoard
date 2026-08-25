@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { 
-  ChevronDown, LayoutGrid, BarChart2, ArrowRight, Sparkles, Zap, Target, 
-  Sun, Moon, CheckCircle2, FileText,
+  ChevronDown, LayoutGrid, BarChart2, ArrowRight, Zap, Target, 
+  Sun, Moon, CheckCircle2, FileText, Menu,
   Users, Calendar, Briefcase, Award, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { useScrollAnimation, useStaggeredAnimation } from '../hooks/useScrollAnimation.js';
@@ -11,7 +11,7 @@ import { useTheme } from '../contexts/ThemeContext.jsx';
 
 // ─── Carousel slides using real platform screenshots ──────────────────────────
 const CAROUSEL_SLIDES = [
-  { src: '/assets/student-dashboard.png', label: 'Student Dashboard', caption: 'Unified student workspace' },
+  { src: '/assets/student-dashboard.png', label: 'Student Dashboard', caption: 'Student workspace' },
   { src: '/assets/admin-dashboard.png',   label: 'Admin Dashboard',   caption: 'Placement & analytics hub' },
   { src: '/assets/faculty-dashboard.png', label: 'Faculty Portal',    caption: 'Activity review & approvals' },
   { src: '/assets/student360.png',        label: 'Student 360°',      caption: 'Advisor mentoring view' },
@@ -162,64 +162,64 @@ export function LandingPage() {
     {
       title: 'Resume Analyzer',
       icon: <FileText className="w-5 h-5" />,
-      desc: 'AI-powered ATS scoring, skills extraction, and personalized improvements via Google Gemini API.',
-      bullets: ['Instant ATS scorecard out of 100', 'Automatic skills and gap identification', 'Live PDF preview and download controls'],
+      desc: 'ATS compatibility evaluation, skills extraction, and section recommendations powered by Google Gemini API.',
+      bullets: ['ATS scorecard evaluation out of 100', 'Skills and keyword gap identification', 'Client-side PDF and DOCX parsing'],
       img: '/assets/student-dashboard.png'
     },
     {
       title: 'Placement Portal',
       icon: <Briefcase className="w-5 h-5" />,
-      desc: 'Sleek drive coordinator supporting eligibility filters, matching metrics, and application status updates.',
-      bullets: ['Automated drive publishing', 'Direct application pipelines', 'Shortlist to selection statuses'],
+      desc: 'Placement drive management supporting candidate eligibility criteria, application tracking, and shortlists.',
+      bullets: ['Configurable drive eligibility filters', 'Direct student application pipelines', 'Shortlist to selection statuses'],
       img: '/assets/admin-dashboard.png'
     },
     {
       title: 'Student Achievement Tracker',
       icon: <Award className="w-5 h-5" />,
-      desc: 'Centralized database cataloging student activities, certificates, and student-submitted proofs.',
-      bullets: ['Pre-populated edit forms', 'Cloudinary certificate attachments', 'Role-based point distribution'],
+      desc: 'Centralized database cataloging student extracurricular activities, certifications, and verification proofs.',
+      bullets: ['Categorized submission forms', 'Cloudinary certificate attachments', 'Rule-based point distribution'],
       img: '/assets/student-dashboard.png'
     },
     {
       title: 'Faculty Approvals Queue',
       icon: <CheckCircle2 className="w-5 h-5" />,
-      desc: 'Interactive evaluation list supporting quick approvals, rejection notes, or revision flags.',
-      bullets: ['One-click revision requests', 'Integrated document previews', 'Instant points validation'],
+      desc: 'Faculty verification interface supporting approval decisions, rejection rationale, and revision requests.',
+      bullets: ['FIFO review queue', 'Integrated document previews', 'Transactional points calculation'],
       img: '/assets/faculty-dashboard.png'
     },
     {
       title: 'Events System',
       icon: <Calendar className="w-5 h-5" />,
-      desc: 'Admin dashboard to broadcast campus events, hackathons, and seminars to specific CSE batches.',
-      bullets: ['Department filters (e.g. CSE)', 'Registration status persistence', 'Notification alerts on publish'],
+      desc: 'Campus event management to organize technical symposiums, hackathons, and department seminars.',
+      bullets: ['Department and batch filters', 'Registration capacity tracking', 'In-app notification dispatch'],
       img: '/assets/student-dashboard.png'
     },
     {
       title: 'Notifications Hub',
       icon: <Zap className="w-5 h-5" />,
-      desc: 'Interactive bell menu aligned to the topbar with persistent unread badge indicators and counts.',
-      bullets: ['Sleek notification dropdown', 'One-click read acknowledgement', 'Badge counts sync on refresh'],
+      desc: 'Notification bell menu in the navigation bar with unread status indicators and persistent counts.',
+      bullets: ['Top navigation dropdown', 'One-click read acknowledgment', 'Persistent badge count sync'],
       img: '/assets/student-dashboard.png'
     },
     {
       title: 'Student 360 View',
       icon: <Users className="w-5 h-5" />,
-      desc: 'Advisor workspace containing verified point distributions, attendance ratings, and GPA metrics.',
-      bullets: ['Verified portfolio checklists', 'CGPA & backlog audit trackers', 'Placement readiness metrics'],
+      desc: 'Advisor mentoring workspace with academic records, GPA trends, activity histories, and verified credentials.',
+      bullets: ['Verified credential checklist', 'GPA and backlog tracking', 'Cross-platform coding ratings'],
       img: '/assets/student360.png'
     },
     {
       title: 'Talent Discovery',
       icon: <Target className="w-5 h-5" />,
-      desc: 'Admin candidate search panels with filters, skill requirements, and student profile drawers.',
-      bullets: ['Filter by CGPA or skills', 'Detailed drawer views', 'Direct advisor linkages'],
+      desc: 'Candidate discovery search engine with multi-parameter filtering on developer scores, GPA, and skills.',
+      bullets: ['Filter by developer score and GPA', 'Detailed candidate drawer views', 'Direct Excel (.xlsx) data export'],
       img: '/assets/talent-discovery.png'
     },
     {
       title: 'Analytics & Reporting',
       icon: <BarChart2 className="w-5 h-5" />,
-      desc: 'Accreditation reporting suite showing placement stats and department performance outcomes.',
-      bullets: ['Ready for NIRF & NAAC audits', 'Student distribution graphs', 'Outcomes analysis tables'],
+      desc: 'Institutional reporting dashboard showing placement metrics and department activity distributions.',
+      bullets: ['Institutional summary reports', 'Student distribution charts', 'Department performance tables'],
       img: '/assets/admin-dashboard.png'
     }
   ];
@@ -235,7 +235,7 @@ export function LandingPage() {
         aria-hidden="true"
       />
       
-      {/* ─── Premium Glass Header ───────────────────────────────────────────── */}
+      {/* ─── Glass Header ───────────────────────────────────────────────────── */}
       <header className="glass-nav fixed top-4 left-4 right-4 z-50 flex justify-center rounded-2xl border shadow-lg" style={{ background: 'var(--surface-glass)', borderColor: 'var(--border-color)', backdropFilter: 'blur(20px)' }}>
         <div className="max-w-6xl w-full mx-auto px-4 md:px-6 py-3 flex justify-between items-center">
           <a href="/" className="flex items-center gap-2.5 flex-shrink-0 group">
@@ -248,13 +248,13 @@ export function LandingPage() {
 
           <div className="hidden md:flex items-center gap-6">
             <nav className="flex items-center text-sm space-x-1">
-              <a href="#features" className="text-sm font-semibold px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-500" style={{ color: 'var(--text-secondary)' }}>Product Showcase</a>
+              <a href="#features" className="text-sm font-semibold px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-500" style={{ color: 'var(--text-secondary)' }}>Modules</a>
               <a href="#prototype" className="text-sm font-semibold px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-500" style={{ color: 'var(--text-secondary)' }}>Metrics</a>
               
               {/* Customers Dropdown */}
               <div className="relative">
                 <button onClick={() => setCustomersOpen(v => !v)} className="text-sm font-semibold px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-500 flex items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
-                  <span>Customers</span>
+                  <span>Institutions</span>
                   <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${customersOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {customersOpen && (
@@ -268,7 +268,7 @@ export function LandingPage() {
                 )}
               </div>
               
-              <Link to="/contact" className="text-sm font-semibold px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-500" style={{ color: 'var(--text-secondary)' }}>Contact Us</Link>
+              <Link to="/contact" className="text-sm font-semibold px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-500" style={{ color: 'var(--text-secondary)' }}>Contact</Link>
             </nav>
             <div className="w-px h-5" style={{ background: 'var(--border-color)' }} />
             {role ? (
@@ -302,7 +302,9 @@ export function LandingPage() {
               {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
               <span className="hidden sm:inline">{theme === 'dark' ? 'Light' : 'Dark'}</span>
             </button>
-            <button className="md:hidden text-lg p-2 rounded-lg transition-colors hover:bg-amber-500/10" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle Mobile Menu" aria-expanded={mobileOpen}>☰</button>
+            <button className="md:hidden text-lg p-2 rounded-lg transition-colors hover:bg-amber-500/10" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle Mobile Menu" aria-expanded={mobileOpen}>
+              <Menu className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </header>
@@ -310,7 +312,7 @@ export function LandingPage() {
       {/* Mobile Menu */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-40 p-6 pt-24 space-y-4" style={{ background: 'var(--bg-dark)' }}>
-          <a href="#features" className="block py-2.5 text-lg font-bold border-b" style={{ borderColor: 'var(--border-color)' }} onClick={() => setMobileOpen(false)}>Product Showcase</a>
+          <a href="#features" className="block py-2.5 text-lg font-bold border-b" style={{ borderColor: 'var(--border-color)' }} onClick={() => setMobileOpen(false)}>Modules</a>
           <a href="#prototype" className="block py-2.5 text-lg font-bold border-b" style={{ borderColor: 'var(--border-color)' }} onClick={() => setMobileOpen(false)}>Performance Metrics</a>
           <Link to="/about" className="block py-2.5 text-lg font-bold border-b" style={{ borderColor: 'var(--border-color)' }} onClick={() => setMobileOpen(false)}>About Us</Link>
           <Link to="/faq" className="block py-2.5 text-lg font-bold border-b" style={{ borderColor: 'var(--border-color)' }} onClick={() => setMobileOpen(false)}>FAQ</Link>
@@ -365,20 +367,13 @@ export function LandingPage() {
         <div className="max-w-6xl mx-auto px-6 relative z-10">
           <div ref={heroRef} className="relative grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
             {/* Left: copy */}
-            <div className="space-y-7">
-              {/* Eyebrow badge */}
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold border" style={{ background: 'var(--accent-soft)', color: 'var(--accent)', borderColor: 'rgba(var(--primary-rgb), 0.2)' }}>
-                <Sparkles size={11} />
-                <span>Consolidated Campus Management Platform</span>
-              </div>
-
+            <div className="space-y-6">
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-extrabold leading-[1.1] tracking-tight" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
-                Keep Student Progress{' '}
-                <span style={{ color: 'var(--accent)' }}>Organized</span>
-                {' '}Without Chasing Forms.
+                Academic Operations and Credential Verification{' '}
+                <span style={{ color: 'var(--accent)' }}>Unified</span>.
               </h1>
               <p className="text-lg leading-relaxed max-w-xl" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-sans)' }}>
-                ScholrBoard gives students, mentors, and administrators one unified workspace for verified achievements, AI-powered resume scores, and placement-ready credentials.
+                ScholrBoard provides role-based workspaces for students, faculty mentors, and administrators to track achievements, verify credentials, and manage placement readiness.
               </p>
               
               <div className="flex flex-wrap gap-3 pt-1">
@@ -387,22 +382,22 @@ export function LandingPage() {
                   className="btn btn-primary px-7 py-3.5 text-base font-bold flex items-center gap-2"
                 >
                   <LayoutGrid size={17} />
-                  <span>{role ? 'Go to Dashboard' : 'Get Started Free'}</span>
+                  <span>{role ? 'Go to Dashboard' : 'Open Workspace'}</span>
                   <ArrowRight size={16} />
                 </Link>
                 <a 
                   href="#features" 
                   className="btn btn-outline px-7 py-3.5 text-base font-bold flex items-center gap-1.5"
                 >
-                  <span>Explore Features</span>
+                  <span>Explore Modules</span>
                 </a>
               </div>
 
               {/* Trust indicators */}
               <div className="flex flex-wrap items-center gap-4 pt-2 text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-500" /> No credit card required</span>
-                <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-500" /> Role-based access</span>
-                <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-500" /> NAAC & NIRF ready</span>
+                <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-500" /> Role-based access control</span>
+                <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-500" /> Structured academic records</span>
+                <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-500" /> Verified credential pipelines</span>
               </div>
             </div>
 
@@ -497,9 +492,21 @@ export function LandingPage() {
           {/* ─── Value Steps ─────────────────────────────────────────────── */}
           <div ref={valueStepsContainerRef} className="grid gap-5 md:grid-cols-3 mt-24">
             {[
-              { t: 'Capture Milestones', d: 'Students add certificates, credentials, and projects in seconds with direct Cloudinary uploads.', icon: <Zap className="w-5 h-5" /> },
-              { t: 'Faculty Audit', d: 'Advisors inspect proofs and request revisions or approve credentials with one click.', icon: <Target className="w-5 h-5" /> },
-              { t: 'Recruiter Showcase', d: 'Automatically feeds verified portfolios and GPA profiles into live placement drives.', icon: <Sparkles className="w-5 h-5" /> },
+              { 
+                t: 'Activity Logging', 
+                d: 'Students submit certifications, research papers, projects, and achievements with Cloudinary file attachments.', 
+                icon: <Award className="w-5 h-5" /> 
+              },
+              { 
+                t: 'Faculty Verification', 
+                d: 'Advisors review submissions, verify documentation, and approve credentials or request revisions in a FIFO queue.', 
+                icon: <CheckCircle2 className="w-5 h-5" /> 
+              },
+              { 
+                t: 'Talent Discovery', 
+                d: 'Administrators filter student portfolios, developer scores, and academic metrics for campus placement drives.', 
+                icon: <Target className="w-5 h-5" /> 
+              },
             ].map((v, index) => (
               <div key={v.t} ref={setValueStepRef(index)} className="card p-6 flex items-start gap-4 border feature-card group" style={{ borderColor: 'var(--border-color)' }}>
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300 group-hover:scale-110" style={{ background: 'rgba(var(--primary-rgb), 0.12)', color: 'var(--accent)' }}>
@@ -518,14 +525,15 @@ export function LandingPage() {
       {/* ─── Product Showcase Grid ──────────────────────────────────────────── */}
       <section id="features" className="py-24" style={{ background: 'var(--bg-dark)' }}>
         <div className="max-w-6xl mx-auto px-6 space-y-14">
-          <div ref={featuresRef} className="text-center space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold mb-2" style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
-              <Sparkles size={11} />
-              <span>9 Integrated Modules</span>
+          <div ref={featuresRef} className="text-center space-y-3">
+            <div className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--accent)' }}>
+              Core Modules
             </div>
-            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>One Platform, Complete Visibility</h2>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
+              Centralized Campus Operations
+            </h2>
             <p className="text-lg max-w-2xl mx-auto leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              From parsing resumes with Gemini AI to exporting evidence for NAAC audits — ScholrBoard replaces disconnected spreadsheets.
+              From resume evaluation and coding platform synchronization to faculty review queues and institutional compliance reporting.
             </p>
           </div>
 
@@ -568,7 +576,7 @@ export function LandingPage() {
 
                   {s.title === 'Resume Analyzer' && (
                     <Link to="/login/student" className="mt-2 text-xs font-bold flex items-center gap-1 hover:underline" style={{ color: 'var(--accent)' }}>
-                      <span>Try Resume Analyzer</span>
+                      <span>Open Resume Analyzer</span>
                       <ArrowRight size={11} />
                     </Link>
                   )}
@@ -583,10 +591,10 @@ export function LandingPage() {
       <section id="prototype" className="py-20 border-t border-b" style={{ background: 'var(--bg-medium)', borderColor: 'var(--border-color)' }}>
         <div ref={statsRef} className="max-w-6xl mx-auto px-6">
           <div ref={prototypeRef} className="text-center space-y-3 mb-12">
-            <div className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--accent)' }}>Platform Performance</div>
-            <h2 className="text-3xl font-extrabold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>Institutional Metrics, Real-Time</h2>
+            <div className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--accent)' }}>Platform Metrics</div>
+            <h2 className="text-3xl font-extrabold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>Institutional Activity Tracking</h2>
             <p className="text-base max-w-xl mx-auto" style={{ color: 'var(--text-secondary)' }}>
-              ScholrBoard powers campus operations across student achievement, placements, and accreditation.
+              Activity verification, placement drives, and accreditation reporting volume across the platform.
             </p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-5">
@@ -604,9 +612,9 @@ export function LandingPage() {
             {/* CTA glow */}
             <div aria-hidden="true" style={{ position: 'absolute', top: '-50%', left: '50%', transform: 'translateX(-50%)', width: '60%', height: '200px', background: 'radial-gradient(ellipse, rgba(var(--primary-rgb),0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
             <div className="relative space-y-4 z-10">
-              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>Get ScholrBoard For Your Campus</h2>
+              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>Implement ScholrBoard for Your Campus</h2>
               <p className="text-lg max-w-2xl mx-auto leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                Schedule a call with our implementation engineers to set up advisor hierarchies, student batch synchronization, and NAAC reporting directories.
+                Connect with our engineering team to configure advisor hierarchies, student batch structures, and institutional compliance reporting.
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-4 relative z-10">
@@ -621,7 +629,7 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ─── Premium Footer ──────────────────────────────────────────────────── */}
+      {/* ─── Footer ─────────────────────────────────────────────────────────── */}
       <footer className="py-14 border-t text-sm" style={{ borderColor: 'var(--border-color)', background: 'var(--bg-medium)' }}>
         <div className="max-w-6xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-10">
           <div className="col-span-2 md:col-span-1 space-y-4">
@@ -633,12 +641,12 @@ export function LandingPage() {
               </span>
             </a>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)', maxWidth: '200px' }}>
-              Accreditation, credentials auditing, and MERN-based placement readiness management for forward-looking engineering institutes.
+              Academic operations, credential verification, and placement readiness platform.
             </p>
           </div>
 
           <div className="space-y-3">
-            <h4 className="font-bold uppercase tracking-wider text-xs" style={{ color: 'var(--text-primary)' }}>Subpages</h4>
+            <h4 className="font-bold uppercase tracking-wider text-xs" style={{ color: 'var(--text-primary)' }}>Resources</h4>
             <ul className="space-y-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
               <li><Link to="/about" className="hover:text-amber-500 transition-colors">About Us</Link></li>
               <li><Link to="/contact" className="hover:text-amber-500 transition-colors">Contact Form</Link></li>
@@ -648,16 +656,16 @@ export function LandingPage() {
           </div>
 
           <div className="space-y-3">
-            <h4 className="font-bold uppercase tracking-wider text-xs" style={{ color: 'var(--text-primary)' }}>Admissions & Roles</h4>
+            <h4 className="font-bold uppercase tracking-wider text-xs" style={{ color: 'var(--text-primary)' }}>Portals</h4>
             <ul className="space-y-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-              <li><Link to="/login/student" className="hover:text-amber-500 transition-colors">Student Log-in</Link></li>
+              <li><Link to="/login/student" className="hover:text-amber-500 transition-colors">Student Portal</Link></li>
               <li><Link to="/login/faculty" className="hover:text-amber-500 transition-colors">Faculty Portal</Link></li>
               <li><Link to="/login/admin" className="hover:text-amber-500 transition-colors">Admin Dashboard</Link></li>
             </ul>
           </div>
 
           <div className="space-y-3">
-            <h4 className="font-bold uppercase tracking-wider text-xs" style={{ color: 'var(--text-primary)' }}>Legal Privacy</h4>
+            <h4 className="font-bold uppercase tracking-wider text-xs" style={{ color: 'var(--text-primary)' }}>Legal</h4>
             <ul className="space-y-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
               <li><Link to="/privacy" className="hover:text-amber-500 transition-colors">Privacy Policy</Link></li>
               <li><Link to="/terms" className="hover:text-amber-500 transition-colors">Terms of Service</Link></li>
