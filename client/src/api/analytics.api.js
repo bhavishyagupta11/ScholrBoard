@@ -21,6 +21,9 @@ export const analyticsApi = {
 
   /** Coordinator: coordinator-scoped analytics */
   getCoordinatorAnalytics: () => api.get('/analytics/coordinator'),
+
+  /** Public: landing page verified aggregate metrics */
+  getPublicMetrics: () => api.get('/public/metrics'),
 };
 
 export default analyticsApi;
