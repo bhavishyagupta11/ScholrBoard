@@ -33,10 +33,6 @@ export function FacultyDashboard() {
   const { user } = useAuth();
   const isCoordinator = (user?.role === 'faculty' && user?.facultyLevel === 'coordinator');
 
-  if (isCoordinator) {
-    return <CoordinatorDashboard />;
-  }
-
   const navigate = useNavigate();
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
@@ -72,6 +68,10 @@ export function FacultyDashboard() {
       .catch((err) => console.error('Failed to fetch assigned tickets', err))
       .finally(() => setLoadingTickets(false));
   }, []);
+
+  if (isCoordinator) {
+    return <CoordinatorDashboard />;
+  }
 
   return (
     <div className="space-y-6">
