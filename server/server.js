@@ -55,7 +55,7 @@ checkOptionalFeature('Email Service', ['EMAIL_USER', 'EMAIL_PASS']);
 logStartup('LOGGER_READY');
 
 /**
- * server.js — Production-ready Express server
+ * server.js — Express server entry point
  */
 import express from 'express';
 import cors from 'cors';
