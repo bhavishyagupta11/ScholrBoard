@@ -92,7 +92,7 @@ export function useTalentDiscovery() {
       }
     });
     // Reset page to 1 on filter mutation unless page index is explicitly supplied
-    if (!newFilters.hasOwnProperty('page')) {
+    if (!('page' in newFilters)) {
       updated.set('page', '1');
     }
     setSearchParams(updated);
