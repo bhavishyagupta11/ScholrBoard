@@ -190,9 +190,9 @@ export function LandingPage() {
 
           <div className="hidden md:flex items-center gap-6">
             <nav className="flex items-center text-sm space-x-1">
+              <a href="#core-workflow" className="text-sm font-semibold px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-500" style={{ color: 'var(--text-secondary)' }}>Workflow</a>
               <a href="#features" className="text-sm font-semibold px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-500" style={{ color: 'var(--text-secondary)' }}>Modules</a>
               <a href="#prototype" className="text-sm font-semibold px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-500" style={{ color: 'var(--text-secondary)' }}>Metrics</a>
-              <a href="#core-workflow" className="text-sm font-semibold px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-500" style={{ color: 'var(--text-secondary)' }}>Workflow</a>
               <Link to="/contact" className="text-sm font-semibold px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-500" style={{ color: 'var(--text-secondary)' }}>Contact</Link>
             </nav>
             <div className="w-px h-5" style={{ background: 'var(--border-color)' }} />
@@ -237,9 +237,9 @@ export function LandingPage() {
       {/* Mobile Menu */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-40 p-6 pt-24 space-y-4" style={{ background: 'var(--bg-dark)' }}>
+          <a href="#core-workflow" className="block py-2.5 text-lg font-bold border-b" style={{ borderColor: 'var(--border-color)' }} onClick={() => setMobileOpen(false)}>Workflow</a>
           <a href="#features" className="block py-2.5 text-lg font-bold border-b" style={{ borderColor: 'var(--border-color)' }} onClick={() => setMobileOpen(false)}>Modules</a>
           <a href="#prototype" className="block py-2.5 text-lg font-bold border-b" style={{ borderColor: 'var(--border-color)' }} onClick={() => setMobileOpen(false)}>Performance Metrics</a>
-          <a href="#core-workflow" className="block py-2.5 text-lg font-bold border-b" style={{ borderColor: 'var(--border-color)' }} onClick={() => setMobileOpen(false)}>Workflow</a>
           <Link to="/about" className="block py-2.5 text-lg font-bold border-b" style={{ borderColor: 'var(--border-color)' }} onClick={() => setMobileOpen(false)}>About Us</Link>
           <Link to="/faq" className="block py-2.5 text-lg font-bold border-b" style={{ borderColor: 'var(--border-color)' }} onClick={() => setMobileOpen(false)}>FAQ</Link>
           <Link to="/contact" className="block py-2.5 text-lg font-bold" onClick={() => setMobileOpen(false)}>Contact Us</Link>
