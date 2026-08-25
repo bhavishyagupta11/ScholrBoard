@@ -28,6 +28,7 @@ export function LandingPage() {
   const heroSectionRef = useRef(null);
   const statsRef = useRef(null);
   const intervalRef = useRef(null);
+  const dropdownRef = useRef(null);
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   
@@ -44,6 +45,28 @@ export function LandingPage() {
     await logout();
     window.location.href = '/';
   };
+
+  // Close dropdown on outside click or Escape
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setCustomersOpen(false);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setCustomersOpen(false);
+      }
+    };
+    if (customersOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [customersOpen]);
 
   // Scroll animation hooks
   const heroRef = useScrollAnimation({ direction: 'up', delay: 0.1 });
@@ -194,19 +217,51 @@ export function LandingPage() {
               <a href="#features" className="text-sm font-semibold px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-500" style={{ color: 'var(--text-secondary)' }}>Modules</a>
               <a href="#prototype" className="text-sm font-semibold px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-500" style={{ color: 'var(--text-secondary)' }}>Metrics</a>
               
-              {/* Customers Dropdown */}
-              <div className="relative">
-                <button onClick={() => setCustomersOpen(v => !v)} className="text-sm font-semibold px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-500 flex items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
+              {/* Institutions Dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <button 
+                  onClick={() => setCustomersOpen(v => !v)} 
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setCustomersOpen(v => !v);
+                    }
+                  }}
+                  aria-expanded={customersOpen}
+                  aria-haspopup="true"
+                  className="text-sm font-semibold px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-amber-500/10 hover:text-amber-500 flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-amber-500/40" 
+                  style={{ color: 'var(--text-secondary)' }}
+                >
                   <span>Institutions</span>
                   <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${customersOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {customersOpen && (
-                  <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 min-w-[160px] rounded-xl border p-1.5 shadow-xl z-20 animate-dropdown" style={{ background: 'var(--bg-medium)', borderColor: 'var(--border-color)', boxShadow: '0 16px 40px rgba(0,0,0,0.15)' }}>
-                    {['Universities', 'Colleges', 'Institutes'].map((x) => (
-                      <div key={x} className="px-3 py-2 rounded-lg hover:bg-amber-500/10 hover:text-amber-500 cursor-pointer text-sm font-medium transition-colors" onClick={() => setCustomersOpen(false)}>
-                        {x}
+                  <div 
+                    className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-80 rounded-xl border p-2 shadow-2xl z-20 animate-dropdown" 
+                    style={{ background: 'var(--bg-medium)', borderColor: 'var(--border-color)', boxShadow: '0 16px 40px rgba(0,0,0,0.25)' }}
+                    role="menu"
+                  >
+                    <div className="px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider border-b mb-1" style={{ color: 'var(--accent)', borderColor: 'var(--border-color)' }}>
+                      Coordination Workspace
+                    </div>
+                    <Link 
+                      to={role === 'faculty' ? '/faculty' : '/login/faculty'} 
+                      className="block p-3 rounded-lg hover:bg-amber-500/10 transition-colors group focus:outline-none focus:bg-amber-500/10"
+                      onClick={() => setCustomersOpen(false)}
+                      role="menuitem"
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <Users size={16} className="mt-0.5 text-amber-500 flex-shrink-0" />
+                        <div className="space-y-0.5 text-left">
+                          <div className="text-xs font-bold transition-colors group-hover:text-amber-500" style={{ color: 'var(--text-primary)' }}>
+                            Coordinator Workspace
+                          </div>
+                          <div className="text-[11px] leading-snug" style={{ color: 'var(--text-secondary)' }}>
+                            Department-level student oversight, advisor coordination, activity reviews, and support.
+                          </div>
+                        </div>
                       </div>
-                    ))}
+                    </Link>
                   </div>
                 )}
               </div>
@@ -257,6 +312,7 @@ export function LandingPage() {
         <div className="md:hidden fixed inset-0 z-40 p-6 pt-24 space-y-4" style={{ background: 'var(--bg-dark)' }}>
           <a href="#features" className="block py-2.5 text-lg font-bold border-b" style={{ borderColor: 'var(--border-color)' }} onClick={() => setMobileOpen(false)}>Modules</a>
           <a href="#prototype" className="block py-2.5 text-lg font-bold border-b" style={{ borderColor: 'var(--border-color)' }} onClick={() => setMobileOpen(false)}>Performance Metrics</a>
+          <Link to={role === 'faculty' ? '/faculty' : '/login/faculty'} className="block py-2.5 text-lg font-bold border-b" style={{ borderColor: 'var(--border-color)' }} onClick={() => setMobileOpen(false)}>Coordinator Workspace</Link>
           <Link to="/about" className="block py-2.5 text-lg font-bold border-b" style={{ borderColor: 'var(--border-color)' }} onClick={() => setMobileOpen(false)}>About Us</Link>
           <Link to="/faq" className="block py-2.5 text-lg font-bold border-b" style={{ borderColor: 'var(--border-color)' }} onClick={() => setMobileOpen(false)}>FAQ</Link>
           <Link to="/contact" className="block py-2.5 text-lg font-bold" onClick={() => setMobileOpen(false)}>Contact Us</Link>
