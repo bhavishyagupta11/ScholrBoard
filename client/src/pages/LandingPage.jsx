@@ -8,6 +8,7 @@ import {
 import { useScrollAnimation, useStaggeredAnimation } from '../hooks/useScrollAnimation.js';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useTheme } from '../contexts/ThemeContext.jsx';
+import analyticsApi from '../api/analytics.api.js';
 
 // ─── Carousel slides using real platform screenshots ──────────────────────────
 const CAROUSEL_SLIDES = [
@@ -18,60 +19,36 @@ const CAROUSEL_SLIDES = [
   { src: '/assets/talent-discovery.png',  label: 'Talent Discovery',  caption: 'Candidate search & filters' },
 ];
 
-// ─── Stats with numeric targets for count-up ─────────────────────────────────
-const STATS = [
-  { target: 45000, suffix: '+', label: 'Activities Verified' },
-  { target: 120,   suffix: '+', label: 'Placement Drives' },
-  { target: 300,   suffix: '+', label: 'Events Organized' },
-  { target: 12000, suffix: '+', label: 'Resumes Analyzed' },
-  { target: 8500,  suffix: '+', label: 'Faculty Reviews' },
-];
-
-// ─── Count-up hook ────────────────────────────────────────────────────────────
-function useCountUp(target, duration = 2000, started = false) {
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    if (!started) return;
-    let startTime = null;
-    const step = (timestamp) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / duration, 1);
-      // Ease out cubic
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setValue(Math.floor(eased * target));
-      if (progress < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, [target, duration, started]);
-  return value;
-}
-
-// ─── Single stat card with count-up ──────────────────────────────────────────
-function StatCard({ target, suffix, label, started }) {
-  const value = useCountUp(target, 2000, started);
-  const display = target >= 1000
-    ? (value >= 1000 ? `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k` : value)
-    : value;
-  return (
-    <div className="card p-5 space-y-2 border text-center stat-card" style={{ borderColor: 'var(--border-color)' }}>
-      <div className="text-2xl md:text-3xl font-black text-amber-500 tabular-nums">
-        {display}{suffix}
-      </div>
-      <div className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
-        {label}
-      </div>
-    </div>
-  );
-}
-
 export function LandingPage() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [customersOpen, setCustomersOpen] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [carouselIdx, setCarouselIdx] = useState(0);
   const [carouselPaused, setCarouselPaused] = useState(false);
-  const [statsStarted, setStatsStarted] = useState(false);
   const [spotlightPos, setSpotlightPos] = useState({ x: -999, y: -999 });
+  const [metrics, setMetrics] = useState(null);
+  const [metricsLoading, setMetricsLoading] = useState(true);
+  const [metricsError, setMetricsError] = useState(false);
+
+  // ─── Fetch live verified database metrics ──────────────────────────────────
+  useEffect(() => {
+    let isMounted = true;
+    analyticsApi.getPublicMetrics()
+      .then((res) => {
+        if (isMounted) {
+          setMetrics(res?.data || null);
+          setMetricsLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to fetch public telemetry:', err);
+        if (isMounted) {
+          setMetricsError(true);
+          setMetricsLoading(false);
+        }
+      });
+    return () => { isMounted = false; };
+  }, []);
   const heroSectionRef = useRef(null);
   const statsRef = useRef(null);
   const intervalRef = useRef(null);
@@ -145,17 +122,7 @@ export function LandingPage() {
     };
   }, []);
 
-  // ─── Stats count-up IntersectionObserver ───────────────────────────────────
-  useEffect(() => {
-    const el = statsRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setStatsStarted(true); obs.disconnect(); } },
-      { threshold: 0.3 }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
+  
 
   // ─── Product Showcase Cards Data ───────────────────────────────────────────
   const showcases = [
@@ -638,19 +605,49 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ─── Stats & Metrics with Count-Up ──────────────────────────────────── */}
+      {/* ─── Platform Telemetry Summary ─────────────────────────────────── */}
       <section id="prototype" className="py-20 border-t border-b" style={{ background: 'var(--bg-medium)', borderColor: 'var(--border-color)' }}>
-        <div ref={statsRef} className="max-w-6xl mx-auto px-6">
-          <div ref={prototypeRef} className="text-center space-y-3 mb-12">
-            <div className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--accent)' }}>Platform Metrics</div>
-            <h2 className="text-3xl font-extrabold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>Institutional Activity Tracking</h2>
-            <p className="text-base max-w-xl mx-auto" style={{ color: 'var(--text-secondary)' }}>
-              Activity verification, placement drives, and accreditation reporting volume across the platform.
+        <div ref={statsRef} className="max-w-6xl mx-auto px-6 space-y-10">
+          <div ref={prototypeRef} className="text-center space-y-2">
+            <div className="text-xs font-mono font-bold uppercase tracking-widest" style={{ color: 'var(--accent)' }}>
+              Platform Metrics
+            </div>
+            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>
+              Current Activity Across ScholrBoard
+            </h2>
+            <p className="text-sm max-w-xl mx-auto" style={{ color: 'var(--text-secondary)' }}>
+              Live aggregate record counts verified and maintained across institutional databases.
             </p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-5">
-            {STATS.map((stat) => (
-              <StatCard key={stat.label} target={stat.target} suffix={stat.suffix} label={stat.label} started={statsStarted} />
+
+          <div 
+            className="grid grid-cols-2 md:grid-cols-5 border-t border-b divide-y md:divide-y-0 md:divide-x"
+            style={{ borderColor: 'var(--border-color)' }}
+          >
+            {[
+              { key: 'activitiesApproved', label: 'Activities Approved', sub: 'Status: Approved' },
+              { key: 'placementDrives',    label: 'Placement Drives',    sub: 'Active opportunities' },
+              { key: 'eventsPublished',    label: 'Events Published',    sub: 'Campus sessions' },
+              { key: 'resumesAnalyzed',    label: 'Resumes Analyzed',    sub: 'Completed evaluations' },
+              { key: 'facultyDecisions',   label: 'Faculty Decisions',   sub: 'Approvals & revisions' },
+            ].map((item) => (
+              <div key={item.key} className="p-6 md:p-8 text-center space-y-2 first:pl-0 last:pr-0">
+                <div className="text-3xl md:text-4xl font-extrabold font-mono tabular-nums tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                  {metricsLoading ? (
+                    <span className="text-[var(--text-secondary)] opacity-40">—</span>
+                  ) : metricsError ? (
+                    <span className="text-xs font-sans font-normal" style={{ color: 'var(--text-secondary)' }}>Unavailable</span>
+                  ) : (
+                    metrics?.[item.key] ?? 0
+                  )}
+                </div>
+                <div className="text-xs font-mono font-bold uppercase tracking-wider" style={{ color: 'var(--accent)' }}>
+                  {item.label}
+                </div>
+                <div className="text-[11px] leading-snug" style={{ color: 'var(--text-secondary)' }}>
+                  {item.sub}
+                </div>
+              </div>
             ))}
           </div>
         </div>
