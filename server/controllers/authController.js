@@ -20,10 +20,12 @@
  *     Server → auth.js middleware validates JWT
  *     Server → req.user contains { _id, role, department, email, ... }
  */
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import Profile from '../models/Profile.js';
 import { resolveTrackForDepartment } from '../utils/trackResolver.js';
+import { sendPasswordResetEmail } from '../services/emailService.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -311,5 +313,141 @@ export const refreshToken = async (req, res) => {
   } catch (error) {
     console.error('Refresh token error:', error);
     return res.status(500).json({ success: false, message: 'Token refresh failed' });
+  }
+};
+
+/**
+ * @desc    Request password recovery email
+ * @route   POST /api/auth/forgot-password
+ * @access  Public
+ */
+export const forgotPassword = async (req, res) => {
+  const genericSuccess = {
+    success: true,
+    message: 'If an account is associated with that email, a password reset link has been sent.',
+  };
+
+  try {
+    const { email, portalRole } = req.body;
+
+    if (!email || !portalRole) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and portal role are required.',
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Portal role must strictly be 'student' or 'faculty'
+    // Admin is completely excluded from self-service password recovery
+    if (portalRole !== 'student' && portalRole !== 'faculty') {
+      return res.status(200).json(genericSuccess);
+    }
+
+    const user = await User.findOne({ email: normalizedEmail, isActive: true });
+
+    // Anti-enumeration: if user doesn't exist, is inactive, is admin, or does not match portal role,
+    // silently return genericSuccess without issuing token or sending email
+    if (!user || (user.role !== 'student' && user.role !== 'faculty') || user.role !== portalRole) {
+      return res.status(200).json(genericSuccess);
+    }
+
+    // Generate 32-byte cryptographically secure random token
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    // Store only SHA-256 hash in database
+    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expires = new Date(Date.now() + 15 * 60 * 1000); // 15-minute expiration
+
+    user.resetPasswordToken = hashedToken;
+    user.resetPasswordExpires = expires;
+    await user.save();
+
+    const clientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
+    const resetUrl = `${clientOrigin.replace(/\/$/, '')}/reset-password?token=${rawToken}`;
+
+    // Send email using existing emailService
+    await sendPasswordResetEmail({
+      to: user.email,
+      name: user.name,
+      resetUrl,
+      expiresInMinutes: 15,
+    });
+
+    return res.status(200).json(genericSuccess);
+  } catch (error) {
+    console.error('forgotPassword error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Unable to process password reset request. Please try again later.',
+    });
+  }
+};
+
+/**
+ * @desc    Reset password using recovery token
+ * @route   POST /api/auth/reset-password
+ * @access  Public
+ */
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token and new password are required.',
+      });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters long.',
+      });
+    }
+
+    // Hash incoming token to match database hash
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Find user with active token and unexpired
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: new Date() },
+      isActive: true,
+    }).select('+password +resetPasswordToken +resetPasswordExpires');
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'This password reset link is invalid or has expired.',
+      });
+    }
+
+    // Role verification: only student or faculty are eligible
+    if (user.role !== 'student' && user.role !== 'faculty') {
+      return res.status(400).json({
+        success: false,
+        message: 'This password reset link is invalid or has expired.',
+      });
+    }
+
+    // Update password (will be bcrypt hashed by pre-save hook)
+    user.password = password;
+    // Invalidate token (single-use)
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password reset successful. You can now sign in with your new password.',
+    });
+  } catch (error) {
+    console.error('resetPassword error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to reset password. Please try again later.',
+    });
   }
 };
