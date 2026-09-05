@@ -203,3 +203,56 @@ export const sendTicketNotification = async (data) => {
     console.error(`[EmailService] Failed to send ticket notification: ${err.message}`);
   }
 };
+
+/**
+ * sendPasswordResetEmail — Sends password recovery email with reset link.
+ *
+ * @param {Object} data - { to, name, resetUrl, expiresInMinutes }
+ */
+export const sendPasswordResetEmail = async ({ to, name, resetUrl, expiresInMinutes = 15 }) => {
+  try {
+    const transporter = getTransporter();
+    if (!transporter) {
+      console.info('[EmailService] Skipping password reset email — transporter not configured.');
+      return;
+    }
+    if (!to || !resetUrl) return;
+
+    const mailOptions = {
+      from: `"ScholrBoard Security" <${process.env.EMAIL_USER}>`,
+      to,
+      subject: 'Password Reset Request - ScholrBoard',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <div style="background: linear-gradient(135deg, #3b82f6, #8b5cf6); padding: 20px; border-radius: 6px 6px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 20px;">🔒 Password Reset Request</h1>
+          </div>
+          <div style="padding: 24px; background: #f8fafc;">
+            <p style="color: #1e293b; font-size: 15px; margin-top: 0;">Hi ${name || 'there'},</p>
+            <p style="color: #475569; font-size: 14px; line-height: 1.5;">
+              Someone requested a password reset for your ScholrBoard account. If this was you, use the button below to create a new password.
+            </p>
+            <div style="text-align: center; margin: 28px 0;">
+              <a href="${resetUrl}" style="background-color: #3b82f6; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block;">Reset Password</a>
+            </div>
+            <p style="color: #64748b; font-size: 13px; line-height: 1.4;">
+              This link expires in <strong>${expiresInMinutes} minutes</strong>.
+            </p>
+            <p style="color: #94a3b8; font-size: 12px; margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 12px; line-height: 1.4;">
+              If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.
+            </p>
+          </div>
+          <div style="padding: 12px 24px; background: #f1f5f9; border-radius: 0 0 6px 6px; font-size: 12px; color: #94a3b8; text-align: center;">
+            ScholrBoard Platform Security
+          </div>
+        </div>
+      `,
+      text: `Hi ${name || 'there'},\n\nSomeone requested a password reset for your ScholrBoard account. If this was you, use the link below to create a new password:\n\n${resetUrl}\n\nThis link expires in ${expiresInMinutes} minutes.\n\nIf you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.`,
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.info(`[EmailService] Password reset email sent successfully to ${to}`);
+  } catch (err) {
+    console.error(`[EmailService] Failed to send password reset email: ${err.message}`);
+  }
+};
