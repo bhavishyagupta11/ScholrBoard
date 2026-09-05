@@ -9,6 +9,7 @@ import { ThemeProvider } from './contexts/ThemeContext.jsx';
 const StudentLoginPage = lazy(() => import('./pages/auth/StudentLoginPage').then((module) => ({ default: module.StudentLoginPage })));
 const FacultyLoginPage = lazy(() => import('./pages/auth/FacultyLoginPage').then((module) => ({ default: module.FacultyLoginPage })));
 const AdminLoginPage = lazy(() => import('./pages/auth/AdminLoginPage').then((module) => ({ default: module.AdminLoginPage })));
+const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage.jsx').then((module) => ({ default: module.ResetPasswordPage })));
 const LandingPage = lazy(() => import('./pages/LandingPage.jsx').then((module) => ({ default: module.LandingPage })));
 const StudentLayout = lazy(() => import('./layouts/StudentLayout.jsx').then((module) => ({ default: module.StudentLayout })));
 const FacultyLayout = lazy(() => import('./layouts/FacultyLayout.jsx').then((module) => ({ default: module.FacultyLayout })));
@@ -122,6 +123,7 @@ export default function App() {
 								<Route path="/cookies" element={<CookiePolicyPage />} />
 								<Route path="/faq" element={<FaqPage />} />
 								<Route path="/support" element={<SupportPage />} />
+								<Route path="/reset-password" element={<ResetPasswordPage />} />
 								<Route path="/login" element={<AuthOverlay />}>
 									<Route index element={<Navigate to="/login/student" replace />} />
 									<Route path="student" element={<StudentLoginPage presentation="modal" />} />
