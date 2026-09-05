@@ -3,6 +3,7 @@ import { Eye, EyeOff, GraduationCap } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { SignupForm } from './SignupForm';
+import { ForgotPasswordForm } from './ForgotPasswordForm';
 
 export function BaseLoginForm({ role, additionalFields = [], disableSignup = false, presentation = 'page' }) {
   const navigate = useNavigate();
@@ -83,6 +84,17 @@ export function BaseLoginForm({ role, additionalFields = [], disableSignup = fal
     );
   }
 
+  if (formType === 'forgot') {
+    return (
+      <ForgotPasswordForm
+        role={role}
+        onBackToLogin={() => setFormType('login')}
+        presentation={presentation}
+        initialEmail={formData.email}
+      />
+    );
+  }
+
   return (
     <div
       className={presentation === 'modal' ? 'auth-form-frame' : 'min-h-screen grid place-items-center p-6'}
@@ -137,6 +149,18 @@ export function BaseLoginForm({ role, additionalFields = [], disableSignup = fal
               </button>
             </div>
           </div>
+
+          {role !== 'admin' && (
+            <div className="flex justify-end -mt-1">
+              <button
+                type="button"
+                onClick={() => setFormType('forgot')}
+                className="text-xs text-brand-blue hover:underline focus:outline-none transition-colors"
+              >
+                Forgot password?
+              </button>
+            </div>
+          )}
 
           {error && (
             <div className="text-red-400 text-sm">{error}</div>
