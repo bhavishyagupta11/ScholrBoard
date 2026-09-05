@@ -50,7 +50,12 @@ const checkOptionalFeature = (name, keys) => {
 };
 checkOptionalFeature('Cloudinary', ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET']);
 checkOptionalFeature('Gemini AI', ['GEMINI_API_KEY']);
-checkOptionalFeature('Email Service', ['EMAIL_USER', 'EMAIL_PASS']);
+const hasResend = !!(process.env.RESEND_API_KEY || (process.env.SMTP_PASS?.startsWith('re_')));
+if (!hasResend) {
+  logWarning('Email Service disabled. Missing: RESEND_API_KEY');
+} else {
+  logStartup('EMAIL_SERVICE_CONFIGURED (Resend HTTPS API)');
+}
 
 logStartup('LOGGER_READY');
 
