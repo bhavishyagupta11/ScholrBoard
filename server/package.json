@@ -30,6 +30,7 @@
     "multer": "^2.0.2",
     "nodemailer": "^9.0.0",
     "pdf-parse": "^2.4.5",
+    "resend": "^6.26.0",
     "svix": "^1.76.1"
   },
   "devDependencies": {
