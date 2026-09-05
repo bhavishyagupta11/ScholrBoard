@@ -47,6 +47,18 @@ export const authApi = {
   logout: () => {
     clearToken();
   },
+
+  /**
+   * Request password reset link
+   * @param {Object} data - { email, portalRole }
+   */
+  forgotPassword: (data) => api.post('/auth/forgot-password', data),
+
+  /**
+   * Reset password with token
+   * @param {Object} data - { token, password }
+   */
+  resetPassword: (data) => api.post('/auth/reset-password', data),
 };
 
 export default authApi;
