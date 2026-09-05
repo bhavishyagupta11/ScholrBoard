@@ -330,7 +330,10 @@ export const forgotPassword = async (req, res) => {
   try {
     const { email, portalRole } = req.body;
 
+    console.log(`[PASSWORD RESET] Forgot password request received for portal: "${portalRole || 'none'}"`);
+
     if (!email || !portalRole) {
+      console.warn('[PASSWORD RESET] Request rejected: missing email or portalRole');
       return res.status(400).json({
         success: false,
         message: 'Email and portal role are required.',
@@ -342,6 +345,7 @@ export const forgotPassword = async (req, res) => {
     // Portal role must strictly be 'student' or 'faculty'
     // Admin is completely excluded from self-service password recovery
     if (portalRole !== 'student' && portalRole !== 'faculty') {
+      console.warn(`[PASSWORD RESET] Ineligible portalRole: "${portalRole}". Returning generic response (Anti-Enumeration).`);
       return res.status(200).json(genericSuccess);
     }
 
@@ -349,9 +353,22 @@ export const forgotPassword = async (req, res) => {
 
     // Anti-enumeration: if user doesn't exist, is inactive, is admin, or does not match portal role,
     // silently return genericSuccess without issuing token or sending email
-    if (!user || (user.role !== 'student' && user.role !== 'faculty') || user.role !== portalRole) {
+    if (!user) {
+      console.log('[PASSWORD RESET] User lookup: No active account found for given email. Returning generic response (Anti-Enumeration).');
       return res.status(200).json(genericSuccess);
     }
+
+    if (user.role === 'admin') {
+      console.log('[PASSWORD RESET] User lookup: Account is an admin. Self-service reset excluded. Returning generic response (Anti-Enumeration).');
+      return res.status(200).json(genericSuccess);
+    }
+
+    if (user.role !== portalRole) {
+      console.log(`[PASSWORD RESET] User lookup: Role mismatch (account role is "${user.role}", requested portal is "${portalRole}"). Returning generic response (Anti-Enumeration).`);
+      return res.status(200).json(genericSuccess);
+    }
+
+    console.log(`[PASSWORD RESET] Eligible user verified (role: ${user.role}). Generating recovery token...`);
 
     // Generate 32-byte cryptographically secure random token
     const rawToken = crypto.randomBytes(32).toString('hex');
@@ -362,17 +379,23 @@ export const forgotPassword = async (req, res) => {
     user.resetPasswordToken = hashedToken;
     user.resetPasswordExpires = expires;
     await user.save();
+    console.log('[PASSWORD RESET] Recovery token hash and expiry stored in database.');
 
-    const clientOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
+    const rawOrigin = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
+    const clientOrigin = rawOrigin.includes(',') ? rawOrigin.split(',')[0].trim() : rawOrigin.trim();
     const resetUrl = `${clientOrigin.replace(/\/$/, '')}/reset-password?token=${rawToken}`;
 
     // Send email using existing emailService
-    await sendPasswordResetEmail({
+    const emailResult = await sendPasswordResetEmail({
       to: user.email,
       name: user.name,
       resetUrl,
       expiresInMinutes: 15,
     });
+
+    if (!emailResult?.success) {
+      console.error(`[PASSWORD RESET] Email delivery issue encountered: ${emailResult?.error || 'Unknown error'}. Generic response maintained for client.`);
+    }
 
     return res.status(200).json(genericSuccess);
   } catch (error) {
@@ -393,7 +416,10 @@ export const resetPassword = async (req, res) => {
   try {
     const { token, password } = req.body;
 
+    console.log('[PASSWORD RESET] Reset password submission received');
+
     if (!token || !password) {
+      console.warn('[PASSWORD RESET] Reset submission rejected: missing token or password');
       return res.status(400).json({
         success: false,
         message: 'Token and new password are required.',
@@ -401,6 +427,7 @@ export const resetPassword = async (req, res) => {
     }
 
     if (password.length < 8) {
+      console.warn('[PASSWORD RESET] Reset submission rejected: password length < 8');
       return res.status(400).json({
         success: false,
         message: 'Password must be at least 8 characters long.',
@@ -418,6 +445,7 @@ export const resetPassword = async (req, res) => {
     }).select('+password +resetPasswordToken +resetPasswordExpires');
 
     if (!user) {
+      console.warn('[PASSWORD RESET] Reset token invalid, expired, or already consumed.');
       return res.status(400).json({
         success: false,
         message: 'This password reset link is invalid or has expired.',
@@ -426,6 +454,7 @@ export const resetPassword = async (req, res) => {
 
     // Role verification: only student or faculty are eligible
     if (user.role !== 'student' && user.role !== 'faculty') {
+      console.warn(`[PASSWORD RESET] Ineligible account role (${user.role}) attempted password reset.`);
       return res.status(400).json({
         success: false,
         message: 'This password reset link is invalid or has expired.',
@@ -438,6 +467,8 @@ export const resetPassword = async (req, res) => {
     user.resetPasswordToken = null;
     user.resetPasswordExpires = null;
     await user.save();
+
+    console.log(`[PASSWORD RESET] Password successfully updated for ${user.role} user. Token cleared.`);
 
     return res.status(200).json({
       success: true,
