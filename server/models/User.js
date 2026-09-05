@@ -152,6 +152,18 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+
+    // --- Password Recovery ---
+    resetPasswordToken: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      default: null,
+      select: false,
+    },
   },
   {
     timestamps: true,         // adds createdAt + updatedAt automatically
@@ -164,6 +176,7 @@ const userSchema = new mongoose.Schema(
 userSchema.index({ role: 1, department: 1 });   // admin: filter by role + dept
 userSchema.index({ role: 1, verified: 1 });      // faculty: list unverified students
 userSchema.index({ email: 1, role: 1 });         // login flow
+userSchema.index({ resetPasswordToken: 1 });     // password reset lookup
 userSchema.index(
   { studentId: 1 },
   { unique: true, partialFilterExpression: { studentId: { $type: 'string' } } }
