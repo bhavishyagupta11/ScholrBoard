@@ -1,0 +1,93 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: scholrboard-mongodb
+    restart: unless-stopped
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - scholrboard-network
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --eval 'try { rs.status().ok } catch(e) { rs.initiate({_id:\"rs0\",members:[{_id:0,host:\"mongodb:27017\"}]}).ok }' --quiet"]
+      interval: 3s
+      timeout: 5s
+      retries: 15
+      start_period: 4s
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    image: scholrboard-backend:latest
+    container_name: scholrboard-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - HOST=0.0.0.0
+      - NODE_ENV=production
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongodb:27017/scholrboard?replicaSet=rs0&directConnection=true}
+      - JWT_SECRET=${JWT_SECRET:-scholrboard_production_docker_jwt_secret_key_minimum_32_characters_here}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      - CLIENT_ORIGIN=${CLIENT_ORIGIN:-http://localhost:5173,http://localhost,http://localhost:80,http://127.0.0.1:5173}
+      - PUBLIC_API_URL=${PUBLIC_API_URL:-http://localhost:5000/api}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - FROM_EMAIL=${FROM_EMAIL:-}
+      - FROM_NAME=${FROM_NAME:-}
+      - ADMIN_CONTACT_EMAIL=${ADMIN_CONTACT_EMAIL:-}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    volumes:
+      - server_uploads:/app/uploads
+    networks:
+      - scholrboard-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/api/health/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=/api
+    image: scholrboard-frontend:latest
+    container_name: scholrboard-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - scholrboard-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:80/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  mongodb_data:
+    name: scholrboard_mongodb_data
+  server_uploads:
+    name: scholrboard_server_uploads
+
+networks:
+  scholrboard-network:
+    name: scholrboard_network
+    driver: bridge

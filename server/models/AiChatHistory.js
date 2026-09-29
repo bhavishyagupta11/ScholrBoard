@@ -89,7 +89,7 @@ const aiChatHistorySchema = new mongoose.Schema(
     // --- AI model used (future-proofing for multi-model support) ---
     modelUsed: {
       type: String,
-      default: 'gemini-2.0-flash',
+      default: 'gemini-2.5-flash',
     },
 
     // --- Stats ---

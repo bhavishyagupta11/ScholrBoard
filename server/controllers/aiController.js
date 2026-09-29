@@ -146,9 +146,9 @@ const generateWithModelFallback = async ({ prompt, systemInstruction, json = fal
   const errors = [];
   const models = [
     process.env.GEMINI_MODEL,
-    'gemini-flash-lite-latest',
     'gemini-2.5-flash',
-    'gemini-2.0-flash',
+    'gemini-3.8-flash',
+    'gemini-flash-lite-latest',
   ].filter(Boolean);
 
   for (const modelName of models) {
@@ -313,7 +313,7 @@ export const sendChatMessage = async (req, res) => {
     try {
       const genAI = getGeminiClient();
       const model = genAI.getGenerativeModel({
-        model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+        model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
         systemInstruction: systemContext,
       });
       const chat = model.startChat({ history: historyForGemini });

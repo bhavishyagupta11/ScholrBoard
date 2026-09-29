@@ -280,7 +280,8 @@ process.on('uncaughtException', (err) => {
 
 // ─── STARTUP ─────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
-server = app.listen(PORT, () => {
+const HOST = process.env.HOST || '0.0.0.0';
+server = app.listen(PORT, HOST, () => {
   app.set('server_listening', true);
   logStartup('SERVER_LISTENING');
   logStartup('APPLICATION_READY');

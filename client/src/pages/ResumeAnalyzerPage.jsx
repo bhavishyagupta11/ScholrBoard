@@ -735,50 +735,50 @@ export function ResumeAnalyzerPage() {
 
   const pollTimerRef = useRef(null);
   const fileInputRef = useRef(null);
+  const activeIdRef  = useRef(activeId);
 
-  // ── Fetch history list ───────────────────────────────────────────────────────
-  const fetchAnalyses = useCallback(async () => {
-    try {
-      const res = await uploadApi.getResumeAnalyses();
-      setAnalyses(res.analyses || []);
-    } catch (err) {
-      console.error('Failed to load analyses:', err);
-    } finally {
-      setLoadingHistory(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchAnalyses(); }, [fetchAnalyses]);
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
 
   // ── Poll a single analysis until completed/failed ────────────────────────────
-  const pollAnalysis = useCallback(async (id) => {
+  const pollAnalysis = useCallback((id) => {
     clearInterval(pollTimerRef.current);
 
     const check = async () => {
       try {
         const res = await uploadApi.getResumeAnalysis(id);
         const a   = res.analysis || res;
-        setActiveAnalysis(a);
+
+        // Only apply to UI if this polled item is still the active selection
+        if (activeIdRef.current === id) {
+          setActiveAnalysis(a);
+        }
+
         // Refresh history list so badges update
         setAnalyses(prev => prev.map(x => resolveId(x._id) === id ? { ...x, analysisStatus: a.analysisStatus } : x));
 
         if (a.analysisStatus === 'completed' || a.analysisStatus === 'failed') {
           clearInterval(pollTimerRef.current);
-          setProcessing(false);
-          if (a.analysisStatus === 'failed') {
-            setAnalysisError('AI analysis failed. Please try uploading again.');
+          if (activeIdRef.current === id) {
+            setProcessing(false);
+            if (a.analysisStatus === 'failed') {
+              setAnalysisError('AI analysis failed. Please try uploading again.');
+            }
           }
         }
       } catch (err) {
         console.error('Poll error:', err);
         clearInterval(pollTimerRef.current);
-        setProcessing(false);
-        setAnalysisError('Lost connection while checking analysis status.');
+        if (activeIdRef.current === id) {
+          setProcessing(false);
+          setAnalysisError('Lost connection while checking analysis status.');
+        }
       }
     };
 
     // Immediate first check
-    await check();
+    check();
     // Then every 4 seconds
     pollTimerRef.current = setInterval(check, 4000);
   }, []);
@@ -787,7 +787,9 @@ export function ResumeAnalyzerPage() {
 
   // ── Load a historical analysis on click ──────────────────────────────────────
   const loadAnalysis = useCallback(async (id) => {
-    if (activeId === id) return;
+    if (activeIdRef.current === id && activeAnalysis) return;
+    clearInterval(pollTimerRef.current);
+    activeIdRef.current = id;
     setActiveId(id);
     setActiveAnalysis(null);
     setAnalysisError(null);
@@ -796,16 +798,44 @@ export function ResumeAnalyzerPage() {
     try {
       const res = await uploadApi.getResumeAnalysis(id);
       const a   = res.analysis || res;
-      setActiveAnalysis(a);
 
-      if (a.analysisStatus === 'processing' || a.analysisStatus === 'pending') {
-        setProcessing(true);
-        pollAnalysis(id);
+      if (activeIdRef.current === id) {
+        setActiveAnalysis(a);
+
+        if (a.analysisStatus === 'processing' || a.analysisStatus === 'pending') {
+          setProcessing(true);
+          pollAnalysis(id);
+        }
       }
     } catch (err) {
-      setAnalysisError(err.message || 'Failed to load analysis.');
+      if (activeIdRef.current === id) {
+        setAnalysisError(err.message || 'Failed to load analysis.');
+      }
     }
-  }, [activeId, pollAnalysis]);
+  }, [activeAnalysis, pollAnalysis]);
+
+  // ── Fetch history list ───────────────────────────────────────────────────────
+  const fetchAnalyses = useCallback(async () => {
+    try {
+      const res = await uploadApi.getResumeAnalyses();
+      const list = res.analyses || [];
+      setAnalyses(list);
+
+      // Auto-select latest analysis on initial load if none currently selected
+      if (!activeIdRef.current && list.length > 0) {
+        const firstId = resolveId(list[0]._id);
+        if (firstId) {
+          loadAnalysis(firstId);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load analyses:', err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, [loadAnalysis]);
+
+  useEffect(() => { fetchAnalyses(); }, [fetchAnalyses]);
 
   // ── File handling ────────────────────────────────────────────────────────────
   const handleFile = (f) => {

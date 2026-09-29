@@ -261,7 +261,154 @@ ScholrBoard/
 
 ---
 
-## Installation and Local Setup
+## Docker Deployment (Recommended)
+
+ScholrBoard provides an enterprise-ready, containerized deployment using Docker and Docker Compose. All components—React frontend, Node.js backend, and a replica-set enabled MongoDB instance—run in isolated environments with healthchecks and persistent storage.
+
+### Architecture
+
+```text
+Browser / Client (Port 5173)
+       │
+       ▼
+Frontend Container (scholrboard-frontend)
+[ React 19 SPA + Nginx Alpine ]
+  • Serves static client bundle on port 80
+  • Reverse-proxies `/api/` traffic to `backend:5000`
+  • Handles SPA client-side routing fallbacks
+       │
+       ▼ (Internal Docker Network: scholrboard-network)
+Backend Container (scholrboard-backend)
+[ Node.js 20 Express 5 REST API ]
+  • Listens on port 5000
+  • Connects to external services over HTTPS (Google Gemini AI, Cloudinary, Resend)
+  • Executes business logic, auth, and AI workflows
+       │
+       ▼ (Internal Docker Network: scholrboard-network)
+Database Container (scholrboard-mongodb)
+[ MongoDB 7 Community ]
+  • Listens on port 27017
+  • Single-node replica set (`rs0`) enabled for multi-document ACID transactions
+  • Persistent data volume: `scholrboard_mongodb_data`
+```
+
+> **Note on MongoDB Replica Set**: ScholrBoard uses MongoDB transactions (via Mongoose `session.startTransaction()`) for atomic operations such as activity approval, point awarding, and audit logging. MongoDB requires a replica set (`--replSet rs0`) even in local/single-node deployments for transactions to function. This is automatically initiated by the Docker Compose healthcheck.
+
+### Prerequisites
+
+* **Docker Engine**: v24.0 or higher (or Docker Desktop)
+* **Docker Compose**: v2.20 or higher
+* **Git**: v2.30 or higher
+
+### Environment Configuration
+
+Configuration is managed via environment variables. Copy `.env.example` to create your local `.env`:
+
+```bash
+cp .env.example .env
+```
+
+> **Security Note**: Never commit `.env` or sensitive credentials to version control. The repository `.gitignore` and `.dockerignore` strictly ignore all `.env` files except `.env.example`.
+
+Key environment variables:
+* **Core**: `PORT=5000`, `NODE_ENV=production`, `CLIENT_ORIGIN=http://localhost:5173`, `PUBLIC_API_URL=http://localhost:5000/api`
+* **Database**: `MONGODB_URI=mongodb://mongodb:27017/scholrboard?replicaSet=rs0&directConnection=true`
+* **JWT Authentication**: `JWT_SECRET` (minimum 32-character secret), `JWT_EXPIRES_IN=7d`
+* **Google Gemini AI**:
+  * `GEMINI_API_KEY`: Your Google Gemini API key.
+  * `GEMINI_MODEL`: Gemini model name (default: `gemini-2.5-flash`).
+* **Cloudinary (Optional)**: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`. (Uploads fall back to local disk storage if unset).
+* **Resend Email (Optional)**: `RESEND_API_KEY`, `FROM_EMAIL`, `FROM_NAME`, `ADMIN_CONTACT_EMAIL`.
+
+### Build and Start Services
+
+Build the images and run the full stack in detached mode:
+
+```bash
+docker compose up --build -d
+```
+
+### Seed Initial Demo Accounts (Optional)
+
+Populate default tracks (Software Engineering and Core Engineering) along with demo credentials for all roles:
+
+```bash
+docker compose exec backend node scripts/seedInitialData.js
+```
+
+### Service Access Endpoints
+
+| Service | Access URL | Description |
+| :--- | :--- | :--- |
+| **Frontend Application** | [http://localhost:5173](http://localhost:5173) | Nginx Alpine serving React 19 SPA with `/api/` proxy |
+| **Backend REST API** | [http://localhost:5000/api](http://localhost:5000/api) | Node 20 Express 5 REST API |
+| **Health Check** | [http://localhost:5000/api/health](http://localhost:5000/api/health) | Real-time database and memory telemetry |
+| **Readiness Check** | [http://localhost:5000/api/health/ready](http://localhost:5000/api/health/ready) | Docker healthcheck verification endpoint |
+| **MongoDB** | `mongodb://localhost:27017` | Local MongoDB instance with replica set `rs0` |
+
+### Demo Credentials
+
+| Role | Portal Login URL | Email | Password |
+| :--- | :--- | :--- | :--- |
+| **Student** | [http://localhost:5173/login/student](http://localhost:5173/login/student) | `student@scholrboard.com` | `TestPass123!` |
+| **Faculty Advisor** | [http://localhost:5173/login/faculty](http://localhost:5173/login/faculty) | `faculty@scholrboard.com` | `TestPass123!` |
+| **Coordinator** | [http://localhost:5173/login/faculty](http://localhost:5173/login/faculty) | `coordinator@scholrboard.com` | `TestPass123!` |
+| **Administrator** | [http://localhost:5173/login/admin](http://localhost:5173/login/admin) | `admin@scholrboard.com` | `TestPass123!` |
+
+### Docker Management Commands
+
+* **Check service status**: `docker compose ps`
+* **View streaming logs**: `docker compose logs -f`
+* **View backend logs only**: `docker compose logs -f backend`
+* **Restart services**: `docker compose restart`
+* **Stop containers safely**: `docker compose down` *(MongoDB volume data is safely preserved)*
+* **Warning**: Do **not** run `docker compose down -v` unless you intentionally wish to delete all persisted MongoDB database volume data.
+
+---
+
+## Docker Hub Images
+
+ScholrBoard frontend and backend images can be published to Docker Hub for streamlined cloud or Kubernetes deployments. MongoDB utilizes the official `mongo:7` public image.
+
+### Image Names
+* **Frontend**: `<DOCKERHUB_USERNAME>/scholrboard-frontend:latest`
+* **Backend**: `<DOCKERHUB_USERNAME>/scholrboard-backend:latest`
+* **Database**: `mongo:7` (Official Docker Hub image)
+
+### Build, Tag, and Push Commands
+
+1. **Log in to Docker Hub**:
+   ```bash
+   docker login
+   ```
+
+2. **Build and Tag Images**:
+   ```bash
+   # Build frontend
+   docker build -t <DOCKERHUB_USERNAME>/scholrboard-frontend:latest ./client
+
+   # Build backend
+   docker build -t <DOCKERHUB_USERNAME>/scholrboard-backend:latest ./server
+   ```
+
+3. **Push to Docker Hub**:
+   ```bash
+   # Push frontend image
+   docker push <DOCKERHUB_USERNAME>/scholrboard-frontend:latest
+
+   # Push backend image
+   docker push <DOCKERHUB_USERNAME>/scholrboard-backend:latest
+   ```
+
+4. **Pull and Run Published Images**:
+   ```bash
+   docker pull <DOCKERHUB_USERNAME>/scholrboard-frontend:latest
+   docker pull <DOCKERHUB_USERNAME>/scholrboard-backend:latest
+   ```
+
+---
+
+## Manual Installation and Local Setup
 
 ### Prerequisites
 * **Node.js**: v20.0.0 or higher
