@@ -368,14 +368,25 @@ docker compose exec backend node scripts/seedInitialData.js
 
 ## Docker Hub Images
 
-ScholrBoard frontend and backend images can be published to Docker Hub for streamlined cloud or Kubernetes deployments. MongoDB utilizes the official `mongo:7` public image.
+ScholrBoard frontend and backend images are published to Docker Hub for streamlined cloud or Kubernetes deployments. MongoDB utilizes the official `mongo:7` public image.
 
-### Image Names
-* **Frontend**: `<DOCKERHUB_USERNAME>/scholrboard-frontend:latest`
-* **Backend**: `<DOCKERHUB_USERNAME>/scholrboard-backend:latest`
+### Published Repositories
+* **Frontend**: [`bhavishyagupta11/scholrboard-frontend`](https://hub.docker.com/r/bhavishyagupta11/scholrboard-frontend)
+  * Tags: `latest`, `1.0.0`
+* **Backend**: [`bhavishyagupta11/scholrboard-backend`](https://hub.docker.com/r/bhavishyagupta11/scholrboard-backend)
+  * Tags: `latest`, `1.0.0`
 * **Database**: `mongo:7` (Official Docker Hub image)
 
+### Pull Verified Images
+
+```bash
+docker pull bhavishyagupta11/scholrboard-frontend:latest
+docker pull bhavishyagupta11/scholrboard-backend:latest
+```
+
 ### Build, Tag, and Push Commands
+
+To rebuild and republish images:
 
 1. **Log in to Docker Hub**:
    ```bash
@@ -384,26 +395,22 @@ ScholrBoard frontend and backend images can be published to Docker Hub for strea
 
 2. **Build and Tag Images**:
    ```bash
-   # Build frontend
-   docker build -t <DOCKERHUB_USERNAME>/scholrboard-frontend:latest ./client
+   # Build & tag frontend
+   docker build -t bhavishyagupta11/scholrboard-frontend:latest -t bhavishyagupta11/scholrboard-frontend:1.0.0 ./client
 
-   # Build backend
-   docker build -t <DOCKERHUB_USERNAME>/scholrboard-backend:latest ./server
+   # Build & tag backend
+   docker build -t bhavishyagupta11/scholrboard-backend:latest -t bhavishyagupta11/scholrboard-backend:1.0.0 ./server
    ```
 
 3. **Push to Docker Hub**:
    ```bash
-   # Push frontend image
-   docker push <DOCKERHUB_USERNAME>/scholrboard-frontend:latest
+   # Push frontend images
+   docker push bhavishyagupta11/scholrboard-frontend:latest
+   docker push bhavishyagupta11/scholrboard-frontend:1.0.0
 
-   # Push backend image
-   docker push <DOCKERHUB_USERNAME>/scholrboard-backend:latest
-   ```
-
-4. **Pull and Run Published Images**:
-   ```bash
-   docker pull <DOCKERHUB_USERNAME>/scholrboard-frontend:latest
-   docker pull <DOCKERHUB_USERNAME>/scholrboard-backend:latest
+   # Push backend images
+   docker push bhavishyagupta11/scholrboard-backend:latest
+   docker push bhavishyagupta11/scholrboard-backend:1.0.0
    ```
 
 ---
