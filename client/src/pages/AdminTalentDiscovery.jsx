@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTalentDiscovery } from '../hooks/useTalentDiscovery.js';
 import CandidateDetailDrawer from '../components/developer/CandidateDetailDrawer.jsx';
+import EligibilityStatusBadge from '../components/developer/EligibilityStatusBadge.jsx';
 import { 
   Search, 
   Download, 
@@ -117,6 +118,8 @@ export function AdminTalentDiscovery() {
   const [localGpaMin, setLocalGpaMin] = useState(filters.gpaMin || '');
   const [localGpaMax, setLocalGpaMax] = useState(filters.gpaMax || '');
   const [localDevMin, setLocalDevMin] = useState(filters.developerScoreMin || '');
+  const [localPlacementMin, setLocalPlacementMin] = useState(filters.placementReadinessMin || '');
+  const [localCoverageMin, setLocalCoverageMin] = useState(filters.coverageMin || '');
   const [localAtsMin, setLocalAtsMin] = useState(filters.atsScoreMin || '');
   const [localSkills, setLocalSkills] = useState(filters.skills || '');
 
@@ -125,9 +128,11 @@ export function AdminTalentDiscovery() {
     setLocalGpaMin(filters.gpaMin || '');
     setLocalGpaMax(filters.gpaMax || '');
     setLocalDevMin(filters.developerScoreMin || '');
+    setLocalPlacementMin(filters.placementReadinessMin || '');
+    setLocalCoverageMin(filters.coverageMin || '');
     setLocalAtsMin(filters.atsScoreMin || '');
     setLocalSkills(filters.skills || '');
-  }, [filters.gpaMin, filters.gpaMax, filters.developerScoreMin, filters.atsScoreMin, filters.skills]);
+  }, [filters.gpaMin, filters.gpaMax, filters.developerScoreMin, filters.placementReadinessMin, filters.coverageMin, filters.atsScoreMin, filters.skills]);
 
   // Apply filter states
   const applyRangeFilters = () => {
@@ -135,6 +140,8 @@ export function AdminTalentDiscovery() {
       gpaMin: localGpaMin,
       gpaMax: localGpaMax,
       developerScoreMin: localDevMin,
+      placementReadinessMin: localPlacementMin,
+      coverageMin: localCoverageMin,
       atsScoreMin: localAtsMin,
       skills: localSkills
     });
@@ -156,19 +163,31 @@ export function AdminTalentDiscovery() {
   const handleExportExcel = () => {
     if (results.length === 0) return;
 
-    const exportRows = results.map(row => ({
-      Name: row.name,
-      Email: row.email,
-      Department: row.department || 'N/A',
-      Semester: row.semester || 'N/A',
-      'Developer Score': row.developerScore,
-      'GitHub Score': row.githubScore,
-      'DSA Score': row.dsaScore,
-      'CP Score': row.cpScore,
-      GPA: row.gpa,
-      'ATS Score': row.atsScore !== null ? row.atsScore : 'N/A',
-      Shortlisted: shortlistedIds.includes(row._id) ? 'Yes' : 'No'
-    }));
+    const exportRows = results.map(row => {
+      const eligibilityObj = row.eligibilityStatus || row.placementReadinessMeta?.eligibilityStatus;
+      const eligibilityStatusStr = typeof eligibilityObj === 'string'
+        ? eligibilityObj
+        : eligibilityObj?.status || 'UNKNOWN';
+
+      return {
+        Name: row.name,
+        Email: row.email,
+        Department: row.department || 'N/A',
+        Semester: row.semester || 'N/A',
+        'Developer Score': row.developerScore,
+        'Placement Readiness': row.placementReadinessScore != null ? row.placementReadinessScore : 'N/A',
+        'Coverage (%)': row.developerScoreMeta?.coverage != null ? row.developerScoreMeta.coverage : 'N/A',
+        'Confidence': row.developerScoreMeta?.confidence || 'Low',
+        'Freshness': row.developerScoreMeta?.freshness || 'Stale',
+        'Eligibility Status': eligibilityStatusStr,
+        GPA: row.gpa,
+        'GitHub Score': row.githubScore,
+        'DSA Score': row.dsaScore,
+        'CP Score': row.cpScore,
+        'ATS Score': row.atsScore !== null ? row.atsScore : 'N/A',
+        Shortlisted: shortlistedIds.includes(row._id) ? 'Yes' : 'No'
+      };
+    });
 
     const worksheet = XLSX.utils.json_to_sheet(exportRows);
     const workbook = XLSX.utils.book_new();
@@ -328,6 +347,91 @@ export function AdminTalentDiscovery() {
                   aria-label="Minimum Developer Score"
                 />
                 <span className="font-bold w-7 text-right">{localDevMin || 0}</span>
+              </div>
+            </div>
+
+            {/* Minimum Placement Readiness Score */}
+            <div className="space-y-2">
+              <span className="font-bold block" style={{ color: 'var(--text-muted)' }}>Min Placement Readiness</span>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min="0" max="100" step="5"
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer"
+                  value={localPlacementMin || 0}
+                  onChange={(e) => setLocalPlacementMin(e.target.value === '0' ? '' : e.target.value)}
+                  aria-label="Minimum Placement Readiness Score"
+                />
+                <span className="font-bold w-7 text-right">{localPlacementMin || 0}</span>
+              </div>
+            </div>
+
+            {/* Minimum Coverage (Standalone, Not Multiplied into Score) */}
+            <div className="space-y-2">
+              <div>
+                <span className="font-bold block" style={{ color: 'var(--text-muted)' }}>Minimum Coverage (%)</span>
+                <span className="text-[10px] subtle">Standalone; not multiplied into score</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min="0" max="100" step="5"
+                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer"
+                  value={localCoverageMin || 0}
+                  onChange={(e) => setLocalCoverageMin(e.target.value === '0' ? '' : e.target.value)}
+                  aria-label="Minimum Coverage Percentage"
+                />
+                <span className="font-bold w-7 text-right">{localCoverageMin || 0}%</span>
+              </div>
+            </div>
+
+            {/* Confidence & Freshness & Eligibility Selectors */}
+            <div className="space-y-2 pt-1 border-t border-neutral-800">
+              <span className="font-bold block" style={{ color: 'var(--text-muted)' }}>Score Quality & Eligibility</span>
+              
+              <div className="space-y-1">
+                <label className="subtle block" htmlFor="confidence-filter-select">Confidence Band</label>
+                <select
+                  id="confidence-filter-select"
+                  className="input-dark w-full px-2 py-1 text-xs"
+                  value={filters.confidence}
+                  onChange={(e) => updateFilters({ confidence: e.target.value })}
+                >
+                  <option value="">All Confidences</option>
+                  <option value="high">High Confidence</option>
+                  <option value="medium">Medium Confidence</option>
+                  <option value="low">Low Confidence</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="subtle block" htmlFor="freshness-filter-select">Freshness Band</label>
+                <select
+                  id="freshness-filter-select"
+                  className="input-dark w-full px-2 py-1 text-xs"
+                  value={filters.freshness}
+                  onChange={(e) => updateFilters({ freshness: e.target.value })}
+                >
+                  <option value="">All Freshness</option>
+                  <option value="fresh">Fresh (&lt; 14 days)</option>
+                  <option value="aging">Aging (14–30 days)</option>
+                  <option value="stale">Stale (&gt; 30 days)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="subtle block" htmlFor="eligibility-filter-select">Institutional Eligibility</label>
+                <select
+                  id="eligibility-filter-select"
+                  className="input-dark w-full px-2 py-1 text-xs"
+                  value={filters.eligibilityStatus}
+                  onChange={(e) => updateFilters({ eligibilityStatus: e.target.value })}
+                >
+                  <option value="">All Eligibility Statuses</option>
+                  <option value="eligible">ELIGIBLE Only</option>
+                  <option value="ineligible">INELIGIBLE Only</option>
+                  <option value="unknown">UNKNOWN (Prerequisites unverified)</option>
+                </select>
               </div>
             </div>
 
@@ -550,41 +654,69 @@ export function AdminTalentDiscovery() {
               <table className="w-full text-left border-collapse text-xs table-fixed">
                 <thead>
                   <tr className="font-semibold border-b" style={{ background: 'var(--bg-medium)', color: 'var(--text-secondary)', borderColor: 'var(--border-color)' }}>
-                    <th className="p-3.5 w-[130px] select-none">Name</th>
-                    <th className="p-3.5 w-[110px] select-none">Department</th>
-                    <th className="p-3.5 w-[65px] select-none">Sem</th>
+                    <th className="p-3 w-[125px] select-none">Name</th>
+                    <th className="p-3 w-[85px] select-none">Dept</th>
+                    <th className="p-3 w-[45px] select-none">Sem</th>
                     
                     {/* Sortable headers */}
                     <th 
                       onClick={() => handleSort('developerScore')}
-                      className="p-3.5 w-[110px] cursor-pointer table-header-sortable transition-colors select-none"
+                      className="p-3 w-[85px] cursor-pointer table-header-sortable transition-colors select-none"
                       aria-sort={(filters.sortBy === 'developerScore') ? (filters.sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
                     >
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1">
                         <span>Dev Score</span>
                         {(filters.sortBy === 'developerScore') ? (
-                          filters.sortOrder === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />
+                          filters.sortOrder === 'asc' ? <ChevronUp size={11} /> : <ChevronDown size={11} />
                         ) : null}
                       </div>
                     </th>
 
                     <th 
-                      onClick={() => handleSort('gpa')}
-                      className="p-3.5 w-[75px] cursor-pointer table-header-sortable transition-colors select-none"
-                      aria-sort={(filters.sortBy === 'gpa') ? (filters.sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                      onClick={() => handleSort('placementReadinessScore')}
+                      className="p-3 w-[85px] cursor-pointer table-header-sortable transition-colors select-none"
+                      aria-sort={(filters.sortBy === 'placementReadinessScore') ? (filters.sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
                     >
-                      <div className="flex items-center gap-1.5">
-                        <span>GPA</span>
-                        {(filters.sortBy === 'gpa') ? (
-                          filters.sortOrder === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />
+                      <div className="flex items-center gap-1">
+                        <span>Placement</span>
+                        {(filters.sortBy === 'placementReadinessScore') ? (
+                          filters.sortOrder === 'asc' ? <ChevronUp size={11} /> : <ChevronDown size={11} />
                         ) : null}
                       </div>
                     </th>
 
-                    <th className="p-3.5 w-[70px] select-none">ATS Score</th>
-                    <th className="p-3.5 w-[95px] select-none">Connections</th>
-                    <th className="p-3.5 w-[140px] select-none">Skills</th>
-                    <th className="p-3.5 w-[120px] text-right select-none">Actions</th>
+                    <th 
+                      onClick={() => handleSort('coverage')}
+                      className="p-3 w-[95px] cursor-pointer table-header-sortable transition-colors select-none"
+                      aria-sort={(filters.sortBy === 'coverage') ? (filters.sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>Coverage</span>
+                        {(filters.sortBy === 'coverage') ? (
+                          filters.sortOrder === 'asc' ? <ChevronUp size={11} /> : <ChevronDown size={11} />
+                        ) : null}
+                      </div>
+                    </th>
+
+                    <th className="p-3 w-[75px] select-none">Confidence</th>
+                    <th className="p-3 w-[105px] select-none">Eligibility</th>
+
+                    <th 
+                      onClick={() => handleSort('gpa')}
+                      className="p-3 w-[65px] cursor-pointer table-header-sortable transition-colors select-none"
+                      aria-sort={(filters.sortBy === 'gpa') ? (filters.sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>GPA</span>
+                        {(filters.sortBy === 'gpa') ? (
+                          filters.sortOrder === 'asc' ? <ChevronUp size={11} /> : <ChevronDown size={11} />
+                        ) : null}
+                      </div>
+                    </th>
+
+                    <th className="p-3 w-[75px] select-none">Connections</th>
+                    <th className="p-3 w-[110px] select-none">Skills</th>
+                    <th className="p-3 w-[85px] text-right select-none">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-850">
@@ -592,21 +724,24 @@ export function AdminTalentDiscovery() {
                     // Skeleton Table Rows
                     Array.from({ length: 5 }).map((_, i) => (
                       <tr key={`skeleton-${i}`}>
-                        <td className="p-4"><div className="skeleton h-3 w-2/3" /></td>
-                        <td className="p-4"><div className="skeleton h-3 w-3/4" /></td>
-                        <td className="p-4"><div className="skeleton h-3 w-1/2" /></td>
-                        <td className="p-4"><div className="skeleton h-3 w-1/3" /></td>
-                        <td className="p-4"><div className="skeleton h-3 w-1/3" /></td>
-                        <td className="p-4"><div className="skeleton h-3 w-1/3" /></td>
-                        <td className="p-4"><div className="skeleton h-3 w-1/2" /></td>
-                        <td className="p-4"><div className="skeleton h-3 w-3/4" /></td>
-                        <td className="p-4 text-right"><div className="skeleton h-6 w-1/2 ml-auto" /></td>
+                        <td className="p-3"><div className="skeleton h-3 w-2/3" /></td>
+                        <td className="p-3"><div className="skeleton h-3 w-3/4" /></td>
+                        <td className="p-3"><div className="skeleton h-3 w-1/2" /></td>
+                        <td className="p-3"><div className="skeleton h-3 w-1/3" /></td>
+                        <td className="p-3"><div className="skeleton h-3 w-1/3" /></td>
+                        <td className="p-3"><div className="skeleton h-3 w-1/3" /></td>
+                        <td className="p-3"><div className="skeleton h-3 w-1/3" /></td>
+                        <td className="p-3"><div className="skeleton h-3 w-1/2" /></td>
+                        <td className="p-3"><div className="skeleton h-3 w-1/3" /></td>
+                        <td className="p-3"><div className="skeleton h-3 w-1/2" /></td>
+                        <td className="p-3"><div className="skeleton h-3 w-3/4" /></td>
+                        <td className="p-3 text-right"><div className="skeleton h-6 w-1/2 ml-auto" /></td>
                       </tr>
                     ))
                   ) : error ? (
                     // API Error State
                     <tr>
-                      <td colSpan="9" className="p-8 text-center border-none">
+                      <td colSpan="12" className="p-8 text-center border-none">
                         <div className="flex flex-col items-center justify-center gap-2 text-red-500">
                           <AlertTriangle size={24} />
                           <span className="font-bold text-xs">Search failed: {error}</span>
@@ -616,7 +751,7 @@ export function AdminTalentDiscovery() {
                   ) : results.length === 0 ? (
                     // Empty Results State
                     <tr>
-                      <td colSpan="9" className="p-8 text-center border-none">
+                      <td colSpan="12" className="p-8 text-center border-none">
                         <div className="flex flex-col items-center justify-center gap-1.5 py-4" style={{ color: 'var(--text-secondary)' }}>
                           <Sliders size={24} />
                           <span className="font-semibold text-xs mt-1">No candidate records match your search criteria.</span>
@@ -656,7 +791,7 @@ export function AdminTalentDiscovery() {
                           <td className="p-3.5" style={{ color: 'var(--text-secondary)' }}>{row.semester || '—'}</td>
                           
                           {/* Developer Score pill */}
-                          <td className="p-3.5">
+                          <td className="p-3">
                             <span 
                               className="px-2 py-0.5 rounded text-[10px] font-bold border" 
                               style={getScoreBadgeStyle(row.developerScore)}
@@ -665,17 +800,60 @@ export function AdminTalentDiscovery() {
                             </span>
                           </td>
 
-                          {/* GPA */}
-                          <td className="p-3.5 font-bold">{row.gpa}</td>
-                          
-                          {/* ATS Score (nullable ATS contract rule) */}
-                          <td className="p-3.5" style={{ color: 'var(--text-secondary)' }}>
-                            {row.atsScore !== null ? (
-                              <span className="font-semibold">{row.atsScore}</span>
+                          {/* Placement Readiness */}
+                          <td className="p-3 font-semibold" style={{ color: 'var(--text-primary)' }}>
+                            {row.placementReadinessScore != null ? (
+                              <span>{row.placementReadinessScore}</span>
                             ) : (
-                              <span className="subtle font-medium">N/A</span>
+                              <span className="subtle font-normal">—</span>
                             )}
                           </td>
+
+                          {/* Coverage (Standalone Column with Low Coverage Warning if < 40%) */}
+                          <td className="p-3">
+                            {(() => {
+                              const cov = row.developerScoreMeta?.coverage;
+                              const isLow = cov !== null && cov !== undefined && cov < 40;
+                              return (
+                                <div className="flex items-center gap-1">
+                                  <span className="font-semibold text-neutral-200">
+                                    {cov != null ? `${cov}%` : '—'}
+                                  </span>
+                                  {isLow && (
+                                    <span 
+                                      className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-0.5"
+                                      title="Coverage below 40% threshold (TALENT_DISCOVERY_MIN_COVERAGE)"
+                                    >
+                                      <AlertTriangle size={10} />
+                                      <span>Low</span>
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                          </td>
+
+                          {/* Confidence */}
+                          <td className="p-3">
+                            <span className={`text-[10px] font-semibold ${
+                              (row.developerScoreMeta?.confidence || '').toLowerCase() === 'high' ? 'text-cyan-400' :
+                              (row.developerScoreMeta?.confidence || '').toLowerCase() === 'medium' ? 'text-blue-400' :
+                              'text-neutral-400'
+                            }`}>
+                              {row.developerScoreMeta?.confidence || 'Low'}
+                            </span>
+                          </td>
+
+                          {/* Eligibility Status (EligibilityStatusBadge) */}
+                          <td className="p-3">
+                            <EligibilityStatusBadge 
+                              eligibility={row.eligibilityStatus || row.placementReadinessMeta?.eligibilityStatus} 
+                              compact={true} 
+                            />
+                          </td>
+
+                          {/* GPA */}
+                          <td className="p-3 font-bold">{row.gpa}</td>
                           
                           {/* Connection Flags */}
                           <td className="p-3.5">
