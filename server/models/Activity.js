@@ -83,6 +83,22 @@ const activitySchema = new mongoose.Schema(
       type: String,        // GitHub repo, competition link, etc.
       trim: true,
     },
+    githubPRUrl: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    githubRepoUrl: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    externalId: {
+      type: String,
+      trim: true,
+      default: null,
+      index: true,
+    },
 
     // --- Approval workflow ---
     status: {
