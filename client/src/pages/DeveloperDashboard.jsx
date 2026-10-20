@@ -4,6 +4,7 @@ import { usePlatformSync } from '../hooks/usePlatformSync.js';
 import { DeveloperScoreRing } from '../components/developer/DeveloperScoreRing.jsx';
 import { ScoreBreakdownBar } from '../components/developer/ScoreBreakdownBar.jsx';
 import { SyncButton } from '../components/developer/SyncButton.jsx';
+import { ContributionHeatmap } from '../components/developer/ContributionHeatmap.jsx';
 import { 
   Github, 
   Award, 
@@ -324,6 +325,14 @@ export function DeveloperDashboard() {
           color="var(--primary-purple)"
         />
       </div>
+
+      {/* ─── GitHub Contribution Heatmap (V13 Phase 3) ────────────────────────── */}
+      {githubUser && (
+        <ContributionHeatmap
+          calendar={profile?.githubContributionCalendar}
+          username={githubUser}
+        />
+      )}
 
       {/* ─── Empty state placeholder if no profiles are configured ───────────────── */}
       {!isAnyPlatformLinked ? (
