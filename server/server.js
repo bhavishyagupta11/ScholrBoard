@@ -97,6 +97,10 @@ import supportRoutes       from './routes/support.js';
 import ticketRoutes        from './routes/tickets.js';
 import trackRoutes         from './routes/tracks.js';
 import publicRoutes        from './routes/public.js';
+import {
+  startAgingSweepScheduler,
+  stopAgingSweepScheduler,
+} from './services/scoreHistoryService.js';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -242,6 +246,7 @@ let server;
 const shutdown = async (signal) => {
   logShutdown(`Received ${signal}. Starting graceful shutdown...`);
   
+  stopAgingSweepScheduler();
   app.set('server_listening', false);
   
   if (server) {
@@ -284,6 +289,10 @@ const HOST = process.env.HOST || '0.0.0.0';
 server = app.listen(PORT, HOST, () => {
   app.set('server_listening', true);
   logStartup('SERVER_LISTENING');
+  if (process.env.NODE_ENV !== 'test') {
+    startAgingSweepScheduler();
+    logStartup('AGING_SWEEP_SCHEDULER_REGISTERED (03:00 UTC daily)');
+  }
   logStartup('APPLICATION_READY');
   
   console.log('\n==================================================');
