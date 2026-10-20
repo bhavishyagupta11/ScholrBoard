@@ -146,6 +146,9 @@ export const uploadToCloudinary = (buffer, folder, options = {}) => {
 
 const storeUpload = async (req, folder, options = {}) => {
   if (!cloudinaryConfigured()) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Cloudinary is not configured in production environment. Silent local disk fallback is prohibited.');
+    }
     return saveLocalUpload(req, folder);
   }
   return uploadToCloudinary(req.file.buffer, folder, options);
@@ -176,21 +179,196 @@ export const uploadActivityProof = async (req, res, next) => {
   }
 };
 
+// ─── File Content Signature & Magic Byte Validation (V13 Part 14 & Phase 8) ───
+/**
+ * Detects the real format of a buffer based on binary file signatures (magic bytes).
+ * @param {Buffer} buffer
+ * @returns {'pdf'|'docx'|'doc'|'executable'|'script'|'unknown'}
+ */
+export function detectBufferFormat(buffer) {
+  if (!buffer || !Buffer.isBuffer(buffer) || buffer.length < 4) {
+    return 'unknown';
+  }
+
+  // 1. Check for malicious executable signatures
+  // Windows PE: "MZ" (0x4D, 0x5A)
+  if (buffer[0] === 0x4D && buffer[1] === 0x5A) {
+    return 'executable';
+  }
+  // Linux ELF: 0x7F, 'E', 'L', 'F' (0x7F, 0x45, 0x4C, 0x46)
+  if (buffer[0] === 0x7F && buffer[1] === 0x45 && buffer[2] === 0x4C && buffer[3] === 0x46) {
+    return 'executable';
+  }
+  // Mach-O: 0xFE, 0xED, 0xFA, 0xCE / 0xCF or 0xCA, 0xFE, 0xBA, 0xBE
+  if ((buffer[0] === 0xFE && buffer[1] === 0xED && buffer[2] === 0xFA) ||
+      (buffer[0] === 0xCA && buffer[1] === 0xFE && buffer[2] === 0xBA && buffer[3] === 0xBE)) {
+    return 'executable';
+  }
+
+  // Check for shell scripts / HTML / PHP scripts
+  const headerText = buffer.subarray(0, 128).toString('ascii').toLowerCase();
+  if (headerText.startsWith('#!') || headerText.includes('<?php') || headerText.includes('<html') || headerText.includes('<script')) {
+    return 'script';
+  }
+
+  // 2. Check for PDF:
+  // Must contain "%PDF-" in the first 1024 bytes (0x25, 0x50, 0x44, 0x46, 0x2D)
+  const searchLimit = Math.min(buffer.length, 1024);
+  const pdfIndex = buffer.subarray(0, searchLimit).indexOf(Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2D]));
+  if (pdfIndex !== -1) {
+    return 'pdf';
+  }
+
+  // 3. Check for OLE2 Compound Document (DOC format):
+  // Magic bytes: 0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1 (8 bytes)
+  if (buffer.length >= 8 &&
+      buffer[0] === 0xD0 && buffer[1] === 0xCF && buffer[2] === 0x11 && buffer[3] === 0xE0 &&
+      buffer[4] === 0xA1 && buffer[5] === 0xB1 && buffer[6] === 0x1A && buffer[7] === 0xE1) {
+    return 'doc';
+  }
+
+  // 4. Check for ZIP / OpenXML (DOCX format):
+  // Magic bytes: 'PK\x03\x04' (0x50, 0x4B, 0x03, 0x04) or PK\x05\x06 or PK\x07\x08
+  if (buffer[0] === 0x50 && buffer[1] === 0x4B &&
+      (buffer[2] === 0x03 || buffer[2] === 0x05 || buffer[2] === 0x07) &&
+      (buffer[3] === 0x04 || buffer[3] === 0x06 || buffer[3] === 0x08)) {
+    const sample = buffer.subarray(0, Math.min(buffer.length, 65536)).toString('binary');
+    if (sample.includes('[Content_Types].xml') || sample.includes('word/') || sample.includes('word/document.xml')) {
+      return 'docx';
+    }
+  }
+
+  return 'unknown';
+}
+
+/**
+ * Validates the uploaded resume file against V13 size, extension, MIME, and binary content signature rules.
+ * @param {object} file - Express file object with buffer, mimetype, originalname, size
+ * @returns {{ isValid: boolean, code: string|null, message: string|null }}
+ */
+export function validateResumeFile(file) {
+  if (!file) {
+    return { isValid: false, code: 'NO_FILE_PROVIDED', message: 'No file provided for upload.' };
+  }
+
+  const size = file.size ?? file.buffer?.length ?? 0;
+  if (size <= 0) {
+    return { isValid: false, code: 'EMPTY_FILE', message: 'Uploaded file is empty.' };
+  }
+  if (size < 32) {
+    return { isValid: false, code: 'FILE_CORRUPTED_OR_TOO_SMALL', message: 'File is too small to be a valid document.' };
+  }
+  if (size > 5 * 1024 * 1024) {
+    return { isValid: false, code: 'FILE_TOO_LARGE', message: 'File size exceeds 5MB limit.' };
+  }
+
+  const rawExt = path.extname(file.originalname || '').toLowerCase();
+  const allowedExts = new Set(['.pdf', '.docx', '.doc']);
+  if (!allowedExts.has(rawExt)) {
+    return {
+      isValid: false,
+      code: 'UNSUPPORTED_EXTENSION',
+      message: `File extension "${rawExt}" is not allowed. Only .pdf, .docx, and .doc are permitted.`
+    };
+  }
+
+  const allowedMimes = new Set([
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/msword',
+  ]);
+  if (!allowedMimes.has(file.mimetype)) {
+    return {
+      isValid: false,
+      code: 'UNSUPPORTED_MIME_TYPE',
+      message: `MIME type "${file.mimetype}" is not supported for resume uploads.`
+    };
+  }
+
+  // Check actual binary content signature when buffer is present
+  if (file.buffer && Buffer.isBuffer(file.buffer)) {
+    const detectedFormat = detectBufferFormat(file.buffer);
+
+    if (detectedFormat === 'executable') {
+      return {
+        isValid: false,
+        code: 'EXECUTABLE_REJECTED',
+        message: 'Binary executable files are strictly prohibited.'
+      };
+    }
+    if (detectedFormat === 'script') {
+      return {
+        isValid: false,
+        code: 'SCRIPT_REJECTED',
+        message: 'Script and text files are not accepted as valid resumes.'
+      };
+    }
+
+    if (detectedFormat === 'pdf') {
+      if (rawExt !== '.pdf' || file.mimetype !== 'application/pdf') {
+        return {
+          isValid: false,
+          code: 'EXTENSION_MIME_MISMATCH',
+          message: 'File content is PDF but extension or MIME type does not match.'
+        };
+      }
+    } else if (detectedFormat === 'docx') {
+      if (rawExt !== '.docx' || file.mimetype !== 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        return {
+          isValid: false,
+          code: 'EXTENSION_MIME_MISMATCH',
+          message: 'File content is DOCX but extension or MIME type does not match.'
+        };
+      }
+    } else if (detectedFormat === 'doc') {
+      if (rawExt !== '.doc' || file.mimetype !== 'application/msword') {
+        return {
+          isValid: false,
+          code: 'EXTENSION_MIME_MISMATCH',
+          message: 'File content is DOC but extension or MIME type does not match.'
+        };
+      }
+    } else {
+      return {
+        isValid: false,
+        code: 'INVALID_FILE_SIGNATURE',
+        message: 'File content signature does not match any allowed format (.pdf, .docx, .doc).'
+      };
+    }
+  }
+
+  return { isValid: true, code: null, message: null };
+}
+
 export const uploadResumeToCloud = async (req, res, next) => {
   if (!req.file) return next();
+
+  // Validate file signature, extension, MIME, and size before cloud storage
+  const validation = validateResumeFile(req.file);
+  if (!validation.isValid) {
+    return res.status(400).json({
+      success: false,
+      code: validation.code,
+      message: validation.message,
+    });
+  }
 
   try {
     const isPdf = req.file.mimetype === 'application/pdf';
     const result = await storeUpload(
       req,
       `scholrmind/resumes/${req.user._id}`,
-      { resource_type: 'raw', ...(isPdf ? { format: 'pdf' } : {}) }
+      {
+        resource_type: 'raw',
+        type: 'authenticated', // Supported delivery type for private assets (prohibits unrestricted public CDN access)
+        ...(isPdf ? { format: 'pdf' } : {}),
+      }
     );
     req.file.cloudinaryUrl      = result.secure_url;
     req.file.cloudinaryPublicId = result.public_id;
     next();
   } catch (error) {
-    console.error('Cloudinary resume upload error:', error);
+    console.error('Cloudinary resume upload error:', error.message);
     return res.status(500).json({ success: false, message: 'Resume upload failed. Please try again.' });
   }
 };
