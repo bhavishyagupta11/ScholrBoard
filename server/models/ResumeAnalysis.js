@@ -124,6 +124,47 @@ const resumeAnalysisSchema = new mongoose.Schema(
       default: [],
     },
 
+    // --- V13 Structured Evidence & Metadata (Parts 15.2, 7.4) ---
+    model:                 { type: String, default: null },
+    promptVersion:         { type: String, default: null },
+    analysisVersion:       { type: String, default: null },
+    evidenceSchemaVersion: { type: String, default: null },
+    analysisTimestamp:     { type: Date, default: null },
+    careerTrackAtAnalysis: { type: String, default: null },
+    sections: {
+      hasSummary:     { type: Boolean, default: null },
+      hasEducation:   { type: Boolean, default: null },
+      hasExperience:  { type: Boolean, default: null },
+      hasProjects:    { type: Boolean, default: null },
+      hasSkills:      { type: Boolean, default: null },
+      hasContactInfo: { type: Boolean, default: null },
+    },
+    experience: [{
+      role:           String,
+      company:        String,
+      durationMonths: Number,
+      isTechnical:    Boolean,
+    }],
+    technicalSkills: [{ type: String }],
+    projects: [{
+      title:               String,
+      techStack:           [{ type: String }],
+      hasQuantifiedImpact: Boolean,
+    }],
+    qualitySignals: {
+      hasQuantifiedItems: { type: Boolean, default: null },
+      hasActionVerbs:     { type: Boolean, default: null },
+    },
+    keywordAlignment:      { type: Number, default: null },
+    fieldConfidence: {
+      sections:        { type: String, default: null },
+      experience:      { type: String, default: null },
+      technicalSkills: { type: String, default: null },
+      projects:        { type: String, default: null },
+      qualitySignals:  { type: String, default: null },
+    },
+    extractedEvidenceHash: { type: String, default: null },
+
     // --- State ---
     analysisStatus: {
       type: String,
