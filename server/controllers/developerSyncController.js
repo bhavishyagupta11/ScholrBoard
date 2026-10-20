@@ -3,6 +3,7 @@ import { acquireSyncLock, releaseSyncLock } from '../services/syncLockService.js
 import { syncGithubProfile } from '../services/githubSyncService.js';
 import { syncLeetcodeProfile } from '../services/leetcodeSyncService.js';
 import { syncCodeforcesProfile } from '../services/codeforcesSyncService.js';
+import { syncLinkedinProfile } from '../services/linkedinSyncService.js';
 
 // Cooldown duration: 15 minutes (900,000 milliseconds)
 const COOLDOWN_MS = 15 * 60 * 1000;
@@ -77,7 +78,9 @@ export const syncGithub = async (req, res) => {
         message: 'GitHub profile synced successfully',
         codingStats: updated.codingStats,
         githubScore: updated.githubScore,
-        developerScore: updated.developerScore
+        developerScore: updated.developerScore,
+        githubContributionCalendar: updated.githubContributionCalendar,
+        platformSyncStates: updated.platformSyncStates,
       });
     } finally {
       // Always release lock
@@ -183,6 +186,39 @@ export const syncCodeforces = async (req, res) => {
   } catch (error) {
     const status = error.statusCode || 500;
     const cleanMessage = status === 500 ? 'Codeforces synchronization failed' : error.message;
+    return res.status(status).json({ success: false, message: cleanMessage });
+  }
+};
+
+export const syncLinkedin = async (req, res) => {
+  const userId = req.user._id;
+
+  try {
+    const profile = await Profile.findOne({ userId });
+    if (!profile) {
+      return res.status(404).json({ success: false, message: 'Profile not found' });
+    }
+
+    if (!profile.codingStats?.profiles?.linkedin && !profile.socialLinks?.linkedin) {
+      return res.status(400).json({ success: false, message: 'LinkedIn profile not linked in profile' });
+    }
+
+    await acquireSyncLock(userId);
+    try {
+      const updated = await syncLinkedinProfile(userId);
+      return res.json({
+        success: true,
+        message: 'LinkedIn profile connection verified. Activity and engagement metrics are unavailable under current approved permissions.',
+        codingStats: updated.codingStats,
+        socialLinks: updated.socialLinks,
+        platformSyncStates: updated.platformSyncStates,
+      });
+    } finally {
+      await releaseSyncLock(userId);
+    }
+  } catch (error) {
+    const status = error.statusCode || 500;
+    const cleanMessage = status === 500 ? 'LinkedIn synchronization failed' : error.message;
     return res.status(status).json({ success: false, message: cleanMessage });
   }
 };
