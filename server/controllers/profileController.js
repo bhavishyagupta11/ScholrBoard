@@ -13,6 +13,7 @@
  */
 import Profile from '../models/Profile.js';
 import User from '../models/User.js';
+import GpaScaleAuditLog from '../models/GpaScaleAuditLog.js';
 
 // ─── GET current user's own profile ──────────────────────────────────────────
 export const getMyProfile = async (req, res) => {
@@ -271,5 +272,50 @@ export const deleteCertification = async (req, res) => {
   } catch (error) {
     console.error('deleteCertification error:', error);
     return res.status(500).json({ success: false, message: 'Failed to delete certificate' });
+  }
+};
+
+// ─── ADMIN: UPDATE student's gpaScale with audit logging (V13 Part 21 & Phase 1) ──
+export const updateGpaScale = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { gpaScale, reason } = req.body;
+
+    const scaleNum = Number(gpaScale);
+    if (!Number.isFinite(scaleNum) || scaleNum <= 0 || scaleNum > 10) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid gpaScale. Must be a positive real number greater than 0 and less than or equal to 10.0',
+      });
+    }
+
+    const profile = await Profile.findOne({ userId });
+    if (!profile) {
+      return res.status(404).json({ success: false, message: 'Student profile not found' });
+    }
+
+    const oldValue = profile.gpaScale ?? 10.0;
+    profile.gpaScale = scaleNum;
+    await profile.save();
+
+    await GpaScaleAuditLog.create({
+      userId: profile.userId,
+      field: 'gpaScale',
+      oldValue,
+      newValue: scaleNum,
+      changedBy: req.user._id,
+      changedAt: new Date(),
+      reason: reason || 'Admin GPA scale update',
+    });
+
+    return res.json({
+      success: true,
+      message: 'GPA scale updated successfully',
+      gpaScale: scaleNum,
+      oldValue,
+    });
+  } catch (error) {
+    console.error('updateGpaScale error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update GPA scale' });
   }
 };
