@@ -204,8 +204,16 @@ export function StudentPlacementDashboard() {
               <div className="flex items-center justify-between text-sm">
                 <span className="subtle">Placement Readiness</span>
                 <span className="font-bold flex items-center gap-1.5">
-                  {readinessScore >= 75 ? <CheckCircle2 size={14} className="text-green-400" /> : <Info size={14} className="text-orange-400" />}
-                  {readinessScore}% Score
+                  {profile?.placementReadinessScore !== null && profile?.placementReadinessScore !== undefined ? (
+                    <>
+                      {profile.placementReadinessScore >= 75 ? <CheckCircle2 size={14} className="text-green-400" /> : <Info size={14} className="text-orange-400" />}
+                      {profile.placementReadinessScore}% Score
+                    </>
+                  ) : profile?.placementReadinessLegacy?.score !== null && profile?.placementReadinessLegacy?.score !== undefined ? (
+                    <span className="text-xs text-yellow-400 font-normal">Legacy ({profile.placementReadinessLegacy.score}%) — Recalculation Pending</span>
+                  ) : (
+                    <span className="text-xs text-gray-400 font-normal">Unavailable</span>
+                  )}
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">

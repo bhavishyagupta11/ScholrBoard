@@ -763,7 +763,16 @@ export function ResumeAnalyzerPage() {
           if (activeIdRef.current === id) {
             setProcessing(false);
             if (a.analysisStatus === 'failed') {
-              setAnalysisError('AI analysis failed. Please try uploading again.');
+              const errorMessages = {
+                PDF_APPEARS_SCANNED: 'Scanned document detected. Please upload a PDF with selectable text.',
+                PDF_RETRIEVAL_FAILED: 'Could not retrieve uploaded resume from storage.',
+                PDF_EXTRACTION_FAILED: 'Could not extract text from the uploaded document.',
+                MALFORMED_AI_RESPONSE: 'AI analysis returned an invalid schema. Please try uploading again.',
+                GEMINI_API_KEY_NOT_CONFIGURED: 'AI service is currently not configured.',
+                ALL_MODELS_FAILED: 'AI analysis models are currently busy or unavailable. Please try again.',
+              };
+              const msg = errorMessages[a.analysisError] || a.analysisError || 'AI analysis failed. Please try uploading again.';
+              setAnalysisError(msg);
             }
           }
         }
