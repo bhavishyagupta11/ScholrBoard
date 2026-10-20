@@ -18,6 +18,7 @@ import {
   uploadCertificate,
   getMyResumeAnalyses,
   getResumeAnalysis,
+  getSignedResumeUrl,
   viewResumeFile,
   proxyPdf,
 } from '../controllers/uploadController.js';
@@ -66,6 +67,10 @@ router.get('/resume/analyses', getMyResumeAnalyses);
 // @route   GET /api/upload/resume/analyses/:id
 // @desc    Get a specific resume analysis
 router.get('/resume/analyses/:id', validateObjectId('id'), getResumeAnalysis);
+
+// @route   GET /api/upload/resume/signed-url/:id
+// @desc    Get a time-limited signed URL for an authenticated resume
+router.get('/resume/signed-url/:id', validateObjectId('id'), getSignedResumeUrl);
 
 // @route   GET /api/upload/resume/view/:id
 // @desc    Get a specific resume as an inline PDF stream
