@@ -725,7 +725,7 @@ export const fetchGithubMetrics = async (username) => {
   }
 
   const cleanUsername = username.trim().replace(/^@/, '');
-  const token = process.env.GITHUB_TOKEN;
+  const token = process.env.GITHUB_TOKEN?.trim() || null;
 
   const userUrl = `https://api.github.com/users/${encodeURIComponent(cleanUsername)}`;
   const reposUrl = `https://api.github.com/users/${encodeURIComponent(cleanUsername)}/repos?per_page=100&sort=updated`;

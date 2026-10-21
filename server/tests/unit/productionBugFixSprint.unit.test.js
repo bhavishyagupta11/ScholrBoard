@@ -155,3 +155,76 @@ describe('Production Bug-Fix Sprint: AI Coach Request Lifecycle & Recovery', () 
     assert.ok(models.includes('gemini-3.8-flash'), 'Must include gemini-3.8-flash');
   });
 });
+
+describe('Production Bug-Fix Sprint: GitHub Token Safe Diagnostics & Smoke Test', () => {
+  it('performGithubSmokeTest returns TOKEN_UNCONFIGURED and authenticated: false when token is not present', async () => {
+    const { performGithubSmokeTest } = await import('../../routes/health.js');
+    const origToken = process.env.GITHUB_TOKEN;
+    try {
+      delete process.env.GITHUB_TOKEN;
+      const res = await performGithubSmokeTest();
+      assert.equal(res.configured, false);
+      assert.equal(res.authenticated, false);
+      assert.equal(res.httpStatus, null);
+      assert.equal(res.errorCategory, 'TOKEN_UNCONFIGURED');
+      assert.ok(res.timestamp);
+      // Ensure no token or sensitive keys are leaked
+      assert.equal(res.token, undefined);
+      assert.equal(res.prefix, undefined);
+    } finally {
+      if (origToken !== undefined) process.env.GITHUB_TOKEN = origToken;
+    }
+  });
+
+  it('performGithubSmokeTest correctly categorizes 401 response as BAD_CREDENTIALS without leaking token', async () => {
+    const { performGithubSmokeTest } = await import('../../routes/health.js');
+    const origToken = process.env.GITHUB_TOKEN;
+    const origFetch = globalThis.fetch;
+    try {
+      process.env.GITHUB_TOKEN = 'ghp_fake_test_token_12345';
+      globalThis.fetch = async () => ({
+        ok: false,
+        status: 401,
+        json: async () => ({ message: 'Bad credentials' }),
+      });
+
+      const res = await performGithubSmokeTest();
+      assert.equal(res.configured, true);
+      assert.equal(res.authenticated, false);
+      assert.equal(res.httpStatus, 401);
+      assert.equal(res.errorCategory, 'BAD_CREDENTIALS');
+      assert.equal(res.token, undefined);
+      assert.equal(res.prefix, undefined);
+    } finally {
+      globalThis.fetch = origFetch;
+      if (origToken !== undefined) process.env.GITHUB_TOKEN = origToken;
+      else delete process.env.GITHUB_TOKEN;
+    }
+  });
+
+  it('performGithubSmokeTest correctly reports authenticated: true on 200 response', async () => {
+    const { performGithubSmokeTest } = await import('../../routes/health.js');
+    const origToken = process.env.GITHUB_TOKEN;
+    const origFetch = globalThis.fetch;
+    try {
+      process.env.GITHUB_TOKEN = 'ghp_fake_valid_token_12345';
+      globalThis.fetch = async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ resources: { core: { limit: 5000, remaining: 4999 } } }),
+      });
+
+      const res = await performGithubSmokeTest();
+      assert.equal(res.configured, true);
+      assert.equal(res.authenticated, true);
+      assert.equal(res.httpStatus, 200);
+      assert.equal(res.errorCategory, null);
+      assert.equal(res.token, undefined);
+    } finally {
+      globalThis.fetch = origFetch;
+      if (origToken !== undefined) process.env.GITHUB_TOKEN = origToken;
+      else delete process.env.GITHUB_TOKEN;
+    }
+  });
+});
+

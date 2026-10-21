@@ -12,6 +12,67 @@ const DB_STATE = {
 
 const startTime = Date.now();
 
+/**
+ * Authorized read-only GitHub API smoke test helper.
+ * Strictly avoids logging or returning any token values, prefixes, or user identifiers.
+ */
+export async function performGithubSmokeTest() {
+  const isConfigured = Boolean(process.env.GITHUB_TOKEN?.trim());
+  if (!isConfigured) {
+    return {
+      configured: false,
+      authenticated: false,
+      httpStatus: null,
+      errorCategory: 'TOKEN_UNCONFIGURED',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  const token = process.env.GITHUB_TOKEN.trim();
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const response = await fetch('https://api.github.com/rate_limit', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'User-Agent': 'ScholrBoard-Diagnostic/1.0',
+        Accept: 'application/vnd.github.v3+json',
+      },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const isOk = response.ok;
+    let errorCategory = null;
+
+    if (!isOk) {
+      if (response.status === 401) {
+        errorCategory = 'BAD_CREDENTIALS';
+      } else if (response.status === 403) {
+        errorCategory = 'FORBIDDEN_OR_RATE_LIMITED';
+      } else {
+        errorCategory = `HTTP_${response.status}`;
+      }
+    }
+
+    return {
+      configured: true,
+      authenticated: isOk,
+      httpStatus: response.status,
+      errorCategory,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (err) {
+    return {
+      configured: true,
+      authenticated: false,
+      httpStatus: null,
+      errorCategory: err.name === 'AbortError' ? 'TIMEOUT' : 'NETWORK_ERROR',
+      timestamp: new Date().toISOString(),
+    };
+  }
+}
+
 router.get('/', async (req, res) => {
   const dbReadyState = mongoose.connection.readyState;
   const dbConnected = dbReadyState === 1;
@@ -42,6 +103,10 @@ router.get('/', async (req, res) => {
     environment: process.env.NODE_ENV || 'development',
     mongoState: DB_STATE[dbReadyState] || 'unknown',
     applicationVersion: process.env.npm_package_version || '1.0.0',
+    gitCommit: process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || null,
+    renderServiceId: process.env.RENDER_SERVICE_ID || null,
+    renderServiceName: process.env.RENDER_SERVICE_NAME || null,
+    githubTokenConfigured: Boolean(process.env.GITHUB_TOKEN?.trim()),
     database: {
       connected: dbConnected,
       pingMs: dbPingMs,
@@ -64,6 +129,11 @@ router.get('/ready', (req, res) => {
     serverListening: serverListening,
     dependenciesReady: dependenciesReady
   });
+});
+
+router.get('/diagnostics/github', async (req, res) => {
+  const smokeResult = await performGithubSmokeTest();
+  res.status(smokeResult.authenticated ? 200 : (smokeResult.configured ? 502 : 200)).json(smokeResult);
 });
 
 export default router;
