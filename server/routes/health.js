@@ -1,5 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
+import auth from '../middleware/auth.js';
+import requireRole from '../middleware/roleAuth.js';
 
 const router = express.Router();
 
@@ -104,10 +106,6 @@ router.get('/', async (req, res) => {
     mongoState: DB_STATE[dbReadyState] || 'unknown',
     applicationVersion: process.env.npm_package_version || '1.0.0',
     gitCommit: process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || null,
-    renderServiceId: process.env.RENDER_SERVICE_ID || null,
-    renderServiceName: process.env.RENDER_SERVICE_NAME || null,
-    githubTokenConfigured: Boolean(process.env.GITHUB_TOKEN?.trim()),
-    alternativeGithubEnvKeys: ['GH_TOKEN', 'GITHUB_PAT', 'GITHUB_API_TOKEN', 'GITHUB_ACCESS_TOKEN', 'github_token'].filter(k => Boolean(process.env[k]?.trim())),
     database: {
       connected: dbConnected,
       pingMs: dbPingMs,
@@ -132,9 +130,11 @@ router.get('/ready', (req, res) => {
   });
 });
 
-router.get('/diagnostics/github', async (req, res) => {
+// Protected administrative diagnostic: requires valid authentication and admin role
+router.get('/diagnostics/github', auth, requireRole('admin'), async (req, res) => {
   const smokeResult = await performGithubSmokeTest();
   res.status(smokeResult.authenticated ? 200 : (smokeResult.configured ? 502 : 200)).json(smokeResult);
 });
 
 export default router;
+

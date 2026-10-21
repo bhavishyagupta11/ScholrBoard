@@ -226,5 +226,66 @@ describe('Production Bug-Fix Sprint: GitHub Token Safe Diagnostics & Smoke Test'
       else delete process.env.GITHUB_TOKEN;
     }
   });
+
+  it('GET /api/health/diagnostics/github router layer enforces auth and requireRole("admin")', async () => {
+    const { default: router } = await import('../../routes/health.js');
+    const routeLayer = router.stack.find((l) => l.route?.path === '/diagnostics/github');
+    assert.ok(routeLayer, 'Route /diagnostics/github must be registered on health router');
+    assert.ok(routeLayer.route.methods.get, 'Must be a GET route');
+    assert.equal(routeLayer.route.stack.length, 3, 'Must have auth, requireRole, and handler middlewares');
+  });
+
+  it('unauthenticated requests without Bearer token are rejected with 401', async () => {
+    const { default: auth } = await import('../../middleware/auth.js');
+    let statusCode = null;
+    let jsonResult = null;
+    const req = { headers: {} };
+    const res = {
+      status(c) { statusCode = c; return this; },
+      json(d) { jsonResult = d; return this; },
+    };
+    let nextCalled = false;
+    await auth(req, res, () => { nextCalled = true; });
+
+    assert.equal(statusCode, 401);
+    assert.equal(jsonResult.success, false);
+    assert.equal(nextCalled, false);
+    assert.match(jsonResult.message, /Access denied/i);
+  });
+
+  it('authenticated non-admin users (student/faculty) are rejected with 403 Forbidden', async () => {
+    const { default: requireRole } = await import('../../middleware/roleAuth.js');
+    const adminGuard = requireRole('admin');
+
+    for (const role of ['student', 'faculty', 'recruiter']) {
+      let statusCode = null;
+      let jsonResult = null;
+      const req = { user: { _id: `user_${role}`, role } };
+      const res = {
+        status(c) { statusCode = c; return this; },
+        json(d) { jsonResult = d; return this; },
+      };
+      let nextCalled = false;
+      adminGuard(req, res, () => { nextCalled = true; });
+
+      assert.equal(statusCode, 403, `Role ${role} must be rejected with 403`);
+      assert.equal(jsonResult.success, false);
+      assert.equal(nextCalled, false);
+      assert.match(jsonResult.message, /Access denied/i);
+    }
+  });
+
+  it('authorized admin users pass role guard and can execute diagnostic smoke test', async () => {
+    const { default: requireRole } = await import('../../middleware/roleAuth.js');
+    const adminGuard = requireRole('admin');
+
+    let nextCalled = false;
+    const req = { user: { _id: 'admin_1', role: 'admin' } };
+    const res = {};
+    adminGuard(req, res, () => { nextCalled = true; });
+
+    assert.equal(nextCalled, true, 'Admin user must pass role guard');
+  });
 });
+
 
