@@ -107,6 +107,7 @@ router.get('/', async (req, res) => {
     renderServiceId: process.env.RENDER_SERVICE_ID || null,
     renderServiceName: process.env.RENDER_SERVICE_NAME || null,
     githubTokenConfigured: Boolean(process.env.GITHUB_TOKEN?.trim()),
+    alternativeGithubEnvKeys: ['GH_TOKEN', 'GITHUB_PAT', 'GITHUB_API_TOKEN', 'GITHUB_ACCESS_TOKEN', 'github_token'].filter(k => Boolean(process.env[k]?.trim())),
     database: {
       connected: dbConnected,
       pingMs: dbPingMs,
