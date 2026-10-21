@@ -1,7 +1,17 @@
+import mongoose from 'mongoose';
+import User from '../models/User.js';
 import Profile from '../models/Profile.js';
 import AuditLog from '../models/AuditLog.js';
 import { TEST_EMAIL_REGEX } from '../utils/testFilters.js';
 import { TRACK_DEPARTMENT_MAPPING } from '../config/trackMapping.js';
+
+/**
+ * Safely escape string for use in RegExp
+ */
+function escapeRegex(str) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 /**
  * GET /api/users/talent-discovery
@@ -28,6 +38,89 @@ import { TRACK_DEPARTMENT_MAPPING } from '../config/trackMapping.js';
 export const getTalentDiscovery = async (req, res) => {
   const startTime = Date.now();
   try {
+    // ── 0. Server-side Authentication & Authorization Preconditions ────────────
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    // Resolve authoritative user record if Mongoose is connected
+    let authoritativeUser = null;
+    if (mongoose.connection.readyState === 1 && req.user._id) {
+      try {
+        authoritativeUser = await User.findById(req.user._id).select('department role isActive').lean();
+      } catch (dbErr) {
+        console.error('Failed to resolve authoritative user record:', dbErr.message);
+        // Database lookup failure MUST fail closed safely — never grant unrestricted access
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied: Unable to verify authoritative user record'
+        });
+      }
+
+      // If database record is missing or deleted, deny access
+      if (!authoritativeUser) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied: User account not found'
+        });
+      }
+
+      // If account is deactivated in the database, deny access immediately
+      if (authoritativeUser.isActive === false) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied: Account is inactive'
+        });
+      }
+    } else {
+      // Fallback for offline unit tests when Mongoose is disconnected
+      if (req.user.isActive === false) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied: Account is inactive'
+        });
+      }
+    }
+
+    // Determine current, verified role (authoritative DB record takes precedence over request context)
+    const currentRole = authoritativeUser ? authoritativeUser.role : req.user.role;
+    if (currentRole !== 'admin' && currentRole !== 'faculty') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: insufficient permissions'
+      });
+    }
+
+    // Resolve authoritative faculty department with fail-closed guarantee
+    let verifiedFacultyDepartment = null;
+    if (currentRole === 'faculty') {
+      let dept = null;
+      if (authoritativeUser) {
+        // Authoritative database record is the primary source of truth (stale context claims ignored)
+        dept = (typeof authoritativeUser.department === 'string' && authoritativeUser.department.trim())
+          ? authoritativeUser.department.trim()
+          : null;
+      } else {
+        // Fallback for offline unit tests when Mongoose is disconnected
+        dept = (typeof req.user.department === 'string' && req.user.department.trim())
+          ? req.user.department.trim()
+          : null;
+      }
+
+      // FAIL-CLOSED: A missing, empty, or unresolvable department MUST NEVER grant unrestricted access
+      if (!dept) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied: Faculty department cannot be verified'
+        });
+      }
+
+      verifiedFacultyDepartment = dept;
+    }
+
     const {
       page = 1,
       limit = 20,
@@ -202,7 +295,7 @@ export const getTalentDiscovery = async (req, res) => {
     }
 
     if (skills) {
-      const skillRegexes = skills.split(',').map(s => new RegExp(`^${s.trim()}$`, 'i'));
+      const skillRegexes = skills.split(',').map(s => new RegExp(`^${escapeRegex(s.trim())}$`, 'i'));
       profileMatchClauses.push({ skills: { $all: skillRegexes } });
     }
 
@@ -239,22 +332,25 @@ export const getTalentDiscovery = async (req, res) => {
     }
 
     // V2.2: Talent Discovery EXCLUSIVELY for software_engineering students
-    const swDepts = TRACK_DEPARTMENT_MAPPING.software_engineering.map(d => new RegExp(d, 'i'));
+    const swDepts = TRACK_DEPARTMENT_MAPPING.software_engineering.map(d => new RegExp(escapeRegex(d), 'i'));
     userMatchClauses.push({ 'user.department': { $in: swDepts } });
 
-    if (req.user.role === 'faculty') {
-      if (req.user.department) {
-        userMatchClauses.push({ 'user.department': new RegExp(`^${req.user.department.trim()}$`, 'i') });
-      }
+    if (currentRole === 'faculty') {
+      // Mandatory fail-closed restriction matching verified faculty department
+      // Client-provided department, branch, or other query overrides are strictly IGNORED
+      userMatchClauses.push({
+        'user.department': new RegExp(`^${escapeRegex(verifiedFacultyDepartment)}$`, 'i')
+      });
     } else {
+      // Admin scoping (existing policy): optional department or branch filters
       if (department) {
-        userMatchClauses.push({ 'user.department': new RegExp(department.trim(), 'i') });
+        userMatchClauses.push({ 'user.department': new RegExp(escapeRegex(department.trim()), 'i') });
       }
       if (branch) {
         userMatchClauses.push({
           $or: [
-            { 'user.branch': new RegExp(branch.trim(), 'i') },
-            { 'user.department': new RegExp(branch.trim(), 'i') }
+            { 'user.branch': new RegExp(escapeRegex(branch.trim()), 'i') },
+            { 'user.department': new RegExp(escapeRegex(branch.trim()), 'i') }
           ]
         });
       }
@@ -269,7 +365,7 @@ export const getTalentDiscovery = async (req, res) => {
       userMatchClauses.push({ 'user.semester': { $in: sems } });
     }
     if (search) {
-      const searchRegex = new RegExp(search.trim(), 'i');
+      const searchRegex = new RegExp(escapeRegex(search.trim()), 'i');
       userMatchClauses.push({
         $or: [
           { 'user.name': searchRegex },
@@ -460,12 +556,13 @@ export const getTalentDiscovery = async (req, res) => {
       await AuditLog.create({
         action: 'talent_discovery_search',
         performedBy: req.user._id,
-        role: req.user.role || 'admin',
+        role: currentRole || 'admin',
         targetModel: 'User',
         targetId: req.user._id,
         details: {
           userId: req.user._id,
-          userRole: req.user.role,
+          userRole: currentRole,
+          facultyDepartment: verifiedFacultyDepartment || null,
           filtersUsed: {
             search, department, branch, year, semester,
             gpaMin, gpaMax, backlogsMax,
