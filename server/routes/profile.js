@@ -7,6 +7,7 @@ import {
   updateMyBasicInfo,
   updateCodingStats,
   deleteCertification,
+  updateGpaScale,
 } from '../controllers/profileController.js';
 import requireRole from '../middleware/roleAuth.js';
 import validateObjectId from '../middleware/validateObjectId.js';
@@ -40,5 +41,10 @@ router.delete('/certifications/:certId', validateObjectId('certId'), deleteCerti
 // @desc    Get any user's profile (faculty 360 view / admin)
 // @access  Faculty or Admin only
 router.get('/:userId', requireRole('faculty', 'admin'), validateObjectId('userId'), getProfileByUserId);
+
+// @route   PUT /api/profile/:userId/gpa-scale
+// @desc    Admin-controlled student-level GPA scale configuration with audit logging (V13 Part 21)
+// @access  Admin only
+router.put('/:userId/gpa-scale', requireRole('admin'), validateObjectId('userId'), updateGpaScale);
 
 export default router;
