@@ -3,11 +3,12 @@
  */
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { RefreshCw, Link as LinkIcon, AlertCircle } from 'lucide-react';
+import { RefreshCw, Link as LinkIcon, AlertCircle, ExternalLink } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { useProfile } from '../contexts/ProfileContext.jsx';
 import { useScrollAnimation, useStaggeredAnimation } from '../hooks/useScrollAnimation.js';
 import codingApi from '../api/coding.api.js';
+import PlatformStatusBadge from '../components/developer/PlatformStatusBadge.jsx';
 
 export function CodingPage() {
   const { profile, isLoading, refreshProfile } = useProfile();
@@ -83,7 +84,7 @@ export function CodingPage() {
     { 
       name: 'LinkedIn', 
       key: 'linkedin',
-      solved: profile.codingStats?.linkedInConnected ? 1 : 0,
+      solved: 0, // V13 Phase 1 Item 11 / Bug 10: never invent activity metrics for LinkedIn
       rating: 0,
       action: (username) => codingApi.linkProfile('linkedin', username),
       color: '#0ea5e9'
@@ -204,18 +205,34 @@ export function CodingPage() {
                   </div>
                 ) : isLinkedIn ? (
                   <div className="my-4 space-y-2 text-xs">
-                    <div className="flex justify-between border-b pb-1.5" style={{ borderColor: 'var(--border-color)' }}>
-                      <span className="subtle">Profile Status</span>
-                      <span className="font-semibold" style={{ color: savedProfiles[p.key] ? 'var(--primary-cyan)' : 'var(--text-muted)' }}>
-                        {savedProfiles[p.key] ? 'Connected' : 'Not Connected'}
-                      </span>
+                    <div className="flex justify-between items-center border-b pb-1.5" style={{ borderColor: 'var(--border-color)' }}>
+                      <span className="subtle">Identity & Link Status</span>
+                      <PlatformStatusBadge
+                        platform="linkedin"
+                        connectionStatus={savedProfiles[p.key] || profile.socialLinks?.linkedin ? 'LINKED' : 'UNLINKED'}
+                        syncStatus={profile.platformSyncStates?.linkedin?.syncStatus || (savedProfiles[p.key] ? 'UNAVAILABLE' : 'NOT_CONNECTED')}
+                        identityVerified={Boolean(profile.codingStats?.rawMetrics?.linkedin?.identityVerified)}
+                        error={profile.platformSyncStates?.linkedin?.error}
+                      />
                     </div>
                     {savedProfiles[p.key] && (
-                      <div className="flex justify-between" style={{ borderColor: 'var(--border-color)' }}>
-                        <span className="subtle">LinkedIn Username</span>
-                        <span className="font-semibold truncate max-w-[150px]">{savedProfiles[p.key]}</span>
+                      <div className="flex justify-between items-center border-b pb-1.5" style={{ borderColor: 'var(--border-color)' }}>
+                        <span className="subtle">Profile Link</span>
+                        <a
+                          href={profile.socialLinks?.linkedin || `https://www.linkedin.com/in/${savedProfiles[p.key]}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-semibold text-blue-400 hover:underline flex items-center gap-1 truncate max-w-[150px]"
+                        >
+                          @{savedProfiles[p.key]} <ExternalLink size={11} />
+                        </a>
                       </div>
                     )}
+                    <div className="text-[10px] subtle italic" style={{ color: 'var(--text-muted)' }}>
+                      {profile.codingStats?.rawMetrics?.linkedin?.identityVerified
+                        ? 'OAuth identity verified. Professional activity metrics unavailable under approved permissions.'
+                        : 'User-provided profile reference. OAuth identity verification and activity metrics unavailable.'}
+                    </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-3 my-4">
@@ -265,7 +282,7 @@ export function CodingPage() {
         <div className="font-medium mb-4 text-lg">Activity by Platform</div>
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={platforms.filter(p => p.solved > 0)}>
+            <BarChart data={platforms.filter(p => p.key !== 'linkedin' && p.solved > 0)}>
               <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} />
               <YAxis stroke="var(--text-secondary)" fontSize={12} />
               <Tooltip 
