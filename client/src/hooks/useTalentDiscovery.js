@@ -38,7 +38,11 @@ export function useTalentDiscovery() {
       placementReadinessMin: searchParams.get('placementReadinessMin') || '',
       achievementPointsMin: searchParams.get('achievementPointsMin') || '',
       hasResumeAnalysis: searchParams.get('hasResumeAnalysis') || '',
-      atsScoreMin: searchParams.get('atsScoreMin') || ''
+      atsScoreMin: searchParams.get('atsScoreMin') || '',
+      coverageMin: searchParams.get('coverageMin') || '',
+      confidence: searchParams.get('confidence') || '',
+      freshness: searchParams.get('freshness') || '',
+      eligibilityStatus: searchParams.get('eligibilityStatus') || ''
     };
   };
 

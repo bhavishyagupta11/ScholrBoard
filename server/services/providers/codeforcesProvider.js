@@ -10,13 +10,14 @@ const fetchJson = async (url, retries = 2) => {
       const timeout = setTimeout(() => controller.abort(), 8000);
       const res = await fetch(url, { headers, signal: controller.signal }).finally(() => clearTimeout(timeout));
       
-      const body = await res.json().catch(() => ({}));
+      if (res.status === 429) {
+        throw new Error('rate limit exceeded');
+      }
+
+      const body = typeof res.json === 'function' ? await res.json().catch(() => ({})) : {};
       
       if (res.status === 400 || (body && body.status === 'FAILED')) {
         throw new Error('profile not found');
-      }
-      if (res.status === 429) {
-        throw new Error('rate limit exceeded');
       }
       if (!res.ok) {
         throw new Error(`API error (${res.status})`);
@@ -61,14 +62,27 @@ export const fetchCodeforcesMetrics = async (username) => {
     }
 
     let lastContestAt = null;
+    let contestsParticipated = null;
+    let isPartial = false;
+    let partialError = null;
+
     if (ratingRes.status === 'fulfilled' && ratingRes.value && ratingRes.value.status === 'OK') {
-      const contests = ratingRes.value.result || [];
+      const contests = Array.isArray(ratingRes.value.result) ? ratingRes.value.result : [];
+      // Confirmed by provider: length 0 indicates confirmed zero contests
+      contestsParticipated = contests.length;
       if (contests.length > 0) {
         const lastContest = contests[contests.length - 1];
         if (lastContest.ratingUpdateTimeSeconds) {
           lastContestAt = new Date(lastContest.ratingUpdateTimeSeconds * 1000);
         }
       }
+    } else {
+      isPartial = true;
+      contestsParticipated = null;
+      lastContestAt = null;
+      partialError = ratingRes.status === 'rejected'
+        ? (ratingRes.reason?.message || 'Codeforces contest rating fetch failed')
+        : (ratingRes.value?.comment || 'Codeforces contest rating returned non-OK status');
     }
 
     return {
@@ -77,10 +91,13 @@ export const fetchCodeforcesMetrics = async (username) => {
       rank: info.rank || null,
       maxRank: info.maxRank || null,
       contribution: Number(info.contribution || 0),
-      lastContestAt
+      lastContestAt,
+      contestsParticipated,
+      isPartial,
+      partialError: isPartial ? partialError : null,
     };
   } catch (err) {
-    if (err.message === 'profile not found') {
+    if (err.message === 'profile not found' || String(err.message || '').includes('User not found')) {
       throw new Error(`Codeforces handle not found: ${cleanUsername}`);
     }
     if (err.message === 'rate limit exceeded') {

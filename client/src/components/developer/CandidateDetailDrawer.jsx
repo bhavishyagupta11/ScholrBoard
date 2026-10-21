@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import profileApi from '../../api/profile.api.js';
 import DeveloperScoreRing from './DeveloperScoreRing.jsx';
 import ScoreBreakdownBar from './ScoreBreakdownBar.jsx';
+import EligibilityStatusBadge from './EligibilityStatusBadge.jsx';
 import { 
   X, 
   User, 
@@ -250,8 +251,23 @@ export function CandidateDetailDrawer({ userId, isOpen, onClose }) {
                   </div>
                   <div className="p-2.5 rounded-lg border" style={{ backgroundColor: 'var(--bg-medium)', borderColor: 'var(--border)' }}>
                     <span className="subtle block text-[9px] uppercase font-bold" style={{ color: 'var(--text-muted)' }}>Placement Readiness</span>
-                    <span className="text-sm font-extrabold block mt-0.5" style={{ color: 'var(--accent)' }}>{placementReadinessScore} / 100</span>
+                    <span className="text-sm font-extrabold block mt-0.5" style={{ color: 'var(--accent)' }}>
+                      {profile?.placementReadinessScore != null
+                        ? `${profile.placementReadinessScore} / 100`
+                        : '—'}
+                    </span>
                   </div>
+                </div>
+
+                {/* Institutional Placement Eligibility Status */}
+                <div className="pt-1">
+                  <div className="text-[10px] uppercase font-bold subtle mb-1.5" style={{ color: 'var(--text-muted)' }}>
+                    Institutional Eligibility
+                  </div>
+                  <EligibilityStatusBadge 
+                    eligibility={profile?.placementReadinessMeta?.eligibilityStatus || profile?.eligibilityStatus} 
+                    showDetails={true}
+                  />
                 </div>
               </div>
 

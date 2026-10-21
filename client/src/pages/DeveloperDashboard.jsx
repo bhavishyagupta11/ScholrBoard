@@ -5,6 +5,7 @@ import { DeveloperScoreRing } from '../components/developer/DeveloperScoreRing.j
 import { ScoreBreakdownBar } from '../components/developer/ScoreBreakdownBar.jsx';
 import { SyncButton } from '../components/developer/SyncButton.jsx';
 import { ContributionHeatmap } from '../components/developer/ContributionHeatmap.jsx';
+import { ScoreExplanationPanel } from '../components/developer/ScoreExplanationPanel.jsx';
 import { 
   Github, 
   Award, 
@@ -184,6 +185,7 @@ export function DeveloperDashboard() {
 
   const {
     developerScore = 0,
+    developerScoreMeta = {},
     githubScore = 0,
     dsaScore = 0,
     cpScore = 0,
@@ -268,7 +270,13 @@ export function DeveloperDashboard() {
             <span className="text-xs font-bold uppercase tracking-widest text-emerald-500">
               {developerScore >= 75 ? 'Elite Tier' : developerScore >= 50 ? 'Advanced Tier' : 'Developing'}
             </span>
-            <p className="text-xs subtle">Unified derived algorithm scoring</p>
+            <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-semibold pt-1" style={{ color: 'var(--text-secondary)' }}>
+              <span>Coverage: <span className="text-emerald-400 font-bold">{developerScoreMeta?.coverage ?? 100}%</span></span>
+              <span className="opacity-40">|</span>
+              <span>Confidence: <span className="text-cyan-400 font-bold">{developerScoreMeta?.confidence ?? 'High'}</span></span>
+              <span className="opacity-40">|</span>
+              <span>Freshness: <span className="text-amber-400 font-bold">{developerScoreMeta?.freshness ?? 'Fresh'}</span></span>
+            </div>
           </div>
         </div>
 
@@ -297,6 +305,9 @@ export function DeveloperDashboard() {
           </div>
         </div>
       </div>
+
+      {/* ─── Score Explanation Panel (V13 Phase 9) ─────────────────────────── */}
+      <ScoreExplanationPanel profile={profile} />
 
       {/* ─── 4-Up Score Grid ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

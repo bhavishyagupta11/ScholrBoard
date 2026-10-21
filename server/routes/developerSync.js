@@ -5,6 +5,7 @@ import {
   syncGithub,
   syncLeetcode,
   syncCodeforces,
+  syncLinkedin,
   syncAllPlatforms,
 } from '../controllers/developerSyncController.js';
 
@@ -17,6 +18,7 @@ router.use(requireRole('student'));
 router.post('/sync/github', syncGithub);
 router.post('/sync/leetcode', syncLeetcode);
 router.post('/sync/codeforces', syncCodeforces);
+router.post('/sync/linkedin', syncLinkedin);
 router.post('/sync/all', syncAllPlatforms);
 
 export default router;
