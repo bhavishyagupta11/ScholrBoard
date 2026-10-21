@@ -7,7 +7,34 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import mongoose from 'mongoose';
+import User from '../../models/User.js';
 import { getTalentDiscovery } from '../../controllers/talentDiscoveryController.js';
+
+// Controlled Mongoose mock for offline unit testing
+let mockReadyState = 1;
+Object.defineProperty(mongoose.connection, 'readyState', {
+  get: () => mockReadyState,
+  configurable: true
+});
+
+let mockAuthoritativeUser = {
+  _id: 'admin_test_1',
+  role: 'admin',
+  department: 'Administration',
+  isActive: true
+};
+
+User.findById = (id) => ({
+  select: () => ({
+    lean: async () => {
+      if (typeof mockAuthoritativeUser === 'function') {
+        return mockAuthoritativeUser(id);
+      }
+      return mockAuthoritativeUser;
+    }
+  })
+});
 
 // Mock Express response helper
 function createMockRes() {
@@ -242,8 +269,15 @@ test('Phase 9.8 — Talent Discovery Server-Side Authorization Boundary & Role A
   });
 });
 
-test('Phase 9.9 — Talent Discovery Controller Fail-Closed Department Authorization (Security Gate)', async (t) => {
-  const { getTalentDiscovery } = await import('../../controllers/talentDiscoveryController.js');
+test('Phase 9.9 — Database-Unavailable Fail-Closed Authorization & Authoritative Identity (Part 25 & Security Gate)', async (t) => {
+  // Ensure default mock state is clean
+  mockReadyState = 1;
+  mockAuthoritativeUser = {
+    _id: 'admin_test_1',
+    role: 'admin',
+    department: 'Administration',
+    isActive: true
+  };
 
   await t.test('Unauthenticated request to controller returns 401 Unauthorized', async () => {
     const req = { query: {} };
@@ -255,10 +289,80 @@ test('Phase 9.9 — Talent Discovery Controller Fail-Closed Department Authoriza
     assert.match(res.body.message, /Authentication required/i);
   });
 
-  await t.test('Unauthorized student role to controller returns 403 Forbidden', async () => {
+  await t.test('1. MongoDB is unavailable before controller runs -> returns 503 Service Unavailable', async () => {
+    mockReadyState = 0; // Disconnected
     const req = {
       query: {},
-      user: { _id: 'student_123', role: 'student' }
+      user: { _id: 'admin_1', role: 'admin' }
+    };
+    const res = createMockRes();
+    await getTalentDiscovery(req, res);
+
+    assert.equal(res.statusCode, 503);
+    assert.equal(res.body.success, false);
+    assert.match(res.body.message, /Service unavailable: Database connection required/i);
+    mockReadyState = 1; // restore
+  });
+
+  await t.test('2. MongoDB lookup failure during request -> fails closed with 503 Service Unavailable without leaking internals', async () => {
+    mockReadyState = 1;
+    mockAuthoritativeUser = () => {
+      throw new Error('Connection pool exhausted / MongoNetworkTimeout');
+    };
+    const req = {
+      query: {},
+      user: { _id: 'admin_1', role: 'admin' }
+    };
+    const res = createMockRes();
+    await getTalentDiscovery(req, res);
+
+    assert.equal(res.statusCode, 503);
+    assert.equal(res.body.success, false);
+    assert.match(res.body.message, /Service unavailable: Unable to verify authoritative user record/i);
+    // Ensure internal error stack or details are not leaked to client
+    assert.equal(res.body.message.includes('MongoNetworkTimeout'), false);
+  });
+
+  await t.test('3. Stale req.user.role: admin cannot authorize access when authoritative lookup is unavailable', async () => {
+    mockReadyState = 0; // Database unavailable
+    const req = {
+      query: {},
+      user: { _id: 'admin_stale_1', role: 'admin' }
+    };
+    const res = createMockRes();
+    await getTalentDiscovery(req, res);
+
+    // Must be denied with 503, never fall back to req.user.role
+    assert.equal(res.statusCode, 503);
+    assert.equal(res.body.success, false);
+    mockReadyState = 1; // restore
+  });
+
+  await t.test('4. Stale faculty department cannot authorize access when authoritative lookup is unavailable', async () => {
+    mockReadyState = 0; // Database unavailable
+    const req = {
+      query: {},
+      user: { _id: 'faculty_stale_1', role: 'faculty', department: 'CSE' }
+    };
+    const res = createMockRes();
+    await getTalentDiscovery(req, res);
+
+    // Must be denied with 503, never fall back to req.user.department
+    assert.equal(res.statusCode, 503);
+    assert.equal(res.body.success, false);
+    mockReadyState = 1; // restore
+  });
+
+  await t.test('5. Database-backed administrator whose role changed in DB (demoted to student) is denied with 403', async () => {
+    mockReadyState = 1;
+    mockAuthoritativeUser = {
+      _id: 'user_demoted',
+      role: 'student', // Demoted in database
+      isActive: true
+    };
+    const req = {
+      query: {},
+      user: { _id: 'user_demoted', role: 'admin' } // Stale JWT context claims admin
     };
     const res = createMockRes();
     await getTalentDiscovery(req, res);
@@ -268,7 +372,47 @@ test('Phase 9.9 — Talent Discovery Controller Fail-Closed Department Authoriza
     assert.match(res.body.message, /insufficient permissions/i);
   });
 
-  await t.test('Unauthorized recruiter role to controller returns 403 Forbidden', async () => {
+  await t.test('6. Database-backed administrator whose account is deactivated in DB is denied with 403', async () => {
+    mockReadyState = 1;
+    mockAuthoritativeUser = {
+      _id: 'admin_deactivated',
+      role: 'admin',
+      isActive: false // Deactivated in database
+    };
+    const req = {
+      query: {},
+      user: { _id: 'admin_deactivated', role: 'admin', isActive: true } // Stale context claims active
+    };
+    const res = createMockRes();
+    await getTalentDiscovery(req, res);
+
+    assert.equal(res.statusCode, 403);
+    assert.equal(res.body.success, false);
+    assert.match(res.body.message, /Account is inactive/i);
+  });
+
+  await t.test('7. Missing user record in database denies access with 403 Forbidden', async () => {
+    mockReadyState = 1;
+    mockAuthoritativeUser = null; // User deleted or non-existent in DB
+    const req = {
+      query: {},
+      user: { _id: '507f1f77bcf86cd799439011', role: 'faculty', department: 'CSE' }
+    };
+    const res = createMockRes();
+    await getTalentDiscovery(req, res);
+
+    assert.equal(res.statusCode, 403);
+    assert.equal(res.body.success, false);
+    assert.match(res.body.message, /User account not found/i);
+  });
+
+  await t.test('8. Unauthorized recruiter role in authoritative record returns 403 Forbidden', async () => {
+    mockReadyState = 1;
+    mockAuthoritativeUser = {
+      _id: 'recruiter_123',
+      role: 'recruiter',
+      isActive: true
+    };
     const req = {
       query: {},
       user: { _id: 'recruiter_123', role: 'recruiter' }
@@ -281,10 +425,17 @@ test('Phase 9.9 — Talent Discovery Controller Fail-Closed Department Authoriza
     assert.match(res.body.message, /insufficient permissions/i);
   });
 
-  await t.test('Faculty with missing department and non-existent DB user fails closed with 403 Forbidden', async () => {
+  await t.test('9. Faculty with missing or whitespace-only department in DB fails closed with 403 Forbidden', async () => {
+    mockReadyState = 1;
+    mockAuthoritativeUser = {
+      _id: 'faculty_nodept',
+      role: 'faculty',
+      department: '   ', // empty/whitespace
+      isActive: true
+    };
     const req = {
       query: {},
-      user: { _id: '507f1f77bcf86cd799439011', role: 'faculty' } // valid ObjectId format, but does not exist in DB
+      user: { _id: 'faculty_nodept', role: 'faculty' }
     };
     const res = createMockRes();
     await getTalentDiscovery(req, res);
@@ -294,44 +445,24 @@ test('Phase 9.9 — Talent Discovery Controller Fail-Closed Department Authoriza
     assert.match(res.body.message, /Faculty department cannot be verified/i);
   });
 
-  await t.test('Faculty with empty or whitespace-only department fails closed with 403 Forbidden', async () => {
-    const req = {
-      query: {},
-      user: { _id: '507f1f77bcf86cd799439012', role: 'faculty', department: '   ' }
+  await t.test('10. Client-provided department query parameter cannot establish unverified faculty department', async () => {
+    mockReadyState = 1;
+    mockAuthoritativeUser = {
+      _id: 'faculty_nodept',
+      role: 'faculty',
+      department: '',
+      isActive: true
     };
-    const res = createMockRes();
-    await getTalentDiscovery(req, res);
-
-    assert.equal(res.statusCode, 403);
-    assert.equal(res.body.success, false);
-    assert.match(res.body.message, /Faculty department cannot be verified/i);
-  });
-
-  await t.test('Client-provided department query parameter cannot establish unverified faculty department', async () => {
     const req = {
       query: { department: 'CSE' },
-      user: { _id: '507f1f77bcf86cd799439013', role: 'faculty' } // missing department on user
+      user: { _id: 'faculty_nodept', role: 'faculty' }
     };
     const res = createMockRes();
     await getTalentDiscovery(req, res);
 
-    // Must still fail closed with 403 and never trust req.query.department
     assert.equal(res.statusCode, 403);
     assert.equal(res.body.success, false);
     assert.match(res.body.message, /Faculty department cannot be verified/i);
-  });
-
-  await t.test('Deactivated account (isActive: false) fails closed with 403 Forbidden', async () => {
-    const req = {
-      query: {},
-      user: { _id: '507f1f77bcf86cd799439014', role: 'faculty', department: 'CSE', isActive: false }
-    };
-    const res = createMockRes();
-    await getTalentDiscovery(req, res);
-
-    assert.equal(res.statusCode, 403);
-    assert.equal(res.body.success, false);
-    assert.match(res.body.message, /Account is inactive/i);
   });
 });
 

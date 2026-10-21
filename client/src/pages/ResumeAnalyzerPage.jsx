@@ -814,6 +814,17 @@ export function ResumeAnalyzerPage() {
         if (a.analysisStatus === 'processing' || a.analysisStatus === 'pending') {
           setProcessing(true);
           pollAnalysis(id);
+        } else if (a.analysisStatus === 'failed') {
+          const errorMessages = {
+            PDF_APPEARS_SCANNED: 'Scanned document detected. Please upload a PDF with selectable text.',
+            PDF_RETRIEVAL_FAILED: 'Could not retrieve uploaded resume from storage.',
+            PDF_EXTRACTION_FAILED: 'Could not extract text from the uploaded document.',
+            MALFORMED_AI_RESPONSE: 'AI analysis returned an invalid schema. Please try uploading again.',
+            GEMINI_API_KEY_NOT_CONFIGURED: 'AI service is currently not configured.',
+            ALL_MODELS_FAILED: 'AI analysis models are currently busy or unavailable. Please try again.',
+          };
+          const msg = errorMessages[a.analysisError] || a.analysisError || 'AI analysis failed for this resume.';
+          setAnalysisError(msg);
         }
       }
     } catch (err) {
@@ -822,6 +833,20 @@ export function ResumeAnalyzerPage() {
       }
     }
   }, [activeAnalysis, pollAnalysis]);
+
+  const handleRetryAnalysis = useCallback(async (analysisId) => {
+    if (!analysisId || processing) return;
+    setProcessing(true);
+    setAnalysisError(null);
+    try {
+      await aiApi.analyzeResume(analysisId);
+      pollAnalysis(analysisId);
+    } catch (err) {
+      console.error('Retry analysis error:', err);
+      setProcessing(false);
+      setAnalysisError(err?.message || 'Failed to trigger retry for analysis.');
+    }
+  }, [processing, pollAnalysis]);
 
   // ── Fetch history list ───────────────────────────────────────────────────────
   const fetchAnalyses = useCallback(async () => {
@@ -1107,13 +1132,28 @@ export function ResumeAnalyzerPage() {
           {processing && <ProcessingBanner />}
 
           {/* Analysis error */}
-          {!processing && analysisError && (
+          {!processing && (analysisError || activeAnalysis?.analysisStatus === 'failed') && (
             <div
-              className="flex items-center gap-2 p-4 rounded-xl text-sm"
+              className="p-4 rounded-xl text-sm space-y-3"
               style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}
             >
-              <AlertCircle size={18} className="shrink-0" />
-              {analysisError}
+              <div className="flex items-center gap-2">
+                <AlertCircle size={18} className="shrink-0" />
+                <span>{analysisError || 'AI analysis failed for this document.'}</span>
+              </div>
+              {activeAnalysis && (
+                <div>
+                  <button
+                    onClick={() => handleRetryAnalysis(resolveId(activeAnalysis._id))}
+                    disabled={processing}
+                    className="btn btn-sm text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer"
+                    style={{ background: 'var(--primary-blue)', color: '#fff' }}
+                  >
+                    <RefreshCw size={13} />
+                    Retry AI Analysis
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

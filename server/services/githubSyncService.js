@@ -146,7 +146,7 @@ export const syncGithubProfile = async (userId, options = {}) => {
       }
     }
 
-    const combinedSyncError = [calendarSyncError, metrics.prsError].filter(Boolean).join('; ') || null;
+    const combinedSyncError = Array.from(new Set([calendarSyncError, metrics.prsError].filter(Boolean))).join('; ') || null;
 
     profile.lastSyncStatus = 'success';
     profile.lastSyncError = combinedSyncError;

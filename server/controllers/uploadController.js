@@ -453,7 +453,7 @@ export const proxyPdf = async (req, res) => {
     // 2. Handle Cloudinary asset URLs
     let fetchUrl = rawUrl;
     try {
-      const match = rawUrl.match(/\/(raw|image|video)\/(authenticated|private|upload)\/(?:v\d+\/)?(.+)$/);
+      const match = rawUrl.match(/\/(raw|image|video)\/(authenticated|private|upload)\/(?:s--[a-zA-Z0-9_.-]+--\/)?(?:v\d+\/)?(.+)$/);
       if (match) {
         const resourceType = match[1]; // 'image', 'raw', or 'video'
         const deliveryType = match[2] || 'authenticated';

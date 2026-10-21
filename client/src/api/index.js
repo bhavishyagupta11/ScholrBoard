@@ -39,10 +39,31 @@ export const apiRequest = async (endpoint, options = {}) => {
     delete headers['Content-Type'];
   }
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const timeoutMs = options.timeout || (endpoint.startsWith('/ai') ? 45000 : 25000);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort(new Error(`Request timed out after ${Math.round(timeoutMs / 1000)} seconds`));
+  }, timeoutMs);
+
+  let response;
+  try {
+    response = await fetch(`${BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+      signal: options.signal || controller.signal,
+    });
+  } catch (netErr) {
+    clearTimeout(timeoutId);
+    if (netErr.name === 'AbortError') {
+      throw Object.assign(new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s. Please try again.`), {
+        status: 504,
+        code: 'REQUEST_TIMEOUT',
+      });
+    }
+    throw netErr;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   // Parse JSON body (even for error responses)
   let data;
@@ -97,10 +118,30 @@ export const fetchBlob = async (endpoint, options = {}) => {
     ...options.headers,
   };
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const timeoutMs = options.timeout || 30000;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort(new Error(`Document request timed out after ${Math.round(timeoutMs / 1000)}s`));
+  }, timeoutMs);
+
+  let response;
+  try {
+    response = await fetch(`${BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+      signal: options.signal || controller.signal,
+    });
+  } catch (netErr) {
+    clearTimeout(timeoutId);
+    if (netErr.name === 'AbortError') {
+      const err = new Error(`Document download timed out after ${Math.round(timeoutMs / 1000)}s`);
+      err.status = 504;
+      throw err;
+    }
+    throw netErr;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     const err = new Error(`Failed to fetch secure document`);

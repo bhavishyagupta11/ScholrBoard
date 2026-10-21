@@ -15,6 +15,7 @@ export function AIChatPage() {
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState(null);
   const [error, setError] = useState(null);
+  const [lastFailedPrompt, setLastFailedPrompt] = useState(null);
 
   const messagesEndRef = useRef(null);
 
@@ -40,19 +41,22 @@ export function AIChatPage() {
     if (!input.trim() || loading) return;
 
     const userMessage = { role: 'user', text: input.trim() };
+    const promptText = userMessage.text;
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setLoading(true);
     setError(null);
+    setLastFailedPrompt(null);
 
     try {
-      const res = await aiApi.chat(userMessage.text, conversationId);
+      const res = await aiApi.chat(promptText, conversationId);
       
       if (res.conversationId && !conversationId) {
         setConversationId(res.conversationId);
       }
 
       setMessages(prev => [...prev, { role: 'ai', text: res.response, degraded: res.degraded }]);
+      setLastFailedPrompt(null);
     } catch (err) {
       console.error(err);
       const msg = err?.message || 'Request failed';
@@ -62,7 +66,8 @@ export function AIChatPage() {
       if (msg.includes('Conversation not found')) {
         setConversationId(null);
       }
-      setMessages(prev => [...prev, { role: 'ai', text: 'Sorry, I could not complete that request. Please try again.' }]);
+      setLastFailedPrompt(promptText);
+      setMessages(prev => [...prev, { role: 'ai', text: 'Sorry, I could not complete that request. The AI service may be temporarily busy or unconfigured. Please try again.' }]);
     } finally {
       setLoading(false);
     }
@@ -77,18 +82,21 @@ export function AIChatPage() {
     if (!text.trim() || loading) return;
 
     const userMessage = { role: 'user', text: text.trim() };
+    const promptText = userMessage.text;
     setMessages(prev => [...prev, userMessage]);
     setLoading(true);
     setError(null);
+    setLastFailedPrompt(null);
 
     try {
-      const res = await aiApi.chat(text.trim(), conversationId);
+      const res = await aiApi.chat(promptText, conversationId);
       
       if (res.conversationId && !conversationId) {
         setConversationId(res.conversationId);
       }
 
       setMessages(prev => [...prev, { role: 'ai', text: res.response, degraded: res.degraded }]);
+      setLastFailedPrompt(null);
     } catch (err) {
       console.error(err);
       const msg = err?.message || 'Request failed';
@@ -98,9 +106,19 @@ export function AIChatPage() {
       if (msg.includes('Conversation not found')) {
         setConversationId(null);
       }
+      setLastFailedPrompt(promptText);
+      setMessages(prev => [...prev, { role: 'ai', text: 'Sorry, I could not complete that request. The AI service may be temporarily busy or unconfigured. Please try again.' }]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRetry = () => {
+    if (!lastFailedPrompt || loading) return;
+    const promptToRetry = lastFailedPrompt;
+    setLastFailedPrompt(null);
+    setError(null);
+    sendDirectMessage(promptToRetry);
   };
 
   return (
@@ -114,8 +132,20 @@ export function AIChatPage() {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 p-3 mb-4 rounded-lg text-sm shrink-0" style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--danger-color)', border: '1px solid var(--danger-color)' }}>
-          <AlertCircle size={16} /> {error}
+        <div className="flex items-center justify-between p-3 mb-4 rounded-lg text-sm shrink-0" style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--danger-color)', border: '1px solid var(--danger-color)' }}>
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} /> {error}
+          </div>
+          {lastFailedPrompt && (
+            <button
+              onClick={handleRetry}
+              disabled={loading}
+              className="text-xs px-2.5 py-1 rounded font-semibold underline cursor-pointer hover:opacity-80"
+              style={{ color: 'var(--danger-color)' }}
+            >
+              Retry prompt
+            </button>
+          )}
         </div>
       )}
 

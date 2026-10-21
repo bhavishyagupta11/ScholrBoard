@@ -46,7 +46,7 @@ export function generateSignedCloudinaryUrl(assetUrl, {
   }
 
   // Extract resource_type, delivery_type, version, public_id
-  const match = assetUrl.match(/\/(raw|image|video)\/(authenticated|private|upload)\/(?:v\d+\/)?(.+)$/);
+  const match = assetUrl.match(/\/(raw|image|video)\/(authenticated|private|upload)\/(?:s--[a-zA-Z0-9_.-]+--\/)?(?:v\d+\/)?(.+)$/);
   if (!match) {
     throw new Error(`Invalid Cloudinary URL format: ${assetUrl}`);
   }

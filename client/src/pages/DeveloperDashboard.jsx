@@ -77,6 +77,8 @@ export function DeveloperDashboard() {
     setError: setSyncError
   } = usePlatformSync();
 
+  const [dismissedSyncError, setDismissedSyncError] = useState(false);
+
   // Faculty redaction check
   const isFaculty = profile?.role === 'faculty';
   const hasNoScores = profile && profile.developerScore === undefined;
@@ -230,7 +232,7 @@ export function DeveloperDashboard() {
       </div>
 
       {/* Sync / Profile error alert banners */}
-      {(syncError || lastSyncError) && (
+      {!dismissedSyncError && (syncError || lastSyncError) && (
         <div 
           className="flex items-start gap-3 p-4 rounded-xl border text-sm"
           style={{ 
@@ -243,16 +245,19 @@ export function DeveloperDashboard() {
           <AlertTriangle size={18} className="shrink-0 mt-0.5" />
           <div className="space-y-1">
             <div className="font-bold">Synchronization Error</div>
-            <p className="text-xs">{syncError || lastSyncError}</p>
-            {syncError && (
-              <button 
-                onClick={() => setSyncError(null)}
-                className="text-xs font-semibold underline cursor-pointer mt-1 block"
-                style={{ color: 'var(--danger-color)' }}
-              >
-                Dismiss notification
-              </button>
-            )}
+            <p className="text-xs">
+              {Array.from(new Set(String(syncError || lastSyncError).split(/;\s*/).map(s => s.trim()).filter(Boolean))).join('; ')}
+            </p>
+            <button 
+              onClick={() => {
+                if (setSyncError) setSyncError(null);
+                setDismissedSyncError(true);
+              }}
+              className="text-xs font-semibold underline cursor-pointer mt-1 block"
+              style={{ color: 'var(--danger-color)' }}
+            >
+              Dismiss notification
+            </button>
           </div>
         </div>
       )}

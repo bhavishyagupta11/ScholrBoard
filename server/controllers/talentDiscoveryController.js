@@ -46,47 +46,54 @@ export const getTalentDiscovery = async (req, res) => {
       });
     }
 
-    // Resolve authoritative user record if Mongoose is connected
-    let authoritativeUser = null;
-    if (mongoose.connection.readyState === 1 && req.user._id) {
-      try {
-        authoritativeUser = await User.findById(req.user._id).select('department role isActive').lean();
-      } catch (dbErr) {
-        console.error('Failed to resolve authoritative user record:', dbErr.message);
-        // Database lookup failure MUST fail closed safely — never grant unrestricted access
-        return res.status(403).json({
-          success: false,
-          message: 'Access denied: Unable to verify authoritative user record'
-        });
-      }
-
-      // If database record is missing or deleted, deny access
-      if (!authoritativeUser) {
-        return res.status(403).json({
-          success: false,
-          message: 'Access denied: User account not found'
-        });
-      }
-
-      // If account is deactivated in the database, deny access immediately
-      if (authoritativeUser.isActive === false) {
-        return res.status(403).json({
-          success: false,
-          message: 'Access denied: Account is inactive'
-        });
-      }
-    } else {
-      // Fallback for offline unit tests when Mongoose is disconnected
-      if (req.user.isActive === false) {
-        return res.status(403).json({
-          success: false,
-          message: 'Access denied: Account is inactive'
-        });
-      }
+    // ── 0.1 Database Connectivity Guard ───────────────────────────────────────
+    // If MongoDB is disconnected, deny immediately with 503 Service Unavailable.
+    // Never fall back to unverified request context claims.
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({
+        success: false,
+        message: 'Service unavailable: Database connection required'
+      });
     }
 
-    // Determine current, verified role (authoritative DB record takes precedence over request context)
-    const currentRole = authoritativeUser ? authoritativeUser.role : req.user.role;
+    // ── 0.2 Authoritative Database Resolution ──────────────────────────────────
+    let authoritativeUser = null;
+    try {
+      authoritativeUser = await User.findById(req.user._id).select('department role isActive').lean();
+    } catch (dbErr) {
+      if (dbErr.name === 'CastError') {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied: Invalid user identity'
+        });
+      }
+      console.error('Failed to resolve authoritative user record:', dbErr.message);
+      // Database lookup failure MUST fail closed safely with 503 — never grant access or fall back
+      return res.status(503).json({
+        success: false,
+        message: 'Service unavailable: Unable to verify authoritative user record'
+      });
+    }
+
+    // If database record is missing or deleted, deny access
+    if (!authoritativeUser) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: User account not found'
+      });
+    }
+
+    // If account is deactivated in the database, deny access immediately
+    if (authoritativeUser.isActive === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: Account is inactive'
+      });
+    }
+
+    // Determine current, verified role strictly from authoritative database record
+    // Never trust stale req.user.role claim
+    const currentRole = authoritativeUser.role;
     if (currentRole !== 'admin' && currentRole !== 'faculty') {
       return res.status(403).json({
         success: false,
@@ -94,21 +101,12 @@ export const getTalentDiscovery = async (req, res) => {
       });
     }
 
-    // Resolve authoritative faculty department with fail-closed guarantee
+    // Resolve authoritative faculty department with fail-closed guarantee strictly from DB record
     let verifiedFacultyDepartment = null;
     if (currentRole === 'faculty') {
-      let dept = null;
-      if (authoritativeUser) {
-        // Authoritative database record is the primary source of truth (stale context claims ignored)
-        dept = (typeof authoritativeUser.department === 'string' && authoritativeUser.department.trim())
-          ? authoritativeUser.department.trim()
-          : null;
-      } else {
-        // Fallback for offline unit tests when Mongoose is disconnected
-        dept = (typeof req.user.department === 'string' && req.user.department.trim())
-          ? req.user.department.trim()
-          : null;
-      }
+      const dept = (typeof authoritativeUser.department === 'string' && authoritativeUser.department.trim())
+        ? authoritativeUser.department.trim()
+        : null;
 
       // FAIL-CLOSED: A missing, empty, or unresolvable department MUST NEVER grant unrestricted access
       if (!dept) {

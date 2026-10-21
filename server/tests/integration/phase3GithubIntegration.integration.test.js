@@ -328,6 +328,8 @@ test('Integration 3.3: Partial sync handling — REST succeeds, GraphQL calendar
     // 1. Must record PARTIAL syncStatus
     assert.equal(profile.platformSyncStates.github.syncStatus, 'PARTIAL', 'syncStatus must be PARTIAL when GraphQL fails but REST succeeds');
     assert.ok(profile.platformSyncStates.github.calendarSyncError, 'calendarSyncError must record failure reason');
+    assert.equal(profile.lastSyncError, 'rate limit exceeded', 'lastSyncError must be cleanly deduplicated without repetition');
+    assert.equal(profile.platformSyncStates.github.error, 'rate limit exceeded', 'platformSyncStates.github.error must be cleanly deduplicated without repetition');
 
     // 2. Prior cached calendar must be retained and marked STALE (never zeroed or cleared)
     assert.ok(profile.githubContributionCalendar, 'Prior calendar must not be deleted');

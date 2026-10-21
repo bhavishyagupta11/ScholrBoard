@@ -32,6 +32,8 @@ let profileC = null;
 let facultyUser = null;
 let facultyNoDept = null;
 let inactiveFaculty = null;
+let inactiveAdmin = null;
+let demotedAdmin = null;
 
 // Mock Express response helper
 function createMockRes() {
@@ -81,6 +83,26 @@ before(async () => {
     role: 'faculty',
     department: 'CSE',
     isActive: false
+  });
+
+  // Create Inactive Admin User
+  inactiveAdmin = await User.create({
+    name: 'Phase 9 Inactive Admin',
+    email: `phase9_admin_inactive_${Date.now()}@scholrboard.test`,
+    password: 'Password123!',
+    role: 'admin',
+    department: 'Administration',
+    isActive: false
+  });
+
+  // Create Demoted Admin User (role in DB demoted to student)
+  demotedAdmin = await User.create({
+    name: 'Phase 9 Demoted Admin',
+    email: `phase9_admin_demoted_${Date.now()}@scholrboard.test`,
+    password: 'Password123!',
+    role: 'student',
+    department: 'CSE',
+    isActive: true
   });
 
   // Create Faculty User with missing department (simulating unconfigured/legacy record)
@@ -208,7 +230,7 @@ before(async () => {
 });
 
 after(async () => {
-  const idsToDelete = [userA?._id, userB?._id, userC?._id, adminUser?._id, facultyUser?._id, facultyNoDept?._id, inactiveFaculty?._id].filter(Boolean);
+  const idsToDelete = [userA?._id, userB?._id, userC?._id, adminUser?._id, facultyUser?._id, facultyNoDept?._id, inactiveFaculty?._id, inactiveAdmin?._id, demotedAdmin?._id].filter(Boolean);
   await Profile.deleteMany({ userId: { $in: idsToDelete } });
   await User.deleteMany({ _id: { $in: idsToDelete } });
   await mongoose.disconnect();
@@ -478,10 +500,17 @@ test('Phase 9.8 — Departmental Scoping & Fail-Closed Faculty Authorization (Pa
     await getTalentDiscovery({ query: {}, user: { _id: userA._id, role: 'student' } }, studentRes);
     assert.equal(studentRes.statusCode, 403);
 
-    // Recruiter
+    // Recruiter (unauthorized role in context with student user in DB)
     const recruiterRes = createMockRes();
-    await getTalentDiscovery({ query: {}, user: { _id: 'recruiter_99', role: 'recruiter' } }, recruiterRes);
+    await getTalentDiscovery({ query: {}, user: { _id: userA._id, role: 'recruiter' } }, recruiterRes);
     assert.equal(recruiterRes.statusCode, 403);
+    assert.match(recruiterRes.body.message, /insufficient permissions/i);
+
+    // Malformed ID format
+    const malformedRes = createMockRes();
+    await getTalentDiscovery({ query: {}, user: { _id: 'recruiter_99', role: 'recruiter' } }, malformedRes);
+    assert.equal(malformedRes.statusCode, 403);
+    assert.match(malformedRes.body.message, /Invalid user identity/i);
   });
 
   await t.test('10. Faculty with stale department in auth context is restricted to authoritative DB department', async () => {
@@ -513,18 +542,28 @@ test('Phase 9.8 — Departmental Scoping & Fail-Closed Faculty Authorization (Pa
     assert.match(res.body.message, /Account is inactive/i);
   });
 
-  await t.test('12. Authoritative-user lookup failure fails closed safely with 403 and never falls back to unrestricted access', async () => {
-    // Trigger DB lookup error via cast error on malformed _id
-    const req = {
-      query: {},
-      user: { _id: 'invalid_mongo_id_causing_lookup_error', role: 'faculty' }
+  await t.test('12. Authoritative-user lookup failure fails closed safely with 503 and never falls back to unrestricted access', async () => {
+    // Mock User.findById to simulate database connection/network error during lookup
+    const origFindById = User.findById;
+    User.findById = () => {
+      throw new Error('MongoNetworkTimeoutException: connection pool exhausted');
     };
-    const res = createMockRes();
-    await getTalentDiscovery(req, res);
 
-    assert.equal(res.statusCode, 403);
-    assert.equal(res.body.success, false);
-    assert.match(res.body.message, /Unable to verify authoritative user record/i);
+    try {
+      const req = {
+        query: {},
+        user: { _id: facultyUser._id, role: 'faculty' }
+      };
+      const res = createMockRes();
+      await getTalentDiscovery(req, res);
+
+      assert.equal(res.statusCode, 503);
+      assert.equal(res.body.success, false);
+      assert.match(res.body.message, /Service unavailable: Unable to verify authoritative user record/i);
+      assert.equal(res.body.message.includes('MongoNetworkTimeoutException'), false, 'Must not leak database error details');
+    } finally {
+      User.findById = origFindById;
+    }
   });
 
   await t.test('13. Faculty member cannot obtain broader access by manipulating query parameters or supplying stale claims', async () => {
@@ -542,5 +581,51 @@ test('Phase 9.8 — Departmental Scoping & Fail-Closed Faculty Authorization (Pa
     const returnedUserIds = res.body.data.map(d => String(d._id));
     assert.ok(returnedUserIds.includes(String(userA._id)), 'CSE Student A must be returned');
     assert.ok(!returnedUserIds.includes(String(userB._id)), 'IT Student B must NOT be accessible despite spoofed admin role and IT query');
+  });
+
+  await t.test('14. Database-backed administrator whose account is deactivated in DB fails closed with 403 Forbidden', async () => {
+    const req = {
+      query: {},
+      user: { _id: inactiveAdmin._id, role: 'admin' } // Stale JWT context claims active admin
+    };
+    const res = createMockRes();
+    await getTalentDiscovery(req, res);
+
+    assert.equal(res.statusCode, 403);
+    assert.equal(res.body.success, false);
+    assert.match(res.body.message, /Account is inactive/i);
+  });
+
+  await t.test('15. Database-backed administrator whose role was demoted in DB fails closed with 403 Forbidden', async () => {
+    const req = {
+      query: {},
+      user: { _id: demotedAdmin._id, role: 'admin' } // Stale JWT context claims admin
+    };
+    const res = createMockRes();
+    await getTalentDiscovery(req, res);
+
+    assert.equal(res.statusCode, 403);
+    assert.equal(res.body.success, false);
+    assert.match(res.body.message, /insufficient permissions/i);
+  });
+
+  await t.test('16. MongoDB is unavailable before controller runs returns 503 Service Unavailable', async () => {
+    const origReadyState = mongoose.connection.readyState;
+    Object.defineProperty(mongoose.connection, 'readyState', { value: 0, configurable: true, writable: true });
+
+    try {
+      const req = {
+        query: {},
+        user: { _id: adminUser._id, role: 'admin' }
+      };
+      const res = createMockRes();
+      await getTalentDiscovery(req, res);
+
+      assert.equal(res.statusCode, 503);
+      assert.equal(res.body.success, false);
+      assert.match(res.body.message, /Service unavailable: Database connection required/i);
+    } finally {
+      Object.defineProperty(mongoose.connection, 'readyState', { value: origReadyState, configurable: true, writable: true });
+    }
   });
 });

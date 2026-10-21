@@ -179,7 +179,7 @@ export async function migrateLegacyCloudinaryAssets({
 
   for (const item of allDbUrls) {
     if (!item.url) continue;
-    const match = item.url.match(/\/(raw|image|video)\/(upload|authenticated|private)\/(?:v\d+\/)?(.+)$/);
+    const match = item.url.match(/\/(raw|image|video)\/(upload|authenticated|private)\/(?:s--[a-zA-Z0-9_.-]+--\/)?(?:v\d+\/)?(.+)$/);
     if (match) {
       const resourceType = match[1];
       const deliveryType = match[2];

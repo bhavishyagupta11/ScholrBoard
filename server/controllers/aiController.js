@@ -30,6 +30,7 @@ import {
 } from '../services/resumeScoringService.js';
 import { recalculateAndSavePlacementScore } from '../services/placementReadinessService.js';
 import { sha256, canonicalJSON } from '../services/scorePersistence.js';
+import { generateSignedCloudinaryUrl } from '../utils/cloudinaryHelper.js';
 import { createRequire } from 'module';
 
 // CJS interop for packages that don't ship ESM
@@ -291,7 +292,12 @@ export const generateWithModelFallback = async ({ prompt, systemInstruction, jso
           ...(systemInstruction ? { systemInstruction } : {}),
           ...(genConfig ? { generationConfig: genConfig } : {}),
         });
-        const result = await model.generateContent(parts || prompt);
+        const result = await Promise.race([
+          model.generateContent(parts || prompt),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`AI generation timed out after 20s on ${modelName}`)), 20000)
+          ),
+        ]);
         const text = extractGeminiText(result.response);
         if (!text) {
           errors.push(`${modelName} (attempt ${attempts + 1}): empty or blocked response`);
@@ -467,6 +473,7 @@ export const sendChatMessage = async (req, res) => {
     let aiResponse = '';
     let usageTokens = 0;
     try {
+      const genAI = getGeminiClient();
       const primaryModel = getPrimaryModel();
       const genConfig = buildGenerationConfig(primaryModel);
       const model = genAI.getGenerativeModel({
@@ -475,16 +482,25 @@ export const sendChatMessage = async (req, res) => {
         ...(genConfig ? { generationConfig: genConfig } : {}),
       });
       const chat = model.startChat({ history: historyForGemini });
-      const result = await chat.sendMessage(userContent);
+      const result = await Promise.race([
+        chat.sendMessage(userContent),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('AI chat response timed out after 25s')), 25000)
+        ),
+      ]);
       aiResponse = extractGeminiText(result.response);
       usageTokens = result.response.usageMetadata?.totalTokenCount || 0;
     } catch (e) {
       console.warn('[ai] Primary chat path failed, using fallback models:', e.message);
-      const { text, result } = await generateWithModelFallback({
-        prompt: `${systemContext}\n\nStudent message: ${userContent}`,
-      });
-      aiResponse = text;
-      usageTokens = result.response.usageMetadata?.totalTokenCount || 0;
+      try {
+        const { text, result } = await generateWithModelFallback({
+          prompt: `${systemContext}\n\nStudent message: ${userContent}`,
+        });
+        aiResponse = text;
+        usageTokens = result?.response?.usageMetadata?.totalTokenCount || 0;
+      } catch (fallbackErr) {
+        console.warn('[ai] Fallback models also failed or timed out:', fallbackErr.message);
+      }
     }
 
     if (!aiResponse) {
@@ -896,35 +912,48 @@ export const analyzeResume = async (req, res) => {
     let publicId = null;
     let signedUrlGenerated = false;
 
-    try {
-      const match = analysis.fileUrl.match(/\/(raw|image|video)\/(authenticated|private|upload)\/(?:v\d+\/)?(.+)$/);
-      if (match) {
-        const resourceType = match[1] || 'raw';
-        const deliveryType = match[2] || 'authenticated';
-        publicId = decodeURIComponent(match[3]);
-        const ext = publicId.split('.').pop() || '';
-        const { v2: cloudinary } = await import('cloudinary');
-        cloudinary.config({
-          cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-          api_key: process.env.CLOUDINARY_API_KEY,
-          api_secret: process.env.CLOUDINARY_API_SECRET,
-          secure: true,
-        });
-        fileUrlToFetch = cloudinary.utils.private_download_url(publicId, ext, {
-          resource_type: resourceType,
-          type: deliveryType,
-          expires_at: Math.floor(Date.now() / 1000) + 600, // 10 minutes expiry (V13 Part 14)
-          secure: true,
-        });
+    if (analysis.fileUrl && (analysis.fileUrl.startsWith('http://') || analysis.fileUrl.startsWith('https://'))) {
+      try {
+        const signed = generateSignedCloudinaryUrl(analysis.fileUrl, { expiresIn: 600 });
+        fileUrlToFetch = signed.signedUrl;
+        publicId = signed.publicId;
         signedUrlGenerated = true;
+      } catch (cldErr) {
+        console.warn('[aiController] Cloudinary signed URL generation warning:', cldErr.message);
+        // Fallback to manual regex if generateSignedCloudinaryUrl throws on non-standard format
+        try {
+          const match = analysis.fileUrl.match(/\/(raw|image|video)\/(authenticated|private|upload)\/(?:s--[a-zA-Z0-9_.-]+--\/)?(?:v\d+\/)?(.+)$/);
+          if (match) {
+            const resourceType = match[1] || 'raw';
+            const deliveryType = match[2] || 'authenticated';
+            publicId = decodeURIComponent(match[3]);
+            const ext = publicId.split('.').pop() || '';
+            const { v2: cloudinary } = await import('cloudinary');
+            cloudinary.config({
+              cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+              api_key: process.env.CLOUDINARY_API_KEY,
+              api_secret: process.env.CLOUDINARY_API_SECRET,
+              secure: true,
+            });
+            fileUrlToFetch = cloudinary.utils.private_download_url(publicId, ext, {
+              resource_type: resourceType,
+              type: deliveryType,
+              expires_at: Math.floor(Date.now() / 1000) + 600,
+              secure: true,
+            });
+            signedUrlGenerated = true;
+          }
+        } catch (manualErr) {
+          console.warn('[aiController] Manual Cloudinary signature fallback warning:', manualErr.message);
+        }
       }
-    } catch (cldErr) {
-      console.warn('[aiController] Cloudinary signed URL generation warning:', cldErr.message);
     }
 
     let pdfResponse;
     try {
-      pdfResponse = await fetch(fileUrlToFetch);
+      pdfResponse = await fetch(fileUrlToFetch, {
+        signal: AbortSignal.timeout(15000), // 15-second bounded retrieval timeout
+      });
       if (!pdfResponse.ok) {
         throw new Error(`Storage fetch failed with HTTP ${pdfResponse.status}`);
       }
