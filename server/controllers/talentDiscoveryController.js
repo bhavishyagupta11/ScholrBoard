@@ -53,7 +53,11 @@ export const getTalentDiscovery = async (req, res) => {
       placementReadinessMin,
       achievementPointsMin,
       hasResumeAnalysis,
-      atsScoreMin
+      atsScoreMin,
+      coverageMin,
+      confidence,
+      freshness,
+      eligibilityStatus
     } = req.query;
 
     // ── 1. Query parameter validation ─────────────────────────────────────────
@@ -71,12 +75,15 @@ export const getTalentDiscovery = async (req, res) => {
     }
 
     // Sort fields that live directly on Profile (index-backed)
-    const profileSortFields = ['developerScore', 'githubScore', 'dsaScore', 'cpScore', 'gpa', 'achievementPoints', 'placementReadinessScore'];
+    const profileSortFields = ['developerScore', 'githubScore', 'dsaScore', 'cpScore', 'gpa', 'achievementPoints', 'placementReadinessScore', 'coverage'];
     // Fields that live on User — sorting on these cannot use the Profile index
     const userSortFields = ['createdAt'];
     const allowedSortFields = [...profileSortFields, ...userSortFields];
 
-    if (!allowedSortFields.includes(sortBy)) {
+    // Explicit prohibition: Composite sort Developer Score × Coverage is prohibited (Part 24.2 / Part 27 Phase 9)
+    if (sortBy && sortBy.toLowerCase().includes('coverage') && sortBy.toLowerCase().includes('score')) {
+      errors.push('Developer Score × Coverage is NOT a sort option. Score and Coverage are separate columns.');
+    } else if (!allowedSortFields.includes(sortBy)) {
       errors.push(`sortBy must be one of: ${allowedSortFields.join(', ')}`);
     }
     if (!['asc', 'desc'].includes(sortOrder)) {
@@ -107,6 +114,35 @@ export const getTalentDiscovery = async (req, res) => {
     validateNumeric(placementReadinessMin, 'placementReadinessMin');
     validateNumeric(achievementPointsMin, 'achievementPointsMin');
     validateNumeric(atsScoreMin, 'atsScoreMin');
+    validateNumeric(coverageMin, 'coverageMin');
+
+    if (coverageMin !== undefined) {
+      const covNum = Number(coverageMin);
+      if (covNum < 0 || covNum > 100) {
+        errors.push('coverageMin must be between 0 and 100');
+      }
+    }
+
+    if (confidence !== undefined) {
+      const allowedConfidence = ['high', 'medium', 'low'];
+      if (!allowedConfidence.includes(String(confidence).toLowerCase())) {
+        errors.push("confidence must be one of: 'High', 'Medium', 'Low'");
+      }
+    }
+
+    if (freshness !== undefined) {
+      const allowedFreshness = ['fresh', 'aging', 'stale'];
+      if (!allowedFreshness.includes(String(freshness).toLowerCase())) {
+        errors.push("freshness must be one of: 'Fresh', 'Aging', 'Stale'");
+      }
+    }
+
+    if (eligibilityStatus !== undefined) {
+      const allowedEligibility = ['eligible', 'ineligible', 'unknown'];
+      if (!allowedEligibility.includes(String(eligibilityStatus).toLowerCase())) {
+        errors.push("eligibilityStatus must be one of: 'ELIGIBLE', 'INELIGIBLE', 'UNKNOWN'");
+      }
+    }
 
     const validateBoolean = (val, name) => {
       if (val !== undefined && val !== 'true' && val !== 'false') {
@@ -150,6 +186,21 @@ export const getTalentDiscovery = async (req, res) => {
     if (placementReadinessMin !== undefined) profileMatchClauses.push({ placementReadinessScore: { $gte: Number(placementReadinessMin) } });
     if (achievementPointsMin !== undefined)  profileMatchClauses.push({ achievementPoints: { $gte: Number(achievementPointsMin) } });
 
+    if (coverageMin !== undefined) {
+      profileMatchClauses.push({ 'developerScoreMeta.coverage': { $gte: Number(coverageMin) } });
+    }
+    if (confidence !== undefined) {
+      const confFormatted = String(confidence).charAt(0).toUpperCase() + String(confidence).slice(1).toLowerCase();
+      profileMatchClauses.push({ 'developerScoreMeta.confidence': confFormatted });
+    }
+    if (freshness !== undefined) {
+      const freshFormatted = String(freshness).charAt(0).toUpperCase() + String(freshness).slice(1).toLowerCase();
+      profileMatchClauses.push({ 'developerScoreMeta.freshness': freshFormatted });
+    }
+    if (eligibilityStatus !== undefined) {
+      profileMatchClauses.push({ 'placementReadinessMeta.eligibilityStatus.status': String(eligibilityStatus).toUpperCase() });
+    }
+
     if (skills) {
       const skillRegexes = skills.split(',').map(s => new RegExp(`^${s.trim()}$`, 'i'));
       profileMatchClauses.push({ skills: { $all: skillRegexes } });
@@ -191,9 +242,10 @@ export const getTalentDiscovery = async (req, res) => {
     const swDepts = TRACK_DEPARTMENT_MAPPING.software_engineering.map(d => new RegExp(d, 'i'));
     userMatchClauses.push({ 'user.department': { $in: swDepts } });
 
-    const isCoordinator = (req.user.role === 'faculty' && req.user.facultyLevel === 'coordinator');
-    if (isCoordinator) {
-      userMatchClauses.push({ 'user.department': new RegExp(`^${req.user.department.trim()}$`, 'i') });
+    if (req.user.role === 'faculty') {
+      if (req.user.department) {
+        userMatchClauses.push({ 'user.department': new RegExp(`^${req.user.department.trim()}$`, 'i') });
+      }
     } else {
       if (department) {
         userMatchClauses.push({ 'user.department': new RegExp(department.trim(), 'i') });
@@ -232,7 +284,11 @@ export const getTalentDiscovery = async (req, res) => {
     //    document (since we start from Profile). For user fields (createdAt)
     //    we sort on the user sub-document path after the lookup.
     const sortDir = sortOrder === 'desc' ? -1 : 1;
-    const sortField = userSortFields.includes(sortBy) ? `user.${sortBy}` : sortBy;
+    const sortField = sortBy === 'coverage'
+      ? 'developerScoreMeta.coverage'
+      : userSortFields.includes(sortBy) 
+      ? `user.${sortBy}` 
+      : sortBy;
 
     // ── 5. Base pipeline ───────────────────────────────────────────────────────
     //    Profile → profileMatch → sort (INDEX) → lookup User → userMatch
@@ -351,6 +407,20 @@ export const getTalentDiscovery = async (req, res) => {
           gpa:                   { $ifNull: ['$gpa', 0] },
           achievementPoints:     { $ifNull: ['$achievementPoints', 0] },
           placementReadinessScore: { $ifNull: ['$placementReadinessScore', 0] },
+          developerScoreMeta: {
+            coverage:            { $ifNull: ['$developerScoreMeta.coverage', null] },
+            confidence:          { $ifNull: ['$developerScoreMeta.confidence', 'Low'] },
+            freshness:           { $ifNull: ['$developerScoreMeta.freshness', 'Stale'] },
+            calculatedAt:        '$developerScoreMeta.calculatedAt'
+          },
+          placementReadinessMeta: {
+            coverage:            { $ifNull: ['$placementReadinessMeta.coverage', null] },
+            confidence:          { $ifNull: ['$placementReadinessMeta.confidence', 'Low'] },
+            freshness:           { $ifNull: ['$placementReadinessMeta.freshness', 'Stale'] },
+            eligibilityStatus:   '$placementReadinessMeta.eligibilityStatus',
+            calculatedAt:        '$placementReadinessMeta.calculatedAt'
+          },
+          eligibilityStatus:     { $ifNull: ['$placementReadinessMeta.eligibilityStatus', null] },
           skills:                { $ifNull: ['$skills', []] },
           atsScore:              { $ifNull: ['$resumeAnalysis.atsScore', null] },
           githubConnected: {
@@ -390,11 +460,12 @@ export const getTalentDiscovery = async (req, res) => {
       await AuditLog.create({
         action: 'talent_discovery_search',
         performedBy: req.user._id,
-        role: 'admin',
+        role: req.user.role || 'admin',
         targetModel: 'User',
         targetId: req.user._id,
         details: {
-          adminId: req.user._id,
+          userId: req.user._id,
+          userRole: req.user.role,
           filtersUsed: {
             search, department, branch, year, semester,
             gpaMin, gpaMax, backlogsMax,
@@ -403,6 +474,7 @@ export const getTalentDiscovery = async (req, res) => {
             skills, githubConnected, leetcodeConnected, codeforcesConnected,
             placementReadinessMin, achievementPointsMin,
             hasResumeAnalysis, atsScoreMin,
+            coverageMin, confidence, freshness, eligibilityStatus,
             sortBy, sortOrder, page: pageNum, limit: limitNum
           },
           resultCount: dataResult.length,
