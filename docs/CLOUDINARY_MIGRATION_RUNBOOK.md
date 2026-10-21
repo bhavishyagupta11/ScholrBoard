@@ -1,6 +1,6 @@
-# ScholrBoard V13 Production Runbook: Cloudinary Legacy Asset Privacy Migration & CDN Invalidation
+# ScholrBoard V13 Production Runbook: Cloudinary Legacy Asset Privacy Migration, CDN Invalidation & Partial Failure Recovery
 
-## 1. Overview & Migration Architecture
+## 1. Overview & Security Architecture
 
 In ScholrBoard V13 Phase 8, all resume uploads are strictly hardened to use Cloudinary's authenticated delivery tier (`type: 'authenticated'`, `resource_type: 'raw'`), preventing unauthorized access to confidential candidate documents.
 
@@ -11,39 +11,54 @@ However, historical resumes uploaded prior to Phase 8 remain stored under Cloudi
 Legacy assets are migrated using Cloudinary's supported `uploader.rename()` API:
 ```javascript
 await cloudinary.uploader.rename(publicId, publicId, {
-  resource_type: asset.resourceType || 'raw',
-  type: asset.deliveryType || 'upload',
-  to_type: 'authenticated',
-  invalidate: true,  // Requests CDN edge cache purge
-  overwrite: true,
+  resource_type: asset.resourceType || 'raw', // Dynamically confirmed from actual asset metadata
+  type: asset.deliveryType || 'upload',       // Source delivery tier ('upload')
+  to_type: 'authenticated',                   // Target private delivery tier
+  invalidate: true,                           // Requests asynchronous CDN edge cache purge
+  overwrite: true,                            // In-place delivery tier update
 });
 ```
 
 ### Application Reference Synchronization
 Upon successful storage rename, all corresponding MongoDB document references are updated atomically:
-- `ResumeAnalysis.fileUrl`: Updated from `.../upload/...` to `.../authenticated/...`
-- `Profile.resumeUrl`: Updated from `.../upload/...` to `.../authenticated/...`
+- `ResumeAnalysis.fileUrl`: Updated from `.../raw/upload/...` to `.../raw/authenticated/...`
+- `Profile.resumeUrl`: Updated from `.../raw/upload/...` to `.../raw/authenticated/...`
+
+### Internal Canonical Locators vs. Signed Delivery URLs
+- The database stores canonical asset URIs (e.g. `https://res.cloudinary.com/<cloud>/raw/authenticated/v12345/scholrmind/resumes/...`).
+- **These database URLs are internal locators only**; the application never serves raw unsigned `/raw/authenticated/` links to the browser.
+- Delivery to students, recruiters, and backend AI analysis occurs exclusively via authenticated server endpoints:
+  - `GET /api/upload/resume/signed-url/:id`: Returns a time-limited signed URL (`private_download_url` with 300s expiration and HMAC signature).
+  - `GET /api/upload/resume/view/:id`: Validates application ownership and streams inline PDF binary.
+  - `GET /api/upload/proxy?url=...`: Validates user-tenant ownership and streams inline PDF binary.
+- Cloudinary API secrets and signing credentials **never leak to the frontend**.
 
 ---
 
-## 2. Storage Migration vs. Asynchronous CDN Cache Invalidation
+## 2. Five Distinct Migration & Privacy Verification States
 
-A critical distinction must be maintained between **storage migration** and **CDN edge cache purge**:
+Operators and auditors must distinguish these 5 operational tiers. Never conflate an initial API call with complete verification:
 
-1. **Storage-Tier Migration (Immediate)**:
-   - When Cloudinary returns HTTP 200 for `uploader.rename(..., { to_type: 'authenticated' })`, the asset is immediately moved into authenticated storage in Cloudinary.
-   - Cloudinary will reject any new unsigned requests that hit the origin server.
-   - The asset is recorded in migration metrics as `migrated` and `invalidationRequested`.
-
-2. **CDN Cache Invalidation (Asynchronous Propagation)**:
-   - Specifying `invalidate: true` instructs Cloudinary to dispatch cache invalidation requests across its global Content Delivery Network (CDN edge servers).
-   - **CDN invalidation does NOT take effect instantaneously**. CDN edge caches may continue to serve cached copies of the old unsigned public URL until edge nodes receive the purge command and edge TTL expires (typically 5 to 30 minutes, up to 1 hour depending on global CDN edge distribution).
-   - Therefore, the migration utility records newly migrated assets under `pendingCdnVerification`.
-   - **Operators must NOT claim that legacy URLs are immediately inaccessible upon script completion**.
+1. **Storage Delivery-Type Migration (`migrated`)**:
+   - Cloudinary acknowledges `uploader.rename(..., { to_type: 'authenticated' })`.
+   - Asset origin is immediately protected from unsigned requests.
+2. **Database Reference Synchronization (`migrated` / `reconciled`)**:
+   - MongoDB `ResumeAnalysis.fileUrl` and `Profile.resumeUrl` references are updated to `/raw/authenticated/`.
+   - Both Cloudinary and MongoDB point to the authenticated tier.
+3. **Database Reference Reconciliation (`reconciled`)**:
+   - Identifies assets already authenticated in Cloudinary whose database references remained stale (e.g., from prior partial failures).
+   - Reconciles MongoDB records without executing redundant Cloudinary renames.
+4. **CDN Invalidation Request (`invalidationRequested`) vs. Propagation Pending (`pendingCdnVerification`)**:
+   - `invalidation: true` dispatches an asynchronous purge to global CDN edge nodes (Fastly/Akamai/CloudFront).
+   - Edge nodes continue serving cached copies during the propagation window (typically 5 to 30 minutes, up to 1 hour).
+   - Newly migrated assets are placed in `pendingCdnVerification`.
+5. **Confirmed CDN Verification (`confirmedCdnVerified`)**:
+   - Active HTTP checks confirm that the legacy unsigned public URL returns HTTP 404, 401, or 403.
+   - An asset is **never** declared verified until this check passes.
 
 ---
 
-## 3. Pre-Migration Checklist & Safety Requirements
+## 3. Pre-Migration Checklist & Safety Mandates
 
 - [ ] **SAFETY MANDATE**: **NEVER USE AN EXISTING PRODUCTION RESUME AS A TEST ASSET**. Under no circumstances should operator smoke tests mutate or publicize an existing user's resume.
 - [ ] Database backup: Verify that MongoDB snapshot/backup is current.
@@ -75,18 +90,17 @@ node scripts/migrateLegacyCloudinaryAssets.js
 ================================================================================
 Cloudinary Asset Privacy Migration Summary (DRY_RUN)
 Total Assets Scanned:             X
-Eligible for Update:              X
+Eligible for Action:              X
 Successfully Migrated (Storage):  0
+Database References Reconciled:   0
 CDN Invalidation Requested:       0
 CDN Edge Purge Pending:           0
 CDN Edge Purge Confirmed:         0
 CDN Invalidation Failures:        0
-Skipped (Already Protected):      0
-Failed Migrations:                0
+Skipped (Already Synchronized):   0
+Failed Operations:                0
 ================================================================================
 ```
-
-Review the dry-run summary. Confirm that the total assets scanned and eligible match anticipated production volume.
 
 ---
 
@@ -102,7 +116,8 @@ node scripts/migrateLegacyCloudinaryAssets.js --apply
 ### Operational Behavior:
 - Queries assets in batches (default 50) using cursor-based pagination (`next_cursor`).
 - Queries each asset's metadata via `cloudinary.api.resource()` to confirm actual `resource_type` and `type`.
-- If an asset is already `type: 'authenticated'`, it is safely skipped (`skipped++`).
+- If an asset is already `type: 'authenticated'` and its database references are up to date, it is safely skipped (`skipped++`).
+- If an asset is already `type: 'authenticated'` but has stale database references, it executes reference reconciliation (`reconciled++`).
 - Applies bounded rate limiting (100ms throttle between calls) and exponential backoff on HTTP 429.
 - Dispatches `uploader.rename()` with `to_type: 'authenticated'` and `invalidate: true`.
 - Updates MongoDB references atomically.
@@ -113,65 +128,82 @@ node scripts/migrateLegacyCloudinaryAssets.js --apply
 ================================================================================
 Cloudinary Asset Privacy Migration Summary (APPLY)
 Total Assets Scanned:             X
-Eligible for Update:              X
+Eligible for Action:              X
 Successfully Migrated (Storage):  X
+Database References Reconciled:   0
 CDN Invalidation Requested:       X
 CDN Edge Purge Pending:           X (Awaiting edge propagation window)
 CDN Edge Purge Confirmed:         0 (Requires post-propagation verification)
 CDN Invalidation Failures:        0
-Skipped (Already Protected):      0
-Failed Migrations:                0
+Skipped (Already Synchronized):   0
+Failed Operations:                0
 Duration:                         ...ms
 ================================================================================
 ```
 
 ---
 
-## 6. Execution Step 3: Post-Propagation CDN Invalidation Verification
+## 6. Execution Step 3: Partial Failure Recovery & Reference Reconciliation
+
+Cloudinary and MongoDB do not participate in a single atomic two-phase commit. Network interruptions or database timeouts can cause partial failures:
+- **Case**: Cloudinary rename succeeds, but the subsequent MongoDB `updateMany` fails.
+
+### Recovery Mechanism
+The script is designed for safe, idempotent rerun:
+1. When rerunning `node scripts/migrateLegacyCloudinaryAssets.js --apply`:
+2. The script discovers the asset via its remaining legacy MongoDB reference.
+3. It queries `cloudinary.api.resource(publicId)` and detects that Cloudinary is already `type: 'authenticated'`.
+4. It detects that MongoDB still contains stale `/upload/` references (`hasStaleDbReferences === true`).
+5. It **skips the redundant Cloudinary rename** and directly executes database reference reconciliation.
+6. Upon successful DB update, the asset is recorded under `Database References Reconciled (`reconciled: 1`)`.
+7. If the DB update fails again, the asset remains recorded under `failed: 1` and is **never** reported as migrated or verified.
+
+---
+
+## 7. Execution Step 4: Post-Propagation CDN Invalidation Verification
 
 ### Propagation Wait Period
 **Wait at least 15 to 30 minutes** after migration completion to allow Cloudinary CDN edge nodes worldwide to flush their cached copies.
 
 ### Verification Procedure
-Operators can verify that old unsigned public delivery URLs are no longer accessible:
-
 1. **Automated Verification**:
    Run the migration utility with the `--verify-cdn` flag:
    ```bash
    cd server
    node scripts/migrateLegacyCloudinaryAssets.js --apply --verify-cdn
    ```
-   The script performs HTTP HEAD checks on legacy URLs. For each asset:
+   The script performs HTTP HEAD checks on legacy URLs:
    - If the legacy URL returns HTTP 404, 401, or 403: the asset is confirmed purged (`confirmedCdnVerified++`).
    - If the legacy URL still returns HTTP 200: it remains flagged under `pendingCdnVerification`.
 
 2. **Manual Spot-Check (Synthetic Assets Only)**:
-   If manually spot-checking, inspect the old public URL of a throwaway test asset:
    ```bash
    curl -I "https://res.cloudinary.com/<cloud_name>/raw/upload/v12345/scholrmind/resumes/throwaway_test_user/test.pdf"
    ```
    - **Expected Result**: `HTTP/1.1 404 Not Found` (or `401 Unauthorized`).
    - **If HTTP 200 is returned**: CDN edge propagation is still ongoing. Allow an additional 15 minutes and re-verify.
 
-3. **Signed Download Verification**:
-   Verify that authorized users can access the migrated resume via ScholrBoard application endpoints:
-   - `GET /api/resumes/view-url/:analysisId` returns a signed private download URL (`/raw/authenticated/...`) that expires in 300 seconds.
+3. **Signed Access Verification**:
+   Verify that authorized users can obtain signed URLs via:
+   - `GET /api/upload/resume/signed-url/:analysisId` (returns signed URL with 300s expiry)
+   - `GET /api/upload/resume/view/:applicationId` (streams inline PDF)
 
 ---
 
-## 7. Troubleshooting & Recovery Runbook
+## 8. Troubleshooting Matrix
 
 | Scenario | Root Cause | Remediation Procedure |
 | :--- | :--- | :--- |
 | **Partial Failure (Network Timeout / 429)** | Transient Cloudinary network glitch or rate throttling. | The migration script is completely **idempotent**. Simply rerun `node scripts/migrateLegacyCloudinaryAssets.js --apply`. Assets already migrated to `authenticated` are skipped without duplicate mutations. |
-| **Legacy URL Returns 200 after 1 hour** | CDN edge caching issue or invalidation request not acknowledged. | Verify the asset in Cloudinary console. Run targeted explicit invalidation via Cloudinary API: `cloudinary.uploader.explicit(publicId, { type: 'upload', invalidate: true })`. |
-| **MongoDB Update Fails after Rename** | Database connection dropped during migration. | Asset is already secured in Cloudinary storage (`type: 'authenticated'`). Rerunning the migration script will detect the asset, skip the rename, and synchronize the MongoDB URLs. |
+| **MongoDB Update Failed on Run 1** | Database network interruption after Cloudinary rename. | Run 2 detects asset is already authenticated in Cloudinary and reconciles MongoDB references (`reconciled++`) without duplicate rename. |
+| **Legacy URL Returns 200 after 1 hour** | CDN edge caching issue or invalidation request delayed. | Verify asset in Cloudinary console. Run targeted explicit invalidation via Cloudinary API: `cloudinary.uploader.explicit(publicId, { type: 'upload', invalidate: true })`. |
 | **Existing Asset Shows Resource Type 'image'** | Legacy PDF or image uploaded under image resource type. | The script dynamically confirms actual resource type via `api.resource()` and passes the correct `resource_type` to `uploader.rename()`. |
 
 ---
 
-## 8. Compliance & Security Invariants
+## 9. Compliance & Security Invariants
 
 1. **Dry-Run by Default**: Never execute `--apply` without explicit operator confirmation.
 2. **Never Test on Production User Resumes**: All testing must use synthetic throwaway fixtures created exclusively for testing.
 3. **Honest Invalidation Reporting**: Never report an asset as `confirmedCdnVerified` until active HTTP checks confirm the legacy public URL is completely inaccessible.
+4. **Zero Credential Leakage**: Signed URLs are generated strictly server-side; Cloudinary API secrets are never delivered to the client.
