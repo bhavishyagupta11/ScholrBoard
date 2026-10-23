@@ -116,10 +116,15 @@ export function ScoreExplanationPanel({ profile, developerScore: propScore, deve
   const forkSignal = Math.min(5, Math.round((Math.min(forks, 50) / 50) * 5));
   const ptsContribution = Math.max(1, Math.round((starSignal + forkSignal) * 0.4));
 
+  const lcContestRating = rawMetrics.leetcode?.contestRating || codingStats.leetcodeContestRating || null;
+  const lcContestRank = rawMetrics.leetcode?.contestGlobalRanking || null;
+  const cpBreakdown = cpDim?.breakdown || {};
+  const isCrossPlatform = Boolean(cpBreakdown.crossPlatformComparison);
+
   // Sub-signal dimensions list
   const dimensionRows = [
     {
-      name: 'DSA (Problem Solving)',
+      name: 'DSA (Practice Volume)',
       score: dsaDim?.score ?? (codingStats.leetcodeProblemsSolved ? Math.min(100, Math.round(codingStats.leetcodeProblemsSolved / 3)) : null),
       cov: dsaDim?.dimensionCoverage ?? (codingStats.leetcodeProblemsSolved ? 85 : 0),
       effWeight: dsaDim?.effectiveWeight != null ? `${(dsaDim.effectiveWeight * 100).toFixed(1)}%` : '30%',
@@ -144,11 +149,13 @@ export function ScoreExplanationPanel({ profile, developerScore: propScore, deve
       status: rawMetrics.github ? 'SYNCED' : 'NOT_CONNECTED',
     },
     {
-      name: 'Competitive Programming',
-      score: cpDim?.score ?? (codingStats.codeforcesRating ? Math.min(100, Math.round(codingStats.codeforcesRating / 20)) : null),
-      cov: cpDim?.dimensionCoverage ?? (codingStats.codeforcesRating ? 100 : 0),
-      effWeight: cpDim?.effectiveWeight != null ? `${(cpDim.effectiveWeight * 100).toFixed(1)}%` : '15%',
-      status: codingStats.codeforcesRating ? 'SYNCED' : 'NOT_CONNECTED',
+      name: 'Competitive Programming (Contests)',
+      score: cpDim?.score ?? null,
+      cov: cpDim?.dimensionCoverage ?? (cpDim?.score ? 100 : 0),
+      effWeight: cpDim?.effectiveWeight != null ? `${(cpDim.effectiveWeight * 100).toFixed(1)}%` : (cpDim?.score ? '15%' : '0%'),
+      status: isCrossPlatform 
+        ? 'DUAL_PLATFORM (LeetCode + Codeforces)' 
+        : (cpDim?.score ? 'SINGLE_PLATFORM' : 'UNRATED (excluded without penalty)'),
     },
     {
       name: 'Technical Breadth',
@@ -223,16 +230,16 @@ export function ScoreExplanationPanel({ profile, developerScore: propScore, deve
             </h4>
             
             <ul className="space-y-2.5 font-mono text-[11px] leading-relaxed" style={{ color: 'var(--text-primary)' }}>
-              {/* LeetCode Sub-signal */}
+              {/* LeetCode Practice Volume Sub-signal */}
               <li className="flex items-start gap-2">
                 <span className="text-cyan-400 shrink-0">→</span>
                 <div>
-                  <span className="font-semibold text-cyan-300">LeetCode:</span>{' '}
+                  <span className="font-semibold text-cyan-300">DSA Practice Volume:</span>{' '}
                   {lcSolved > 0 ? (
                     <>
-                      <span>{lcSolved} problems ({lcMedium} medium, {lcHard} hard); {lcActiveDays} active submission days in last 30 days</span>
+                      <span>{lcSolved} problems solved ({lcMedium} medium, {lcHard} hard); {lcActiveDays} active submission days in last 30 days</span>
                       <span className="block text-[10px] text-neutral-400 font-sans mt-0.5">
-                        (active days include any submission type, not just accepted)
+                        (practice volume measures algorithmic fluency and preparation depth; evaluated under DSA dimension)
                       </span>
                     </>
                   ) : (
@@ -271,18 +278,51 @@ export function ScoreExplanationPanel({ profile, developerScore: propScore, deve
                 </div>
               </li>
 
-              {/* Codeforces Sub-signal */}
-              <li className="flex items-start gap-2">
-                <span className="text-cyan-400 shrink-0">→</span>
-                <div>
-                  <span className="font-semibold text-cyan-300">Codeforces:</span>{' '}
-                  {cfRating > 0 ? (
-                    <span>rating {cfRating} ({cfDecayText})</span>
-                  ) : (
-                    <span className="text-neutral-400 font-sans">No Codeforces handle verified (dimension excluded without penalty).</span>
-                  )}
-                </div>
-              </li>
+              {/* Contest Performance Sub-signal (Platform-Aware Comparison) */}
+              {isCrossPlatform ? (
+                <li className="flex items-start gap-2 bg-neutral-900/40 p-2.5 rounded-lg border border-cyan-500/20">
+                  <span className="text-cyan-400 shrink-0 font-bold">★</span>
+                  <div>
+                    <span className="font-semibold text-cyan-300">Cross-Platform Rating Comparison (Dual-Platform Calibrated):</span>{' '}
+                    <span>
+                      LeetCode contest rating {lcContestRating} ({cpBreakdown.leetcodePercentile ?? '—'}th percentile) + Codeforces rating {cfRating} ({cpBreakdown.codeforcesPercentile ?? '—'}th percentile; {cfDecayText}). Subscore: {cpDim?.score ?? '—'}/100.
+                    </span>
+                    <span className="block text-[10px] text-neutral-400 font-sans mt-0.5">
+                      (Normalized independently against verified platform distributions to prevent raw rating scale distortion; practice volume remains separate; equal percentiles reflect relative standing within distinct platform populations)
+                    </span>
+                  </div>
+                </li>
+              ) : lcContestRating ? (
+                <li className="flex items-start gap-2">
+                  <span className="text-cyan-400 shrink-0">→</span>
+                  <div>
+                    <span className="font-semibold text-cyan-300">Contest Performance (LeetCode Single-Platform):</span>{' '}
+                    <span>
+                      rating {lcContestRating} ({cpBreakdown.leetcodePercentile ?? '—'}th percentile); Codeforces contest data unavailable; coverage 75% (no zero penalty).
+                    </span>
+                  </div>
+                </li>
+              ) : cfRating > 0 ? (
+                <li className="flex items-start gap-2">
+                  <span className="text-cyan-400 shrink-0">→</span>
+                  <div>
+                    <span className="font-semibold text-cyan-300">Contest Performance (Codeforces Single-Platform):</span>{' '}
+                    <span>
+                      rating {cfRating} ({cpBreakdown.codeforcesPercentile ?? '—'}th percentile; {cfDecayText}); LeetCode contest rating unavailable; coverage {cpDim?.dimensionCoverage ?? 75}%.
+                    </span>
+                  </div>
+                </li>
+              ) : (
+                <li className="flex items-start gap-2">
+                  <span className="text-neutral-500 shrink-0">→</span>
+                  <div>
+                    <span className="font-semibold text-neutral-400">Contest Performance:</span>{' '}
+                    <span className="text-neutral-400 font-sans">
+                      No contest rating verified (unrated accounts excluded from scoring denominator without penalty).
+                    </span>
+                  </div>
+                </li>
+              )}
 
               {/* Technical Breadth Sub-signal */}
               <li className="flex items-start gap-2">

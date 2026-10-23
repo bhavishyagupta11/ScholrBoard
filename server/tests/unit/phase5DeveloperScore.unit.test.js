@@ -238,10 +238,11 @@ test('Phase 5.5: Competitive Programming dimension: confirmed zero vs active con
   assert.equal(cpMissing.effectiveWeight, 0);
 
   // 3. Active contest participation: rating 1600, maxRating 1800, 6 months elapsed
-  // cpRaw = (1600 - 800) / 1600 * 100 = 50 pts
-  // maxRatingBonus = (1800 - 1600) / 1600 * 10 = 1.25 pts
-  // 6 months elapsed: factor = 0.45 + 0.55 * (1 - 6/36) = 0.45 + 0.55 * 0.8333 = 0.9083
-  // cpScore = (50 + 1.25) * 0.9083 = 51.25 * 0.9083 = 46.55 -> 47
+  // Calibrated percentile for Codeforces 1600 (Expert) = 88.0%
+  // V13 Audit: Peak bonus removed (peakBonus = 0) to ensure platform symmetry with LeetCode.
+  // 6 months elapsed: factor = 0.45 + 0.55 * (1 - 6/36) = 0.90833
+  // cpScore = Math.round(88.0 * 0.90833) = Math.round(79.93) = 80
+  // Single-platform Codeforces coverage = 75% (symmetric with LeetCode-only), effWeight = 0.1125
   const activeCf = {
     contestsParticipated: 12,
     rating: 1600,
@@ -249,9 +250,10 @@ test('Phase 5.5: Competitive Programming dimension: confirmed zero vs active con
     lastContestAt: new Date('2025-12-01T00:00:00Z'), // 6 months before June 2026
   };
   const cpActive = computeCpDimension(activeCf, evalDate);
-  assert.equal(cpActive.score, 47);
-  assert.equal(cpActive.dimensionCoverage, 100);
-  assert.equal(cpActive.effectiveWeight, 0.15);
+  assert.equal(cpActive.score, 80);
+  assert.equal(cpActive.dimensionCoverage, 75);
+  assert.equal(cpActive.effectiveWeight, 0.1125);
+  assert.equal(cpActive.crossPlatformComparison, false);
 });
 
 test('Phase 5.6: Technical Breadth dimension calculates distinct languages cleanly', () => {

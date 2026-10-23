@@ -1,0 +1,85 @@
+{
+  "metadata": {
+    "source": "https://codeforces.com/api/user.ratedList?activeOnly=true",
+    "sourceEndpoint": "Codeforces API user.ratedList?activeOnly=true",
+    "populationDefinition": "Active rated contestants who competed in at least 1 rated contest during the last month (~30 days)",
+    "populationSize": 18933,
+    "snapshotTimestamp": "2026-10-23T02:23:14.054Z",
+    "sourcePayloadSha256": "16048763383537c5c09d97642583804880fb11ebe7e62bb641c3c194ffda941f",
+    "calibrationVersion": "v1.1.0-cf-empirical",
+    "freshnessMaxDays": 180,
+    "minRating": -32,
+    "maxRating": 3407,
+    "method": "empirical_cdf_piecewise_linear"
+  },
+  "anchors": [
+    [
+      600,
+      8.21
+    ],
+    [
+      700,
+      13.11
+    ],
+    [
+      800,
+      18.76
+    ],
+    [
+      900,
+      28.14
+    ],
+    [
+      1000,
+      39.14
+    ],
+    [
+      1100,
+      50.06
+    ],
+    [
+      1200,
+      59.72
+    ],
+    [
+      1300,
+      68.82
+    ],
+    [
+      1400,
+      76.6
+    ],
+    [
+      1500,
+      82.7
+    ],
+    [
+      1600,
+      87.42
+    ],
+    [
+      1750,
+      92.75
+    ],
+    [
+      1900,
+      95.54
+    ],
+    [
+      2100,
+      97.7
+    ],
+    [
+      2400,
+      99.33
+    ],
+    [
+      2600,
+      99.72
+    ],
+    [
+      3000,
+      99.94
+    ]
+  ]
+}

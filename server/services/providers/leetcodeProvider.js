@@ -257,16 +257,41 @@ export const fetchLeetcodeMetrics = async (username) => {
     let contestRating = null;
     let contestGlobalRanking = null;
     let attendedContestsCount = null;
+    let totalParticipants = null;
+    let topPercentage = null;
 
     if (contestData.status === 'fulfilled') {
       const contest = contestData.value || {};
-      contestRating = contest.contestRating != null
-        ? Math.round(Number(contest.contestRating))
-        : (contest.rating != null ? Math.round(Number(contest.rating)) : 0);
-      contestGlobalRanking = contest.contestGlobalRanking || null;
-      attendedContestsCount = contest.attendedContestsCount != null
+      const attended = contest.attendedContestsCount != null
         ? Number(contest.attendedContestsCount)
-        : 0;
+        : (contest.contestAttend != null ? Number(contest.contestAttend) : null);
+      attendedContestsCount = attended;
+
+      const rawRating = contest.contestRating != null
+        ? Number(contest.contestRating)
+        : (contest.rating != null ? Number(contest.rating) : null);
+
+      // If user attended 0 contests or rating is non-positive / missing, store null (unrated state)
+      contestRating = (attended !== 0 && rawRating != null && rawRating > 0)
+        ? Math.round(rawRating)
+        : null;
+
+      const rawRank = contest.contestGlobalRanking != null
+        ? Number(contest.contestGlobalRanking)
+        : (contest.globalRanking != null ? Number(contest.globalRanking) : null);
+      contestGlobalRanking = (rawRank != null && rawRank > 0) ? rawRank : null;
+
+      const rawParticipants = contest.totalParticipants != null
+        ? Number(contest.totalParticipants)
+        : (contest.contestTotalParticipants != null ? Number(contest.contestTotalParticipants) : null);
+      totalParticipants = (rawParticipants != null && rawParticipants > 0) ? rawParticipants : null;
+
+      const rawTopPct = contest.topPercentage != null
+        ? Number(contest.topPercentage)
+        : (contest.contestTopPercentage != null ? Number(contest.contestTopPercentage) : null);
+      topPercentage = (rawTopPct != null && !isNaN(rawTopPct) && rawTopPct >= 0 && rawTopPct <= 100)
+        ? Number(rawTopPct.toFixed(2))
+        : null;
     } else {
       isPartial = true;
       subCallErrors.push(`Contest data unavailable: ${contestData.reason?.message || 'failed'}`);
@@ -331,6 +356,8 @@ export const fetchLeetcodeMetrics = async (username) => {
       contestRating,
       contestGlobalRanking,
       attendedContestsCount,
+      totalParticipants,
+      topPercentage,
       streak,
       longestStreak,
       activeSubmitDays30d,

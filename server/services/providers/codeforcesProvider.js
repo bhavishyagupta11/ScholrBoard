@@ -85,9 +85,14 @@ export const fetchCodeforcesMetrics = async (username) => {
         : (ratingRes.value?.comment || 'Codeforces contest rating returned non-OK status');
     }
 
+    const rawRating = info.rating != null ? Number(info.rating) : null;
+    const rawMaxRating = info.maxRating != null ? Number(info.maxRating) : null;
+    const rating = (rawRating != null && rawRating > 0) ? rawRating : null;
+    const maxRating = (rawMaxRating != null && rawMaxRating > 0) ? rawMaxRating : null;
+
     return {
-      rating: Number(info.rating || 0),
-      maxRating: Number(info.maxRating || 0),
+      rating,
+      maxRating,
       rank: info.rank || null,
       maxRank: info.maxRank || null,
       contribution: Number(info.contribution || 0),

@@ -77,7 +77,7 @@ export function ScoreBreakdownBar({ scoreBreakdown, loading = false }) {
   const segments = [
     { label: 'GitHub', pct: githubPct, color: 'var(--primary-cyan)', count: githubWeight },
     { label: 'DSA (LeetCode)', pct: dsaPct, color: 'var(--primary-blue)', count: dsaWeight },
-    { label: 'CP (Codeforces)', pct: cpPct, color: 'var(--primary-orange)', count: cpWeight }
+    { label: 'CP (Contests)', pct: cpPct, color: 'var(--primary-orange)', count: cpWeight }
   ];
 
   return (
