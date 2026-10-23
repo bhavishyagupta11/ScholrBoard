@@ -71,6 +71,8 @@ export const syncLeetcodeProfile = async (userId, options = {}) => {
         metrics.contestRating = priorMetrics.contestRating;
         metrics.contestGlobalRanking = priorMetrics.contestGlobalRanking ?? null;
         metrics.attendedContestsCount = priorMetrics.attendedContestsCount ?? 0;
+        metrics.totalParticipants = priorMetrics.totalParticipants ?? null;
+        metrics.topPercentage = priorMetrics.topPercentage ?? null;
       }
       // Preserve prior valid calendar metrics if current calendar sub-call failed or returned unavailable data
       if (metrics.activeSubmitDays30d === null) {
@@ -93,7 +95,9 @@ export const syncLeetcodeProfile = async (userId, options = {}) => {
 
     profile.codingStats.rawMetrics.leetcode = metrics;
     profile.codingStats.leetcodeProblemsSolved = metrics.totalSolved ?? 0;
-    profile.codingStats.leetcodeContestRating = metrics.contestRating ?? 0;
+    profile.codingStats.leetcodeContestRating = metrics.contestRating != null
+      ? metrics.contestRating
+      : (priorMetrics.contestRating ?? null);
     profile.codingStats.leetcodeStreak = metrics.streak != null
       ? metrics.streak
       : (priorMetrics.streak != null ? priorMetrics.streak : (profile.codingStats?.leetcodeStreak != null ? profile.codingStats.leetcodeStreak : null));
