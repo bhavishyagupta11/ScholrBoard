@@ -13,6 +13,12 @@ import {
   renewLease,
   releaseLock,
 } from './scoreHistoryService.js';
+import {
+  CALIBRATION_METADATA,
+  normalizeLeetcodeRating,
+  normalizeCodeforcesRating,
+  combineContestRatingSignals,
+} from './contestRatingNormalization.js';
 
 export const FORMULA_VERSION = 'v3.0.0';
 export const SCORE_VERSION = 3;
@@ -238,11 +244,12 @@ export function computeDevSnapshotHash(evidence = {}, config = {}, evalDate = ne
         structureBonus:       evidence.structureBonus ?? 0,
       },
       cp: {
-        rating:               evidence.rating               ?? null,
-        maxRating:            evidence.maxRating            ?? null,
-        contestsParticipated: evidence.contestsParticipated ?? 0,
-        cpRecencyMonths:      temporal.cpRecencyMonths      ?? null,
-        cpRecencyFactor:      temporal.cpRecencyFactor      ?? null,
+        rating:                evidence.rating               ?? null,
+        maxRating:             evidence.maxRating            ?? null,
+        contestsParticipated:  evidence.contestsParticipated ?? 0,
+        leetcodeContestRating: evidence.contestRating        ?? evidence.leetcodeContestRating ?? null,
+        cpRecencyMonths:       temporal.cpRecencyMonths      ?? null,
+        cpRecencyFactor:       temporal.cpRecencyFactor      ?? null,
       },
       breadth: {
         uniqueLanguages:      evidence.uniqueLanguages ?? 0,
@@ -690,122 +697,106 @@ export function computeRepoQualityDimension(githubMetrics = {}, evalDate = new D
 // ─────────────────────────────────────────────────────────────────────────────
 // 4. Competitive Programming Dimension (Key: 'cp', Nominal Weight: 15%)
 // ─────────────────────────────────────────────────────────────────────────────
-export function computeCpDimension(codeforcesMetrics = {}, evalDate = new Date(), config = {}, platformStatus = null, handle = null) {
+export function computeCpDimension(
+  codeforcesMetrics = {},
+  evalDateOrLeetcode = new Date(),
+  config = {},
+  platformStatus = null,
+  handle = null,
+  explicitLeetcodeMetrics = null
+) {
+  // Support polymorphic caller arguments:
+  // Signature A (standard): (codeforcesMetrics, evalDate, config, platformStatus, handle, leetcodeMetrics)
+  // Signature B (paired):   (codeforcesMetrics, leetcodeMetrics, evalDate, config)
+  // Signature C (nested):   ({ codeforces, leetcode }, evalDate, config)
+  let cfMetrics = codeforcesMetrics || {};
+  let lcMetrics = explicitLeetcodeMetrics;
+  let evalDate = new Date();
+  let effectiveConfig = config || {};
+  let effectivePlatformStatus = platformStatus;
+  let effectiveHandle = handle;
+
+  if (codeforcesMetrics && (codeforcesMetrics.codeforces || codeforcesMetrics.leetcode)) {
+    cfMetrics = codeforcesMetrics.codeforces || {};
+    lcMetrics = lcMetrics || codeforcesMetrics.leetcode || null;
+  }
+
+  const isArg2Leetcode = Boolean(
+    evalDateOrLeetcode &&
+    typeof evalDateOrLeetcode === 'object' &&
+    !(evalDateOrLeetcode instanceof Date) &&
+    (evalDateOrLeetcode.contestRating !== undefined ||
+     evalDateOrLeetcode.attendedContestsCount !== undefined ||
+     evalDateOrLeetcode.totalSolved !== undefined ||
+     evalDateOrLeetcode.easySolved !== undefined)
+  );
+
+  if (isArg2Leetcode) {
+    lcMetrics = evalDateOrLeetcode;
+    evalDate = (config instanceof Date) ? config : (config ? new Date(config) : new Date());
+    effectiveConfig = (typeof platformStatus === 'object' && platformStatus !== null) ? platformStatus : {};
+    effectivePlatformStatus = typeof handle === 'string' ? handle : null;
+    effectiveHandle = typeof explicitLeetcodeMetrics === 'string' ? explicitLeetcodeMetrics : null;
+  } else if (evalDateOrLeetcode instanceof Date) {
+    evalDate = evalDateOrLeetcode;
+  } else if (evalDateOrLeetcode && (typeof evalDateOrLeetcode === 'string' || typeof evalDateOrLeetcode === 'number')) {
+    evalDate = new Date(evalDateOrLeetcode);
+  }
+
   const isPlatformAbsent = (
-    (platformStatus === 'NOT_CONNECTED' && !handle && !codeforcesMetrics?.contestsParticipated) ||
-    platformStatus === 'UNAVAILABLE' ||
-    platformStatus === 'ERROR'
+    (effectivePlatformStatus === 'NOT_CONNECTED' && !effectiveHandle && !cfMetrics?.contestsParticipated && !cfMetrics?.rating) ||
+    effectivePlatformStatus === 'UNAVAILABLE' ||
+    effectivePlatformStatus === 'ERROR'
   );
-  if (isPlatformAbsent) {
-    return {
-      key: 'cp',
-      nominalWeight: NOMINAL_WEIGHTS.cp,
-      score: null,
-      dimensionCoverage: 0,
-      dimensionConfidence: 'Low',
-      effectiveWeight: 0,
-      subSignalStatus: {
-        contest: 'UNAVAILABLE',
-        recency: 'UNAVAILABLE',
-      },
-      breakdown: {
-        contestsParticipated: null,
-        rating: 0,
-      },
-      explanation: 'Competitive programming contest data is unavailable; excluded from scoring denominator.',
-    };
-  }
 
-  const contestsCount = codeforcesMetrics?.contestsParticipated;
-  const rating = Number(codeforcesMetrics?.rating || 0);
-
-  // 1. Confirmed Zero Contests (contestsParticipated === 0):
-  // Excluded from denominator (cpScore = null; benefit of doubt; no penalty)
-  if (contestsCount === 0) {
-    return {
-      key: 'cp',
-      nominalWeight: NOMINAL_WEIGHTS.cp,
-      score: null,
-      dimensionCoverage: 0,
-      dimensionConfidence: 'Low',
-      effectiveWeight: 0,
-      subSignalStatus: {
-        contest: 'CONFIRMED_ZERO',
-        recency: 'NOT_APPLICABLE',
-      },
-      breakdown: {
-        contestsParticipated: 0,
-        rating: 0,
-      },
-      explanation: 'Codeforces account has confirmed zero contest participations; excluded from scoring denominator (benefit of doubt).',
-    };
-  }
-
-  // 2. Missing, Null, or Unlinked:
-  // Excluded from denominator (cpScore = null; no penalty)
-  if (contestsCount === null || contestsCount === undefined || rating === 0) {
-    return {
-      key: 'cp',
-      nominalWeight: NOMINAL_WEIGHTS.cp,
-      score: null,
-      dimensionCoverage: 0,
-      dimensionConfidence: 'Low',
-      effectiveWeight: 0,
-      subSignalStatus: {
-        contest: 'UNAVAILABLE',
-        recency: 'UNAVAILABLE',
-      },
-      breakdown: {
-        contestsParticipated: null,
-        rating: 0,
-      },
-      explanation: 'Competitive programming contest data is unavailable; excluded from scoring denominator.',
-    };
-  }
-
-  // 3. Active Contests (contestsParticipated > 0):
-  const maxRating = Number(codeforcesMetrics.maxRating || rating);
-  const cpRaw = Math.max(0, Math.min(100, ((rating - 800) / 1600) * 100));
-  const maxRatingBonus = Math.max(0, Math.min(10, ((maxRating - rating) / 1600) * 10));
-
-  const temporal = evaluateTemporalEvidence(
-    {
-      contestsParticipated: contestsCount,
-      lastContestAt: codeforcesMetrics.lastContestAt,
-    },
+  const lcNorm = normalizeLeetcodeRating({
+    rating: lcMetrics?.contestRating,
+    attendedContestsCount: lcMetrics?.attendedContestsCount,
+    globalRanking: lcMetrics?.contestGlobalRanking ?? lcMetrics?.globalRanking,
+    totalParticipants: lcMetrics?.totalParticipants,
+    topPercentage: lcMetrics?.topPercentage,
     evalDate,
-    config
-  );
-  const cpRecencyFactor = temporal.cpRecencyFactor;
-  const cpScore = Math.min(100, Math.max(0, Math.round((cpRaw + maxRatingBonus) * cpRecencyFactor)));
+  });
 
-  const dimensionCoverage = temporal.cpSubSignalAvailable ? 100 : 85;
-  const effectiveWeight = Number((NOMINAL_WEIGHTS.cp * (dimensionCoverage / 100)).toFixed(4));
+  const cfNorm = isPlatformAbsent ? null : normalizeCodeforcesRating({
+    rating: cfMetrics?.rating,
+    maxRating: cfMetrics?.maxRating,
+    contestsParticipated: cfMetrics?.contestsParticipated,
+    evalDate,
+  });
 
-  const explanation = `Competitive Programming Score: ${cpScore}/100 (Codeforces rating ${rating} [${Math.round(cpRaw)} pts]; Peak rating bonus: +${Math.round(maxRatingBonus)} pts; Contest recency factor: ${cpRecencyFactor.toFixed(4)} [elapsed: ${temporal.cpRecencyMonths ?? 'unverified'} months]). Coverage: ${dimensionCoverage}%.`;
+  // Temporal recency evaluation for Codeforces contest participation
+  let cpRecencyFactor = 1.0;
+  let cpRecencyMonths = null;
+  let recencyAvailable = false;
 
-  return {
-    key: 'cp',
+  if (cfMetrics?.contestsParticipated && cfMetrics.contestsParticipated > 0) {
+    const temporal = evaluateTemporalEvidence(
+      {
+        contestsParticipated: cfMetrics.contestsParticipated,
+        lastContestAt: cfMetrics.lastContestAt,
+      },
+      evalDate,
+      effectiveConfig
+    );
+    cpRecencyFactor = temporal.cpRecencyFactor;
+    cpRecencyMonths = temporal.cpRecencyMonths;
+    recencyAvailable = temporal.cpSubSignalAvailable;
+  }
+
+  // Combined contest signals using platform-aware normalization
+  return combineContestRatingSignals({
+    leetcodeNorm: lcNorm,
+    codeforcesNorm: cfNorm,
+    cpRecencyFactor,
+    cpRecencyMonths,
+    recencyAvailable,
     nominalWeight: NOMINAL_WEIGHTS.cp,
-    score: cpScore,
-    dimensionCoverage,
-    dimensionConfidence: dimensionCoverage >= 90 ? 'High' : 'Medium',
-    effectiveWeight,
-    subSignalStatus: {
-      contest: 'OBTAINED',
-      recency: temporal.cpSubSignalAvailable ? 'OBTAINED' : 'UNAVAILABLE',
+    rawInputs: {
+      contestsParticipated: cfMetrics?.contestsParticipated ?? null,
+      attendedContestsCount: lcMetrics?.attendedContestsCount ?? null,
     },
-    breakdown: {
-      rating,
-      maxRating,
-      contestsParticipated: contestsCount,
-      cpRaw: Number(cpRaw.toFixed(2)),
-      maxRatingBonus: Number(maxRatingBonus.toFixed(2)),
-      cpRecencyFactor,
-      cpRecencyMonths: temporal.cpRecencyMonths,
-    },
-    explanation,
-  };
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -902,10 +893,24 @@ export function calculateDeveloperScore(profile, options = {}) {
   const leetcodeStatus = profile.platformSyncStates?.leetcode?.syncStatus ?? null;
   const codeforcesStatus = profile.platformSyncStates?.codeforces?.syncStatus ?? null;
 
+  const lcContestMetrics = raw.leetcode || {
+    contestRating: profile.codingStats?.leetcodeContestRating,
+    attendedContestsCount: profile.codingStats?.rawMetrics?.leetcode?.attendedContestsCount,
+    contestGlobalRanking: profile.codingStats?.rawMetrics?.leetcode?.contestGlobalRanking,
+    totalParticipants: profile.codingStats?.rawMetrics?.leetcode?.totalParticipants,
+    topPercentage: profile.codingStats?.rawMetrics?.leetcode?.topPercentage,
+  };
+  const cfContestMetrics = raw.codeforces || {
+    rating: profile.codingStats?.codeforcesRating,
+    maxRating: profile.codingStats?.codeforcesMaxRating,
+    contestsParticipated: profile.codingStats?.rawMetrics?.codeforces?.contestsParticipated,
+    lastContestAt: profile.codingStats?.rawMetrics?.codeforces?.lastContestAt,
+  };
+
   const dsaDim = computeDsaDimension(raw.leetcode, evalDate, options.config, leetcodeStatus, lcHandle);
   const engDim = computeEngActivityDimension(raw.github, calendar, evalDate, options.config);
   const repoDim = computeRepoQualityDimension(raw.github, evalDate, options.config);
-  const cpDim = computeCpDimension(raw.codeforces, evalDate, options.config, codeforcesStatus, cfHandle);
+  const cpDim = computeCpDimension(cfContestMetrics, evalDate, options.config, codeforcesStatus, cfHandle, lcContestMetrics);
   const breadthDim = computeBreadthDimension(raw.github, evalDate, options.config);
 
   const dimensionList = [dsaDim, engDim, repoDim, cpDim, breadthDim];
@@ -929,6 +934,7 @@ export function calculateDeveloperScore(profile, options = {}) {
 
   const evidenceCount = (profile.codingStats?.githubRepos || 0) +
                         (profile.codingStats?.leetcodeProblemsSolved || 0) +
+                        (profile.codingStats?.leetcodeContestRating ? 1 : 0) +
                         (profile.codingStats?.codeforcesRating ? 1 : 0);
 
   const dimensionsMap = new Map();
