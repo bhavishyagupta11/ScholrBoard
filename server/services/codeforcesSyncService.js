@@ -67,6 +67,16 @@ export const syncCodeforcesProfile = async (userId, options = {}) => {
     if (metrics.isPartial) {
       syncStatus = 'PARTIAL';
       if (
+        metrics.rating === null &&
+        priorMetrics.rating !== null &&
+        priorMetrics.rating !== undefined
+      ) {
+        metrics.rating = priorMetrics.rating;
+        metrics.maxRating = priorMetrics.maxRating ?? null;
+        metrics.rank = priorMetrics.rank ?? null;
+        metrics.maxRank = priorMetrics.maxRank ?? null;
+      }
+      if (
         metrics.contestsParticipated === null &&
         priorMetrics.contestsParticipated !== null &&
         priorMetrics.contestsParticipated !== undefined
@@ -80,9 +90,13 @@ export const syncCodeforcesProfile = async (userId, options = {}) => {
 
     // 3. Update profile metrics and caching metadata
     profile.codingStats.rawMetrics.codeforces = metrics;
-    profile.codingStats.codeforcesRating = metrics.rating ?? 0;
-    profile.codingStats.codeforcesMaxRating = metrics.maxRating ?? 0;
-    profile.codingStats.codeforcesRank = metrics.rank ?? '';
+    profile.codingStats.codeforcesRating = metrics.rating != null
+      ? metrics.rating
+      : (priorMetrics.rating ?? null);
+    profile.codingStats.codeforcesMaxRating = metrics.maxRating != null
+      ? metrics.maxRating
+      : (priorMetrics.maxRating ?? null);
+    profile.codingStats.codeforcesRank = metrics.rank ?? priorMetrics.rank ?? '';
 
     if (!profile.platformSyncStates) profile.platformSyncStates = {};
     if (!profile.platformSyncStates.codeforces) profile.platformSyncStates.codeforces = {};
