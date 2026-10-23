@@ -86,6 +86,8 @@ const leetcodeMetricsSchema = new mongoose.Schema({
   contestRating:         { type: Number, default: null },
   contestGlobalRanking:  { type: Number, default: null },
   attendedContestsCount: { type: Number, default: null },
+  totalParticipants:     { type: Number, default: null },
+  topPercentage:         { type: Number, default: null },
   streak:                { type: Number, default: null },
   longestStreak:         { type: Number, default: null },
   lastActivityDate:      { type: Date, default: null },
@@ -293,14 +295,14 @@ const scoringLockSchema = new mongoose.Schema({
 const codingStatsSchema = new mongoose.Schema({
   // These are self-reported / imported from external platforms
   leetcodeProblemsSolved: { type: Number, default: 0, min: 0 },
-  leetcodeContestRating:  { type: Number, default: 0, min: 0 },
+  leetcodeContestRating:  { type: Number, default: null },
   leetcodeStreak:         { type: Number, default: null }, // days (null when unknown)
   leetcodeLongestStreak:  { type: Number, default: null },
   githubContributions:    { type: Number, default: 0, min: 0 }, // last 365 days
   githubRepos:            { type: Number, default: 0, min: 0 },
   githubFollowers:        { type: Number, default: 0, min: 0 },
-  codeforcesRating:       { type: Number, default: 0, min: 0 },
-  codeforcesMaxRating:    { type: Number, default: 0, min: 0 },
+  codeforcesRating:       { type: Number, default: null },
+  codeforcesMaxRating:    { type: Number, default: null },
   codeforcesRank:         { type: String, trim: true },
   codechefRating:         { type: Number, default: 0, min: 0 },
   geeksforgeeksScore:     { type: Number, default: 0, min: 0 },
