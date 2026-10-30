@@ -205,8 +205,31 @@ function ResultsSection({ analysis }) {
   const atsScore     = ai.atsScore     ?? null;
   const overallScore = ai.overallScore ?? null;
 
-  const proxyEndpoint = analysis?.fileUrl?.toLowerCase().includes('.pdf') ? `/upload/proxy?url=${encodeURIComponent(analysis.fileUrl)}` : null;
+  const proxyEndpoint = analysis?._id
+    ? `/upload/resume/view/${analysis._id}`
+    : (analysis?.fileUrl?.toLowerCase().includes('.pdf') ? `/upload/proxy?url=${encodeURIComponent(analysis.fileUrl)}` : null);
   const { blobUrl, loading: pdfLoading, error: pdfError } = usePdfBlob(proxyEndpoint);
+
+  const handleOpenInNewTab = () => {
+    if (blobUrl) {
+      window.open(blobUrl, '_blank');
+    } else {
+      alert('PDF preview is loading or unavailable.');
+    }
+  };
+
+  const handleDownloadPdf = () => {
+    if (blobUrl) {
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = analysis?.fileName || 'resume.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      alert('PDF is loading or unavailable for download.');
+    }
+  };
 
   // parsed data
   const name     = parsed.name     || analysis?.fileName?.replace(/\.[^.]+$/, '') || '—';
@@ -257,23 +280,22 @@ function ResultsSection({ analysis }) {
               </h3>
             </div>
             <div className="flex gap-2">
-              <a
-                href={analysis.fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-outline text-xs px-3 py-1.5 flex items-center gap-1.5"
+              <button
+                type="button"
+                onClick={handleOpenInNewTab}
+                disabled={!blobUrl}
+                className="btn btn-outline text-xs px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
               >
                 <ExternalLink size={14} /> Open in New Tab
-              </a>
-              <a
-                href={analysis.fileUrl}
-                download
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-outline text-xs px-3 py-1.5"
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadPdf}
+                disabled={!blobUrl}
+                className="btn btn-outline text-xs px-3 py-1.5 disabled:opacity-50 cursor-pointer"
               >
                 Download PDF
-              </a>
+              </button>
             </div>
           </div>
           <div className="w-full overflow-hidden bg-black/20 rounded-lg p-2" style={{ border: '1px solid var(--border-color)' }}>
