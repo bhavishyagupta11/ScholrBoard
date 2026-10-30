@@ -34,15 +34,20 @@ function CertCard({ cert, onDelete }) {
     try {
       setFetchingPdf(true);
       const { blob, contentType } = await fetchBlob(proxyEndpoint);
-      if (!contentType.toLowerCase().includes('application/pdf')) {
-        throw new Error('Invalid content type received.');
+      const ct = (contentType || '').toLowerCase();
+      if (!ct.includes('application/pdf') && !ct.includes('image/')) {
+        throw new Error(`Unsupported content type: ${contentType}`);
       }
       const objUrl = URL.createObjectURL(blob);
       window.open(objUrl, '_blank');
     } catch (err) {
-      const status = err.status ? `Status: ${err.status}` : 'Status: Unknown';
-      const type = err.contentType ? `Type: ${err.contentType}` : 'Type: Unknown';
-      alert(`Unable to load PDF preview. ${status} | ${type} | URL: ${proxyEndpoint}`);
+      if (err.status === 502 || err.message?.includes('untrusted')) {
+        alert('Unable to load certificate preview: Cloudinary account is untrusted for CDN delivery of raw documents. Please re-upload certificate.');
+      } else {
+        const status = err.status ? `Status: ${err.status}` : 'Status: Unknown';
+        const type = err.contentType ? `Type: ${err.contentType}` : 'Type: Unknown';
+        alert(`Unable to load certificate preview. ${status} | ${type}`);
+      }
     } finally {
       setFetchingPdf(false);
     }
@@ -91,6 +96,16 @@ function CertCard({ cert, onDelete }) {
             {cert.extractionConfidence != null && (
               <span className="flex items-center gap-1" style={{ color: CONFIDENCE_COLOR(cert.extractionConfidence) }}>
                 <Star size={12} /> {cert.extractionConfidence}% confidence
+              </span>
+            )}
+            {cert.extractionStatus === 'failed' && (
+              <span className="flex items-center gap-1 text-red-400 font-medium" title={cert.extractionError || 'Extraction failed'}>
+                <AlertCircle size={12} /> Extraction failed
+              </span>
+            )}
+            {cert.extractionStatus === 'processing' && (
+              <span className="flex items-center gap-1 text-amber-400 font-medium">
+                <Loader size={12} className="animate-spin" /> Extracting...
               </span>
             )}
           </div>
