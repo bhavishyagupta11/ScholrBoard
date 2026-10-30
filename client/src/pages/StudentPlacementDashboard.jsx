@@ -94,6 +94,11 @@ export function StudentPlacementDashboard() {
     e.preventDefault();
     if (!resumeUrl.trim()) return;
 
+    if (applyingOp?.deadline && new Date(applyingOp.deadline) < new Date()) {
+      setError('Application deadline has passed for this placement drive.');
+      return;
+    }
+
     setSubmittingApp(true);
     setError(null);
     try {
@@ -282,6 +287,7 @@ export function StudentPlacementDashboard() {
               <div className="space-y-4 pt-2">
                 {matchingOps.map(op => {
                   const applied = myApps.find(a => a.opportunityId?._id === op._id);
+                  const isExpired = Boolean(op.isExpired || (op.deadline && new Date(op.deadline) < new Date()) || op.status === 'Closed');
                   return (
                     <div 
                       key={op._id} 
@@ -304,7 +310,9 @@ export function StudentPlacementDashboard() {
                         <p className="text-xs subtle line-clamp-2 leading-relaxed">{op.description}</p>
                         
                         <div className="text-[11px] flex flex-wrap gap-x-4 gap-y-1 pt-1 subtle">
-                          <span>Deadline: {new Date(op.deadline).toLocaleDateString()}</span>
+                          <span className={isExpired ? 'text-red-400 font-semibold' : ''}>
+                            Deadline: {new Date(op.deadline).toLocaleDateString()} {isExpired ? '(Closed)' : ''}
+                          </span>
                           {op.salaryPackage > 0 && (
                             <span className="text-green-400 font-semibold">₹{(op.salaryPackage).toLocaleString()} LPA</span>
                           )}
@@ -315,7 +323,7 @@ export function StudentPlacementDashboard() {
 
                         {!op.isEligible && (
                           <div className="text-[10px] text-red-400 bg-red-500/10 p-1.5 rounded mt-2 border border-red-500/20">
-                            Ineligible: {op.ineligibilityReason}
+                            {isExpired ? 'Application Closed: Deadline has passed' : `Ineligible: ${op.ineligibilityReason}`}
                           </div>
                         )}
                       </div>
@@ -331,11 +339,13 @@ export function StudentPlacementDashboard() {
                           }`}>
                             {applied.status}
                           </span>
+                        ) : isExpired ? (
+                          <span className="badge badge-red font-semibold">Application Closed</span>
                         ) : (
                           <button
                             disabled={!op.isEligible}
                             onClick={() => { setApplyingOp(op); setError(null); }}
-                            className="btn btn-primary text-xs px-4 py-2 disabled:opacity-40"
+                            className="btn btn-primary text-xs px-4 py-2 disabled:opacity-40 cursor-pointer"
                           >
                             Apply Now
                           </button>
