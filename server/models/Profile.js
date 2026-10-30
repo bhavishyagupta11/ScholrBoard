@@ -51,6 +51,9 @@ const certificationSchema = new mongoose.Schema({
   technologies: [{ type: String, trim: true }],
   sourceFileUrl:{ type: String, trim: true },
   extractionConfidence: { type: Number, min: 0, max: 100, default: null },
+  status:       { type: String, enum: ['pending', 'processing', 'succeeded', 'failed'], default: 'succeeded' },
+  extractionStatus: { type: String, enum: ['pending', 'processing', 'succeeded', 'failed'], default: 'succeeded' },
+  extractionError:  { type: String, default: null },
 }, { _id: true });
 
 const socialLinksSchema = new mongoose.Schema({
