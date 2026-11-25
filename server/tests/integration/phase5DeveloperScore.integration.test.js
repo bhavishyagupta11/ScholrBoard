@@ -80,6 +80,7 @@ test('Integration 5.1: recalculateAndSaveScore with all platforms linked generat
           activeSubmitDays365d: 120,
           attendedContestsCount: 8,
           contestRating: 1600,
+          topPercentage: 15,
         },
         github: {
           publicRepos: 10,

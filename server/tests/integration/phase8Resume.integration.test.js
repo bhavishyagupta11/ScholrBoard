@@ -441,3 +441,176 @@ test('Integration 8.7: malformed AI response schema fails gracefully and preserv
   const currentAnalysis = await ResumeAnalysis.findOne({ userId: testUserA._id, isCurrent: true });
   assert.strictEqual(currentAnalysis._id.toString(), priorCompleted._id.toString(), 'Prior valid analysis must remain current when analysis fails');
 });
+
+test('Integration 8.8: Certificate extraction failure persists retryable subdocument and retry succeeds without duplicating', async () => {
+  const { default: Profile } = await import('../../models/Profile.js');
+  const { extractCertificate, setGeminiClientFactoryForTest } = await import('../../controllers/aiController.js');
+  const { documentBufferCache } = await import('../../utils/documentBufferCache.js');
+
+  await Profile.findOneAndUpdate(
+    { userId: testUserA._id },
+    { $set: { certifications: [] } },
+    { upsert: true }
+  );
+
+  const fileUrl = `https://res.cloudinary.com/demo/raw/authenticated/v1/scholrmind/certificates/${testUserA._id}/cert_int.pdf`;
+  const pdfBuf = Buffer.from('%PDF-1.4\n%%EOF\n');
+  documentBufferCache.set(testUserA._id, fileUrl, pdfBuf, 'application/pdf');
+
+  const origDisable = process.env.DISABLE_TEST_AI_FALLBACK;
+  const origMockAi = process.env.MOCK_AI;
+  const origNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'test';
+  delete process.env.MOCK_AI;
+  try {
+    // 1. Force malformed AI output -> persists extractionStatus: 'failed' subdocument
+    setGeminiClientFactoryForTest(() => ({
+      getGenerativeModel: () => ({
+        generateContent: async () => ({ response: { text: () => '{broken json' } }),
+      }),
+    }));
+
+    let failStatus = null;
+    let failJson = null;
+    await extractCertificate(
+      { user: testUserA, body: { fileUrl, mimeType: 'application/pdf' } },
+      { status(c) { failStatus = c; return this; }, json(j) { failJson = j; return this; } }
+    );
+    assert.strictEqual(failStatus, 502);
+    assert.strictEqual(failJson.extractionStatus, 'failed');
+    assert.ok(failJson.certificationId, 'Failed extraction should persist retryable certification subdocument');
+
+    const profileAfterFail = await Profile.findOne({ userId: testUserA._id });
+    assert.strictEqual(profileAfterFail.certifications.length, 1);
+    assert.strictEqual(profileAfterFail.certifications[0].extractionStatus, 'failed');
+
+    // 2. Retry same certification without creating a duplicate entry
+    setGeminiClientFactoryForTest(() => ({
+      getGenerativeModel: () => ({
+        generateContent: async () => ({
+          response: {
+            text: () => JSON.stringify({
+              title: 'AWS Certified Developer',
+              issuedBy: 'AWS',
+              skills: ['AWS', 'Cloud'],
+              confidence: 95,
+            }),
+          },
+        }),
+      }),
+    }));
+
+    let okStatus = 200;
+    let okJson = null;
+    await extractCertificate(
+      { user: testUserA, body: { fileUrl, mimeType: 'application/pdf', certificationId: failJson.certificationId } },
+      { status(c) { okStatus = c; return this; }, json(j) { okJson = j; return this; } }
+    );
+    assert.strictEqual(okStatus, 200);
+    assert.strictEqual(okJson.extractionStatus, 'succeeded');
+
+    const profileAfterRetry = await Profile.findOne({ userId: testUserA._id });
+    assert.strictEqual(profileAfterRetry.certifications.length, 1, 'Retry must reuse slot rather than duplicate');
+    assert.strictEqual(profileAfterRetry.certifications[0].extractionStatus, 'succeeded');
+    assert.strictEqual(profileAfterRetry.certifications[0].title, 'AWS Certified Developer');
+  } finally {
+    process.env.NODE_ENV = 'test';
+    setGeminiClientFactoryForTest(null);
+    if (origNodeEnv !== undefined) process.env.NODE_ENV = origNodeEnv;
+    else delete process.env.NODE_ENV;
+    if (origMockAi !== undefined) process.env.MOCK_AI = origMockAi;
+    else delete process.env.MOCK_AI;
+    documentBufferCache.clear();
+    if (origDisable !== undefined) process.env.DISABLE_TEST_AI_FALLBACK = origDisable;
+    else delete process.env.DISABLE_TEST_AI_FALLBACK;
+  }
+});
+
+test('Integration 8.9: viewCertificateFile authorizes owner and rejects foreign student before serving PDF', async () => {
+  const { default: Profile } = await import('../../models/Profile.js');
+  const { viewCertificateFile } = await import('../../controllers/uploadController.js');
+  const { documentBufferCache } = await import('../../utils/documentBufferCache.js');
+
+  const profileA = await Profile.findOne({ userId: testUserA._id });
+  const cert = profileA.certifications[0];
+  assert.ok(cert, 'Certificate from Integration 8.8 must exist');
+
+  const pdfBuf = Buffer.from('%PDF-1.4 integration certificate');
+  documentBufferCache.set(testUserA._id, cert.sourceFileUrl, pdfBuf, 'application/pdf');
+
+  let foreignStatus = 200;
+  let foreignBody = null;
+  await viewCertificateFile(
+    { params: { certId: cert._id.toString() }, user: testUserB },
+    { setHeader() {}, status(c) { foreignStatus = c; return this; }, send(b) { foreignBody = b; return this; }, json(j) { foreignBody = j; return this; } }
+  );
+  assert.strictEqual(foreignStatus, 403);
+  assert.ok(String(foreignBody).includes('Forbidden'));
+
+  let ownerStatus = 200;
+  let ownerHeaders = {};
+  let ownerBody = null;
+  await viewCertificateFile(
+    { params: { certId: cert._id.toString() }, user: testUserA },
+    { setHeader(k, v) { ownerHeaders[k] = v; }, status(c) { ownerStatus = c; return this; }, send(b) { ownerBody = b; return this; }, json(j) { ownerBody = j; return this; } }
+  );
+  assert.strictEqual(ownerStatus, 200);
+  assert.strictEqual(ownerHeaders['Content-Type'], 'application/pdf');
+  assert.ok(Buffer.isBuffer(ownerBody));
+  documentBufferCache.clear();
+});
+
+test('Integration 8.10: Expired & unverified opportunity deadlines reject applications and reconcile dry-run leaves DB untouched', async () => {
+  const { default: Opportunity } = await import('../../models/Opportunity.js');
+  const { default: Profile } = await import('../../models/Profile.js');
+  const { getMatchingOpportunities } = await import('../../controllers/opportunityController.js');
+  const { applyToOpportunity } = await import('../../controllers/applicationController.js');
+  const { reconcileOpportunityDeadlines } = await import('../../scripts/reconcileOpportunityDeadlines.js');
+
+  await Profile.findOneAndUpdate(
+    { userId: testUserA._id },
+    { $set: { semester: 7, department: 'CSE', cgpa: 8.5, backlogs: 0, placementReadinessScore: 90 } },
+    { upsert: true }
+  );
+
+  const expiredOp = await Opportunity.create({
+    driveCode: `INT-EXP-${Date.now()}`,
+    title: 'Integration Expired Drive',
+    company: 'TestCorp',
+    type: 'Full-time',
+    description: 'Expired test opportunity',
+    eligibility: { passingYear: 2027, minCGPA: 0 },
+    deadline: new Date(Date.now() - 48 * 60 * 60 * 1000),
+    status: 'Published',
+    postedBy: testUserA._id,
+  });
+
+  try {
+    let listJson = null;
+    await getMatchingOpportunities(
+      { user: testUserA },
+      { status() { return this; }, json(d) { listJson = d; } }
+    );
+    const matched = listJson.opportunities.find((o) => o._id.toString() === expiredOp._id.toString());
+    assert.ok(matched);
+    assert.strictEqual(matched.isExpired, true);
+    assert.strictEqual(matched.isEligible, false);
+
+    let applyStatus = null;
+    let applyJson = null;
+    await applyToOpportunity(
+      { user: testUserA, params: { id: expiredOp._id.toString() }, body: { resumeUrl: 'https://res.cloudinary.com/demo/raw/upload/r.pdf' } },
+      { status(c) { applyStatus = c; return this; }, json(j) { applyJson = j; } }
+    );
+    assert.strictEqual(applyStatus, 400);
+    assert.strictEqual(applyJson.success, false);
+
+    const dryRes = await reconcileOpportunityDeadlines({ apply: false, OpportunityModel: Opportunity, logger: { log() {} } });
+    assert.strictEqual(dryRes.dryRun, true);
+    assert.strictEqual(dryRes.modifiedCount, 0);
+    const stillPublished = await Opportunity.findById(expiredOp._id);
+    assert.strictEqual(stillPublished.status, 'Published');
+  } finally {
+    await Opportunity.deleteOne({ _id: expiredOp._id });
+  }
+});

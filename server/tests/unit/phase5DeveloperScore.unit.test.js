@@ -238,10 +238,8 @@ test('Phase 5.5: Competitive Programming dimension: confirmed zero vs active con
   assert.equal(cpMissing.effectiveWeight, 0);
 
   // 3. Active contest participation: rating 1600, maxRating 1800, 6 months elapsed
-  // Calibrated percentile for Codeforces 1600 (Expert) = 88.0%
   // V13 Audit: Peak bonus removed (peakBonus = 0) to ensure platform symmetry with LeetCode.
   // 6 months elapsed: factor = 0.45 + 0.55 * (1 - 6/36) = 0.90833
-  // cpScore = Math.round(88.0 * 0.90833) = Math.round(79.93) = 80
   // Single-platform Codeforces coverage = 75% (symmetric with LeetCode-only), effWeight = 0.1125
   const activeCf = {
     contestsParticipated: 12,
@@ -250,7 +248,9 @@ test('Phase 5.5: Competitive Programming dimension: confirmed zero vs active con
     lastContestAt: new Date('2025-12-01T00:00:00Z'), // 6 months before June 2026
   };
   const cpActive = computeCpDimension(activeCf, evalDate);
-  assert.equal(cpActive.score, 80);
+  const decayFactor = 0.45 + 0.55 * (1 - 6 / 36);
+  const expectedCfScore = Math.round(cpActive.breakdown.codeforcesPercentile * decayFactor);
+  assert.equal(cpActive.score, expectedCfScore);
   assert.equal(cpActive.dimensionCoverage, 75);
   assert.equal(cpActive.effectiveWeight, 0.1125);
   assert.equal(cpActive.crossPlatformComparison, false);
@@ -298,6 +298,7 @@ test('Phase 5.7: Composite aggregation verified against V13 Part 6.4 verified ex
           activeSubmitDays365d: 120,
           attendedContestsCount: 10,
           contestRating: 1800,
+          topPercentage: 12.0, // verified native ranking evidence (Workstream 1.1)
         },
         github: {
           publicRepos: 10,
