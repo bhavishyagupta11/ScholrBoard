@@ -11,6 +11,24 @@ import Application from '../models/Application.js';
 import Activity from '../models/Activity.js';
 import { validateResumeFile } from '../middleware/upload.js';
 import { generateSignedCloudinaryUrl } from '../utils/cloudinaryHelper.js';
+import { documentBufferCache } from '../utils/documentBufferCache.js';
+import { resolveValidatedDocumentBuffer } from '../utils/documentDelivery.js';
+
+const sendValidatedDocumentResult = (res, result, baseFilename = 'document') => {
+  if (!result.ok) {
+    if (result.json) {
+      return res.status(result.status).json(result.json);
+    }
+    return res.status(result.status).send(result.text);
+  }
+
+  const filename = `${baseFilename}.${result.extension || 'pdf'}`;
+  res.setHeader('Content-Type', result.contentType || 'application/pdf');
+  res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+  return res.send(result.buffer);
+};
 
 // ─── Upload profile avatar ─────────────────────────────────────────────────────
 export const uploadAvatar = async (req, res) => {
@@ -91,6 +109,15 @@ export const uploadResume = async (req, res) => {
       );
     }
 
+    // Cache the original upload buffer for resilient analysis & preview
+    if (req.file.buffer) {
+      documentBufferCache.set(req.user._id, req.file.cloudinaryUrl, req.file.buffer, req.file.mimetype);
+      documentBufferCache.set(req.user._id, analysis._id.toString(), req.file.buffer, req.file.mimetype);
+      if (req.file.cloudinaryPublicId) {
+        documentBufferCache.set(req.user._id, req.file.cloudinaryPublicId, req.file.buffer, req.file.mimetype);
+      }
+    }
+
     return res.status(201).json({
       success: true,
       message: 'Resume uploaded successfully. AI analysis will begin shortly.',
@@ -129,12 +156,21 @@ export const uploadCertificate = async (req, res) => {
       return res.status(400).json({ success: false, message: 'No certificate file provided' });
     }
 
+    // Cache the validated upload buffer for extraction & preview independence
+    if (req.file.buffer) {
+      documentBufferCache.set(req.user._id, req.file.cloudinaryUrl, req.file.buffer, req.file.mimetype);
+      if (req.file.cloudinaryPublicId) {
+        documentBufferCache.set(req.user._id, req.file.cloudinaryPublicId, req.file.buffer, req.file.mimetype);
+      }
+    }
+
     return res.status(201).json({
       success: true,
       message: 'Certificate uploaded successfully.',
       fileUrl: req.file.cloudinaryUrl,
       url: req.file.cloudinaryUrl,
-      mimetype: req.file.mimetype
+      mimetype: req.file.mimetype,
+      extractionStatus: 'pending'
     });
   } catch (error) {
     console.error('uploadCertificate error:', error);
@@ -183,6 +219,7 @@ export const viewResumeFile = async (req, res) => {
   try {
     const { id } = req.params;
     let resumeUrl = null;
+    let ownerUserId = null;
 
     // Check Application first
     const application = await Application.findById(id);
@@ -193,6 +230,7 @@ export const viewResumeFile = async (req, res) => {
       if (!isOwner && !isPrivileged) {
         return res.status(403).send('Forbidden: You are not authorized to view this resume');
       }
+      ownerUserId = studentId ? studentId.toString() : req.user._id.toString();
       resumeUrl = application.resumeUrl;
     } else {
       // Check ResumeAnalysis
@@ -203,6 +241,7 @@ export const viewResumeFile = async (req, res) => {
         if (!isOwner && !isPrivileged) {
           return res.status(403).send('Forbidden: You are not authorized to view this resume');
         }
+        ownerUserId = analysis.userId ? analysis.userId.toString() : req.user._id.toString();
         resumeUrl = analysis.fileUrl;
       } else {
         // Check Profile
@@ -213,6 +252,7 @@ export const viewResumeFile = async (req, res) => {
           if (!isOwner && !isPrivileged) {
             return res.status(403).send('Forbidden: You are not authorized to view this resume');
           }
+          ownerUserId = profile.userId ? profile.userId.toString() : req.user._id.toString();
           resumeUrl = profile.resumeUrl;
         } else {
           return res.status(404).send('Application not found');
@@ -224,45 +264,58 @@ export const viewResumeFile = async (req, res) => {
       return res.status(404).send('Resume URL is empty');
     }
 
-    if (resumeUrl.startsWith('http')) {
-      // Stream from Cloudinary (generate signed URL with 300s expiry if credentials present)
-      let fetchUrl = resumeUrl;
-      try {
-        const { signedUrl } = generateSignedCloudinaryUrl(resumeUrl, { expiresIn: 300 });
-        fetchUrl = signedUrl;
-      } catch (cldErr) {
-        console.warn('[viewResumeFile] Signed URL generation warning:', cldErr.message);
-      }
-
-      const response = await fetch(fetchUrl);
-      if (!response.ok) {
-        return res.status(response.status).send('Failed to fetch file from storage');
-      }
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', 'inline; filename="resume.pdf"');
-      res.setHeader('X-Content-Type-Options', 'nosniff');
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      return res.send(buffer);
-    } else {
-      // Local file
-      const path = await import('node:path');
-      const fs = await import('node:fs/promises');
-      const cleanUrl = resumeUrl.replace(/^\//, ''); // remove leading slash
-      const absolutePath = path.resolve(process.cwd(), cleanUrl);
-      try {
-        await fs.access(absolutePath);
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'inline; filename="resume.pdf"');
-        res.setHeader('X-Content-Type-Options', 'nosniff');
-        return res.sendFile(absolutePath);
-      } catch {
-        return res.status(404).send('Local resume file not found');
-      }
-    }
+    const result = await resolveValidatedDocumentBuffer({
+      ownerUserId: ownerUserId || req.user._id.toString(),
+      identifierKeys: [resumeUrl, id],
+      assetUrl: resumeUrl,
+      allowImages: false,
+      preferPrivateDownload: false,
+      preserveHttpStatus: true,
+    });
+    return sendValidatedDocumentResult(res, result, 'resume');
   } catch (error) {
     console.error('viewResumeFile error:', error);
     return res.status(500).send('Internal server error while viewing resume');
+  }
+};
+
+// ─── GET certificate file as inline stream by DB subdocument ID ────────────────
+export const viewCertificateFile = async (req, res) => {
+  try {
+    const { certId } = req.params;
+    const profile = await Profile.findOne({ 'certifications._id': certId });
+    if (!profile) {
+      return res.status(404).send('Certificate not found');
+    }
+
+    const isOwner = profile.userId && profile.userId.toString() === req.user._id.toString();
+    const isPrivileged = ['admin', 'faculty'].includes(req.user.role);
+    if (!isOwner && !isPrivileged) {
+      return res.status(403).send('Forbidden: You are not authorized to view this certificate');
+    }
+
+    const cert =
+      typeof profile.certifications?.id === 'function'
+        ? profile.certifications.id(certId)
+        : (profile.certifications || []).find((c) => c._id?.toString() === certId.toString());
+
+    const assetUrl = cert?.sourceFileUrl || cert?.credentialUrl;
+    if (!assetUrl) {
+      return res.status(404).send('Certificate document URL is empty');
+    }
+
+    const result = await resolveValidatedDocumentBuffer({
+      ownerUserId: profile.userId ? profile.userId.toString() : req.user._id.toString(),
+      identifierKeys: [assetUrl, certId],
+      assetUrl,
+      allowImages: true,
+      preferPrivateDownload: true,
+      preserveHttpStatus: false,
+    });
+    return sendValidatedDocumentResult(res, result, 'certificate');
+  } catch (error) {
+    console.error('viewCertificateFile error:', error);
+    return res.status(500).send('Internal server error while viewing certificate');
   }
 };
 
@@ -398,9 +451,11 @@ export const proxyPdf = async (req, res) => {
     }
 
     // 0.1 Cross-tenant authorization check for user-partitioned documents
+    let resolvedOwnerId = null;
     const userMatch = rawUrl.match(/(?:scholrmind|uploads)\/(?:resumes|certificates|activity-proofs)\/([a-f0-9]{24})/i);
     if (userMatch) {
       const targetUserId = userMatch[1].toLowerCase();
+      resolvedOwnerId = targetUserId;
       const isOwner = targetUserId === req.user._id.toString().toLowerCase();
       const isPrivileged = ['admin', 'faculty'].includes(req.user.role);
       if (!isOwner && !isPrivileged) {
@@ -411,15 +466,26 @@ export const proxyPdf = async (req, res) => {
     // 0.2 Record-level resolution in MongoDB (possession of URL != authorization)
     if (mongoose.connection?.readyState === 1) {
       try {
-        const [analysis, profile, application, activity] = await Promise.all([
+        const [analysis, profile, certProfile, application, activity] = await Promise.all([
           ResumeAnalysis.findOne({ fileUrl: rawUrl }).select('userId').lean(),
           Profile.findOne({ resumeUrl: rawUrl }).select('userId').lean(),
+          Profile.findOne({
+            $or: [
+              { 'certifications.sourceFileUrl': rawUrl },
+              { 'certifications.credentialUrl': rawUrl },
+            ],
+          })
+            .select('userId')
+            .lean(),
           Application.findOne({ resumeUrl: rawUrl }).select('studentId student userId').lean(),
           Activity.findOne({ proofUrl: rawUrl }).select('userId').lean(),
         ]);
-        const record = analysis || profile || application || activity;
+        const record = analysis || profile || certProfile || application || activity;
         if (record) {
           const ownerId = record.userId || record.studentId || record.student;
+          if (ownerId) {
+            resolvedOwnerId = ownerId.toString().toLowerCase();
+          }
           const isOwner = ownerId && ownerId.toString().toLowerCase() === req.user._id.toString().toLowerCase();
           const isPrivileged = ['admin', 'faculty'].includes(req.user.role);
           if (!isOwner && !isPrivileged) {
@@ -431,102 +497,17 @@ export const proxyPdf = async (req, res) => {
       }
     }
 
-    // 1. Handle local file URLs safely
-    if (!isCloudinary) {
-      const filePath = path.resolve(process.cwd(), cleanLocalPath);
-      const uploadsDir = path.resolve(process.cwd(), 'uploads');
-      if (!filePath.startsWith(uploadsDir)) {
-        return res.status(400).send('Invalid local document path');
-      }
-      try {
-        const stats = await fs.promises.stat(filePath);
-        if (!stats.isFile()) return res.status(404).send('Local document not found');
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'inline; filename="document.pdf"');
-        res.setHeader('X-Content-Type-Options', 'nosniff');
-        return res.sendFile(filePath);
-      } catch {
-        return res.status(404).send('Local document not found');
-      }
-    }
-
-    // 2. Handle Cloudinary asset URLs
-    let fetchUrl = rawUrl;
-    try {
-      const match = rawUrl.match(/\/(raw|image|video)\/(authenticated|private|upload)\/(?:s--[a-zA-Z0-9_.-]+--\/)?(?:v\d+\/)?(.+)$/);
-      if (match) {
-        const resourceType = match[1]; // 'image', 'raw', or 'video'
-        const deliveryType = match[2] || 'authenticated';
-        let publicId = decodeURIComponent(match[3]);
-        const ext = publicId.split('.').pop() || 'pdf';
-
-        // Cloudinary stores 'image' assets with public_id WITHOUT extension
-        if (resourceType === 'image' && publicId.toLowerCase().endsWith('.' + ext.toLowerCase())) {
-          publicId = publicId.slice(0, -(ext.length + 1));
-        }
-
-        const { v2: cloudinary } = await import('cloudinary');
-        cloudinary.config({
-          cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-          api_key: process.env.CLOUDINARY_API_KEY,
-          api_secret: process.env.CLOUDINARY_API_SECRET,
-          secure: true,
-        });
-
-        fetchUrl = cloudinary.utils.private_download_url(publicId, ext, {
-          resource_type: resourceType,
-          type: deliveryType,
-          expires_at: Math.floor(Date.now() / 1000) + 600, // 10 minutes expiry (V13 Phase 1 item 3)
-          secure: true,
-        });
-      }
-    } catch (cldErr) {
-      console.warn('[proxyPdf] Could not generate signed Cloudinary URL, attempting direct fetch:', cldErr.message);
-    }
-
-    // 3. Fetch from storage with strict safeguards: timeout, redirect prevention, size limit, and content validation
-    const response = await fetch(fetchUrl, {
-      redirect: 'manual',
-      signal: AbortSignal.timeout(10000),
+    // 0.3 Resolve via owner-scoped buffer cache -> local disk -> Cloudinary authenticated/signed fallback
+    const result = await resolveValidatedDocumentBuffer({
+      ownerUserId: resolvedOwnerId || req.user._id.toString(),
+      identifierKeys: [rawUrl],
+      assetUrl: rawUrl,
+      allowImages: true,
+      preferPrivateDownload: true,
+      preserveHttpStatus: false,
+      timeoutMs: 10000,
     });
-
-    if (response.status >= 300 && response.status < 400) {
-      return res.status(400).send('Redirects are not permitted');
-    }
-
-    if (!response.ok) {
-      const mappedStatus = response.status === 404 ? 404 : 502;
-      return res.status(mappedStatus).send(`Storage proxy error (${response.status}): Unable to retrieve document`);
-    }
-
-    const contentLength = response.headers.get('content-length');
-    if (contentLength && parseInt(contentLength, 10) > 10 * 1024 * 1024) {
-      return res.status(413).send('Document exceeds maximum size limit (10MB)');
-    }
-
-    const arrayBuffer = await response.arrayBuffer();
-    if (arrayBuffer.byteLength > 10 * 1024 * 1024) {
-      return res.status(413).send('Document exceeds maximum size limit (10MB)');
-    }
-
-    const buffer = Buffer.from(arrayBuffer);
-
-    // Validate supported resume/document signatures (PDF %PDF- or proof images JPEG/PNG)
-    const isPdf = buffer.subarray(0, 4).toString().startsWith('%PDF');
-    const isJpg = buffer.length > 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
-    const isPng = buffer.length > 4 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
-
-    if (!isPdf && !isJpg && !isPng) {
-      return res.status(400).send('Invalid document format: expected PDF or supported proof image');
-    }
-
-    const contentType = isPdf ? 'application/pdf' : (isJpg ? 'image/jpeg' : 'image/png');
-    const filename = isPdf ? 'document.pdf' : (isJpg ? 'document.jpg' : 'document.png');
-
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    return res.send(buffer);
+    return sendValidatedDocumentResult(res, result, 'document');
   } catch (error) {
     if (error.name === 'TimeoutError' || error.name === 'AbortError') {
       return res.status(504).send('Storage gateway timeout');
