@@ -28,8 +28,12 @@ export const aiApi = {
   analyzeResume: (analysisId) => api.post('/ai/analyze-resume', { analysisId }),
 
   /** Extract certificate details from an uploaded image/PDF using Gemini Vision */
-  extractCertificate: (fileUrl, mimeType = 'image/jpeg') =>
-    api.post('/ai/extract-certificate', { fileUrl, mimeType }),
+  extractCertificate: (fileUrl, mimeType = 'image/jpeg', certificationId = null) =>
+    api.post('/ai/extract-certificate', {
+      fileUrl,
+      mimeType,
+      ...(certificationId ? { certificationId } : {}),
+    }),
 };
 
 export default aiApi;

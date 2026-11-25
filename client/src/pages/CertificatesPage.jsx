@@ -26,27 +26,47 @@ function CertBadge({ label, color = 'var(--primary-blue)' }) {
   );
 }
 
-function CertCard({ cert, onDelete }) {
+const hasValidDocumentSignature = async (blob, contentType) => {
+  const bytes = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
+  if (bytes.length < 4) return false;
+  const ascii4 = String.fromCharCode(...bytes.slice(0, 4));
+  const isPdf = ascii4 === '%PDF';
+  const isJpg = bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  const isPng = bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+  const isWebp = ascii4 === 'RIFF' && bytes.length >= 12 && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP';
+  const ct = (contentType || '').toLowerCase();
+  if (ct.includes('application/pdf')) return isPdf;
+  return isPdf || isJpg || isPng || isWebp;
+};
+
+function CertCard({ cert, onDelete, onRetryExtraction, retryingId }) {
   const [fetchingPdf, setFetchingPdf] = useState(false);
 
-  const handleViewProof = async (url) => {
-    const proxyEndpoint = `/upload/proxy?url=${encodeURIComponent(url)}`;
+  const handleViewProof = async (targetCert) => {
+    const endpoint = targetCert?._id
+      ? `/upload/certificate/view/${targetCert._id}`
+      : `/upload/proxy?url=${encodeURIComponent(targetCert?.sourceFileUrl || targetCert?.credentialUrl || '')}`;
     try {
       setFetchingPdf(true);
-      const { blob, contentType } = await fetchBlob(proxyEndpoint);
+      const { blob, contentType } = await fetchBlob(endpoint);
       const ct = (contentType || '').toLowerCase();
       if (!ct.includes('application/pdf') && !ct.includes('image/')) {
         throw new Error(`Unsupported content type: ${contentType}`);
       }
+      const validMagic = await hasValidDocumentSignature(blob, contentType);
+      if (!validMagic) {
+        throw new Error('Provider returned an invalid document payload (expected PDF or image binary).');
+      }
       const objUrl = URL.createObjectURL(blob);
       window.open(objUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(objUrl), 60000);
     } catch (err) {
-      if (err.status === 502 || err.message?.includes('untrusted')) {
-        alert('Unable to load certificate preview: Cloudinary account is untrusted for CDN delivery of raw documents. Please re-upload certificate.');
+      if (err.code === 'CLOUDINARY_ACCOUNT_UNTRUSTED' || err.code === 'CLOUDINARY_DELIVERY_BLOCKED' || err.status === 502) {
+        alert(err.message || 'Unable to load certificate preview: storage PDF delivery is restricted by Cloudinary security settings.');
       } else {
         const status = err.status ? `Status: ${err.status}` : 'Status: Unknown';
         const type = err.contentType ? `Type: ${err.contentType}` : 'Type: Unknown';
-        alert(`Unable to load certificate preview. ${status} | ${type}`);
+        alert(`${err.message || 'Unable to load certificate preview.'} (${status} | ${type})`);
       }
     } finally {
       setFetchingPdf(false);
@@ -118,15 +138,31 @@ function CertCard({ cert, onDelete }) {
             </div>
           )}
 
-          {cert.credentialUrl && (
-            <button 
-              onClick={() => handleViewProof(cert.credentialUrl)}
-              disabled={fetchingPdf}
-              className="inline-flex items-center gap-1 text-xs mt-2 hover:underline cursor-pointer disabled:opacity-50"
-              style={{ color: 'var(--primary-blue)' }}
-            >
-              <ExternalLink size={12} /> {fetchingPdf ? 'Loading...' : 'View Certificate'}
-            </button>
+          <div className="flex flex-wrap items-center gap-3 mt-2">
+            {(cert.sourceFileUrl || cert.credentialUrl) && (
+              <button
+                onClick={() => handleViewProof(cert)}
+                disabled={fetchingPdf}
+                className="inline-flex items-center gap-1 text-xs hover:underline cursor-pointer disabled:opacity-50"
+                style={{ color: 'var(--primary-blue)' }}
+              >
+                <ExternalLink size={12} /> {fetchingPdf ? 'Loading...' : 'View Certificate'}
+              </button>
+            )}
+            {cert.extractionStatus === 'failed' && onRetryExtraction && (cert.sourceFileUrl || cert.credentialUrl) && (
+              <button
+                onClick={() => onRetryExtraction(cert)}
+                disabled={retryingId === cert._id}
+                className="inline-flex items-center gap-1 text-xs text-amber-400 hover:underline cursor-pointer disabled:opacity-50"
+              >
+                {retryingId === cert._id ? 'Retrying...' : 'Retry Extraction'}
+              </button>
+            )}
+          </div>
+          {cert.extractionStatus === 'failed' && cert.extractionError && (
+            <div className="text-[11px] text-red-400 mt-1.5">
+              {cert.extractionError}
+            </div>
           )}
         </div>
       </div>
@@ -142,6 +178,7 @@ export function CertificatesPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState(null);
   const [lastExtracted, setLastExtracted] = useState(null);
+  const [retryingId, setRetryingId] = useState(null);
 
   const certs = profile?.certifications || [];
 
@@ -176,6 +213,32 @@ export function CertificatesPage() {
       setUploading(false);
       setAnalyzing(false);
       setError(err.message || 'Upload or extraction failed. Please try again.');
+      try {
+        await refreshProfile();
+      } catch {
+        // Ignore profile refresh failure when reporting extraction error
+      }
+    }
+  };
+
+  const handleRetryExtraction = async (cert) => {
+    const fileUrl = cert?.sourceFileUrl || cert?.credentialUrl;
+    if (!cert?._id || !fileUrl) return;
+    setError(null);
+    setRetryingId(cert._id);
+    try {
+      const mimeGuess = fileUrl.toLowerCase().includes('.pdf') ? 'application/pdf' : 'image/jpeg';
+      await aiApi.extractCertificate(fileUrl, mimeGuess, cert._id);
+      await refreshProfile();
+    } catch (err) {
+      setError(err.message || 'Retry extraction failed.');
+      try {
+        await refreshProfile();
+      } catch {
+        // Ignore refresh error
+      }
+    } finally {
+      setRetryingId(null);
     }
   };
 
@@ -295,7 +358,13 @@ export function CertificatesPage() {
         ) : (
           <div className="grid md:grid-cols-2 gap-4">
             {certs.map(cert => (
-              <CertCard key={cert._id} cert={cert} onDelete={handleDelete} />
+              <CertCard
+                key={cert._id}
+                cert={cert}
+                onDelete={handleDelete}
+                onRetryExtraction={handleRetryExtraction}
+                retryingId={retryingId}
+              />
             ))}
           </div>
         )}
