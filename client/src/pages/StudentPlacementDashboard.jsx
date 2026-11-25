@@ -94,7 +94,13 @@ export function StudentPlacementDashboard() {
     e.preventDefault();
     if (!resumeUrl.trim()) return;
 
-    if (applyingOp?.deadline && new Date(applyingOp.deadline) < new Date()) {
+    const deadlineMs = applyingOp?.deadline ? new Date(applyingOp.deadline).getTime() : NaN;
+    const isVerified = applyingOp?.isDeadlineVerified !== false && Number.isFinite(deadlineMs);
+    if (!isVerified || applyingOp?.deadlineStatus === 'UNVERIFIED_DEADLINE') {
+      setError('Application deadline is unverified; submissions are paused.');
+      return;
+    }
+    if (applyingOp?.isExpired || deadlineMs <= Date.now()) {
       setError('Application deadline has passed for this placement drive.');
       return;
     }
@@ -287,7 +293,17 @@ export function StudentPlacementDashboard() {
               <div className="space-y-4 pt-2">
                 {matchingOps.map(op => {
                   const applied = myApps.find(a => a.opportunityId?._id === op._id);
-                  const isExpired = Boolean(op.isExpired || (op.deadline && new Date(op.deadline) < new Date()) || op.status === 'Closed');
+                  const deadlineMs = op.deadline ? new Date(op.deadline).getTime() : NaN;
+                  const isDeadlineVerified =
+                    op.isDeadlineVerified !== false &&
+                    op.deadlineStatus !== 'UNVERIFIED_DEADLINE' &&
+                    Number.isFinite(deadlineMs);
+                  const isExpired = Boolean(
+                    op.isExpired ||
+                    (isDeadlineVerified && deadlineMs <= Date.now()) ||
+                    op.status === 'Closed'
+                  );
+                  const isClosedOrUnverified = isExpired || !isDeadlineVerified || op.isOpenForApplication === false;
                   return (
                     <div 
                       key={op._id} 
@@ -310,8 +326,9 @@ export function StudentPlacementDashboard() {
                         <p className="text-xs subtle line-clamp-2 leading-relaxed">{op.description}</p>
                         
                         <div className="text-[11px] flex flex-wrap gap-x-4 gap-y-1 pt-1 subtle">
-                          <span className={isExpired ? 'text-red-400 font-semibold' : ''}>
-                            Deadline: {new Date(op.deadline).toLocaleDateString()} {isExpired ? '(Closed)' : ''}
+                          <span className={isClosedOrUnverified ? 'text-red-400 font-semibold' : ''}>
+                            Deadline: {isDeadlineVerified ? new Date(deadlineMs).toLocaleDateString() : 'Unverified'}{' '}
+                            {isExpired ? '(Closed)' : !isDeadlineVerified ? '(Submissions Paused)' : ''}
                           </span>
                           {op.salaryPackage > 0 && (
                             <span className="text-green-400 font-semibold">₹{(op.salaryPackage).toLocaleString()} LPA</span>
@@ -323,7 +340,11 @@ export function StudentPlacementDashboard() {
 
                         {!op.isEligible && (
                           <div className="text-[10px] text-red-400 bg-red-500/10 p-1.5 rounded mt-2 border border-red-500/20">
-                            {isExpired ? 'Application Closed: Deadline has passed' : `Ineligible: ${op.ineligibilityReason}`}
+                            {isExpired
+                              ? 'Application Closed: Deadline has passed'
+                              : !isDeadlineVerified
+                                ? 'Application Paused: Deadline is unverified'
+                                : `Ineligible: ${op.ineligibilityReason}`}
                           </div>
                         )}
                       </div>
@@ -341,9 +362,11 @@ export function StudentPlacementDashboard() {
                           </span>
                         ) : isExpired ? (
                           <span className="badge badge-red font-semibold">Application Closed</span>
+                        ) : !isDeadlineVerified ? (
+                          <span className="badge badge-yellow font-semibold">Deadline Unverified</span>
                         ) : (
                           <button
-                            disabled={!op.isEligible}
+                            disabled={!op.isEligible || isClosedOrUnverified}
                             onClick={() => { setApplyingOp(op); setError(null); }}
                             className="btn btn-primary text-xs px-4 py-2 disabled:opacity-40 cursor-pointer"
                           >

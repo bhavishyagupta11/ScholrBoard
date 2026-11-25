@@ -6,6 +6,7 @@ import AuditLog from '../models/AuditLog.js';
 import Notification from '../models/Notification.js';
 import { evaluatePlacementEligibility } from '../services/eligibilityService.js';
 import { withTransaction } from '../utils/withTransaction.js';
+import { evaluateOpportunityDeadline } from '../utils/opportunityDeadline.js';
 
 const LEGAL_ADMIN_TRANSITIONS = {
   Applied: ['Shortlisted', 'Interview Scheduled', 'Rejected'],
@@ -33,8 +34,13 @@ export const applyToOpportunity = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Applications are not open for this opportunity' });
     }
 
-    if (new Date() > new Date(opportunity.deadline)) {
-      return res.status(400).json({ success: false, message: 'Application deadline has passed' });
+    const deadlineEval = evaluateOpportunityDeadline(opportunity, new Date());
+    if (!deadlineEval.isOpenForApplication) {
+      return res.status(400).json({
+        success: false,
+        code: deadlineEval.deadlineStatus,
+        message: deadlineEval.reason || 'Application deadline has passed',
+      });
     }
 
     // Check if duplicate application exists

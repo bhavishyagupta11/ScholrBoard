@@ -214,7 +214,7 @@ function ResultsSection({ analysis }) {
     if (blobUrl) {
       window.open(blobUrl, '_blank');
     } else {
-      alert('PDF preview is loading or unavailable.');
+      alert(pdfError || 'PDF preview is loading or unavailable.');
     }
   };
 
@@ -227,7 +227,7 @@ function ResultsSection({ analysis }) {
       link.click();
       document.body.removeChild(link);
     } else {
-      alert('PDF is loading or unavailable for download.');
+      alert(pdfError || 'PDF is loading or unavailable for download.');
     }
   };
 
@@ -844,6 +844,8 @@ export function ResumeAnalyzerPage() {
             MALFORMED_AI_RESPONSE: 'AI analysis returned an invalid schema. Please try uploading again.',
             GEMINI_API_KEY_NOT_CONFIGURED: 'AI service is currently not configured.',
             ALL_MODELS_FAILED: 'AI analysis models are currently busy or unavailable. Please try again.',
+            CLOUDINARY_ACCOUNT_UNTRUSTED: 'Document delivery is blocked by Cloudinary account security policy (show_original_customer_untrusted). Contact support or review Security settings.',
+            CLOUDINARY_DELIVERY_BLOCKED: 'PDF delivery is blocked by storage ACL/Security settings. Contact support or administrator.',
           };
           const msg = errorMessages[a.analysisError] || a.analysisError || 'AI analysis failed for this resume.';
           setAnalysisError(msg);
