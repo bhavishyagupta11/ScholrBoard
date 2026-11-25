@@ -12,7 +12,7 @@
  *     - LeetCode contest rating & Codeforces rating -> CP dimension (15%)
  *  2. No Raw Direct Averaging:
  *     - LeetCode ratings (starting 1500, active range 1200–2600) and Codeforces ratings
- *       (active range 800–2400) have fundamentally different distributions and scales.
+ *       (active range -40–3722) have fundamentally different distributions and scales.
  *     - Each platform is calibrated independently against verified platform percentiles.
  *     - Disclose: Equal percentiles represent relative standing within distinct platform
  *       populations, not proof of identical problem difficulty or skill equivalence.
@@ -20,51 +20,164 @@
  *     - LeetCode: Native topPercentage (P = 100 - topPercentage) or derived rank ratio
  *       (1 - (globalRanking - 1) / totalParticipants) * 100.
  *       First-5-contests rule: attendedContestsCount < 5 is provisional; unranked ratings
- *       are not mapped to median standing.
- *     - Codeforces: Official user.ratedList?activeOnly=true empirical distribution
- *       (Active rated contestants who participated in a rated contest during the last month [Codeforces activeOnly=true cohort], N = 154,820).
+ *       are not mapped to median standing; unverified heuristic anchor fallback disabled.
+ *     - Codeforces: Official user.ratedList?activeOnly=true empirical distribution loaded dynamically
+ *       and verified from server/data/codeforces_calibration_snapshot.json (sanitized integer
+ *       histogram CDF; N and hash verified dynamically from artifact metadata).
  *  4. Strict Platform Symmetry:
  *     - No asymmetric peak bonuses (peakBonus = 0).
  *     - Symmetric single-platform coverage: exactly 75% coverage and 0.1125 effective weight
  *       for both LeetCode-only and Codeforces-only profiles.
  *  5. Freshness & Stale Snapshot Invalidation:
  *     - Distribution snapshots carry snapshotTimestamp and freshnessMaxDays (180 days).
- *     - Stale snapshots return unavailable calibration status instead of inventing percentiles.
+ *     - Missing, malformed, hash-mismatched, or stale snapshots return unavailable status
+ *       instead of inventing percentiles.
  *  6. Missing-Data Preservation:
  *     - Unrated / unattended accounts yield null, never converted to zero.
  *     - Neither valid -> dimension excluded from denominator (score = null, weight = 0, no penalty).
  */
 
-export const CODEFORCES_SNAPSHOT = Object.freeze({
-  source: 'https://codeforces.com/api/user.ratedList?activeOnly=true',
-  population: 'Active rated contestants who participated in at least 1 rated contest during the last month (Codeforces user.ratedList?activeOnly=true cohort)',
-  populationSize: 154820,
-  snapshotTimestamp: '2026-10-01T00:00:00.000Z',
-  calibrationVersion: 'v1.1.0-cf-ratedlist',
-  freshnessMaxDays: 180,
-  anchors: Object.freeze([
-    [600, 0.5],
-    [700, 1.5],
-    [800, 5.0],
-    [900, 14.0],
-    [1000, 25.0],
-    [1100, 37.0],
-    [1200, 50.0],
-    [1300, 63.0],
-    [1400, 74.0],
-    [1500, 82.0],
-    [1600, 88.0],
-    [1750, 93.5],
-    [1900, 96.5],
-    [2100, 98.5],
-    [2400, 99.7],
-    [2600, 99.9],
-    [3000, 100.0],
-  ]),
-});
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import {
+  verifySnapshotIntegrity,
+  computeSanitizedDistributionSha256,
+} from '../scripts/generateCodeforcesCalibration.mjs';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+export const CODEFORCES_SNAPSHOT_PATH = path.resolve(__dirname, '../data/codeforces_calibration_snapshot.json');
+
+let _validatedModuleSnapshot = null;
+
+/**
+ * Validates any calibration snapshot (either loaded from disk or injected in tests).
+ * Rejects missing anchors, non-monotonic ratings/percentiles, out-of-range values,
+ * missing freshness metadata, or hash/distribution mismatches when distribution data is present.
+ *
+ * @param {object} snapshot
+ * @returns {{ valid: boolean, normalizedSnapshot: object|null, error: string|null }}
+ */
+export function validateCalibrationSnapshot(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') {
+    return { valid: false, normalizedSnapshot: null, error: 'Snapshot missing or not an object' };
+  }
+
+  // Fast path when using the already verified and frozen module snapshot
+  if (_validatedModuleSnapshot !== null && snapshot === _validatedModuleSnapshot) {
+    return { valid: true, normalizedSnapshot: snapshot, error: null };
+  }
+
+  const rawMeta = snapshot.metadata && typeof snapshot.metadata === 'object' ? snapshot.metadata : {};
+  const snapshotTimestamp = snapshot.snapshotTimestamp || rawMeta.snapshotTimestamp;
+  const freshnessMaxDays = snapshot.freshnessMaxDays ?? rawMeta.freshnessMaxDays;
+
+  if (!snapshotTimestamp || typeof freshnessMaxDays !== 'number' || !Number.isFinite(freshnessMaxDays) || freshnessMaxDays <= 0) {
+    return { valid: false, normalizedSnapshot: null, error: 'Snapshot missing valid snapshotTimestamp or freshnessMaxDays' };
+  }
+  if (Number.isNaN(new Date(snapshotTimestamp).getTime())) {
+    return { valid: false, normalizedSnapshot: null, error: 'Snapshot has unparseable snapshotTimestamp' };
+  }
+
+  if (!Array.isArray(snapshot.anchors) || snapshot.anchors.length < 2) {
+    return { valid: false, normalizedSnapshot: null, error: 'Snapshot must provide at least 2 [rating, percentile] anchors' };
+  }
+
+  let prevX = -Infinity;
+  let prevY = -Infinity;
+  for (let i = 0; i < snapshot.anchors.length; i++) {
+    const pair = snapshot.anchors[i];
+    if (!Array.isArray(pair) || pair.length !== 2) {
+      return { valid: false, normalizedSnapshot: null, error: `Malformed anchor at index ${i}` };
+    }
+    const [x, y] = pair;
+    if (typeof x !== 'number' || !Number.isFinite(x) || typeof y !== 'number' || !Number.isFinite(y)) {
+      return { valid: false, normalizedSnapshot: null, error: `Non-finite anchor coordinates at index ${i}` };
+    }
+    if (y < 0 || y > 100) {
+      return { valid: false, normalizedSnapshot: null, error: `Percentile out of [0, 100] bounds at index ${i}: ${y}` };
+    }
+    if (x < prevX || y < prevY) {
+      return { valid: false, normalizedSnapshot: null, error: `Anchors must be monotonically non-decreasing at index ${i}` };
+    }
+    prevX = x;
+    prevY = y;
+  }
+
+  const effectiveMeta = {
+    ...rawMeta,
+    snapshotTimestamp,
+    freshnessMaxDays,
+    populationSize: snapshot.populationSize ?? rawMeta.populationSize,
+    minRating: snapshot.minRating ?? rawMeta.minRating,
+    maxRating: snapshot.maxRating ?? rawMeta.maxRating,
+    sourcePayloadSha256: snapshot.sourcePayloadSha256 ?? rawMeta.sourcePayloadSha256,
+    sanitizedDistributionSha256: snapshot.sanitizedDistributionSha256 ?? rawMeta.sanitizedDistributionSha256,
+  };
+
+  // If full ratingDistribution or integrity hash is attached, enforce complete offline reproducibility
+  if (snapshot.ratingDistribution !== undefined || effectiveMeta.sanitizedDistributionSha256 !== undefined) {
+    const check = verifySnapshotIntegrity({
+      metadata: effectiveMeta,
+      anchors: snapshot.anchors,
+      ratingDistribution: snapshot.ratingDistribution,
+    });
+    if (!check.valid) {
+      return { valid: false, normalizedSnapshot: null, error: check.errors.join('; ') };
+    }
+  }
+
+  const normalizedSnapshot = Object.freeze({
+    source: snapshot.source || rawMeta.source || 'Codeforces calibration snapshot',
+    sourceEndpoint: snapshot.sourceEndpoint || rawMeta.sourceEndpoint || null,
+    population: snapshot.population || rawMeta.populationDefinition || null,
+    populationSize: effectiveMeta.populationSize ?? null,
+    snapshotTimestamp,
+    sourcePayloadSha256: effectiveMeta.sourcePayloadSha256 || null,
+    sanitizedDistributionSha256:
+      effectiveMeta.sanitizedDistributionSha256 ||
+      (snapshot.ratingDistribution ? computeSanitizedDistributionSha256(snapshot.ratingDistribution) : null),
+    calibrationVersion: snapshot.calibrationVersion || rawMeta.calibrationVersion || 'unknown',
+    freshnessMaxDays,
+    minRating: effectiveMeta.minRating ?? snapshot.anchors[0][0],
+    maxRating: effectiveMeta.maxRating ?? snapshot.anchors[snapshot.anchors.length - 1][0],
+    anchors: Object.freeze(snapshot.anchors.map((a) => Object.freeze([a[0], a[1]]))),
+    ratingDistribution: Array.isArray(snapshot.ratingDistribution) ? snapshot.ratingDistribution : undefined,
+  });
+
+  return { valid: true, normalizedSnapshot, error: null };
+}
+
+/**
+ * Loads and validates the Codeforces calibration snapshot from disk.
+ * Never throws; returns validated snapshot or null with diagnostic error.
+ *
+ * @param {string} [snapshotPath=CODEFORCES_SNAPSHOT_PATH]
+ * @returns {{ snapshot: object|null, loadedFromDisk: boolean, error: string|null }}
+ */
+export function loadCodeforcesSnapshot(snapshotPath = CODEFORCES_SNAPSHOT_PATH) {
+  try {
+    const raw = JSON.parse(fs.readFileSync(snapshotPath, 'utf-8'));
+    const validation = validateCalibrationSnapshot(raw);
+    if (!validation.valid) {
+      return { snapshot: null, loadedFromDisk: true, error: validation.error };
+    }
+    return { snapshot: validation.normalizedSnapshot, loadedFromDisk: true, error: null };
+  } catch (err) {
+    return { snapshot: null, loadedFromDisk: false, error: `Failed to load Codeforces snapshot: ${err.message}` };
+  }
+}
+
+const INITIAL_CF_LOAD = loadCodeforcesSnapshot();
+if (!INITIAL_CF_LOAD.snapshot) {
+  console.error(`[CALIBRATION WARNING] Runtime Codeforces snapshot invalid or missing: ${INITIAL_CF_LOAD.error}`);
+}
+
+export const CODEFORCES_SNAPSHOT = INITIAL_CF_LOAD.snapshot;
+_validatedModuleSnapshot = CODEFORCES_SNAPSHOT;
 
 export const LEETCODE_SNAPSHOT = Object.freeze({
-  source: 'Official LeetCode GraphQL userContestRanking distribution snapshot',
+  source: 'Official LeetCode GraphQL userContestRanking distribution snapshot (Heuristic fallback disabled for live scoring)',
   population: 'Active contest participants who attended >= 5 rated contests',
   populationSize: 542180,
   snapshotTimestamp: '2026-10-01T00:00:00.000Z',
@@ -91,11 +204,11 @@ export const LEETCODE_SNAPSHOT = Object.freeze({
 
 // Backward-compatible named exports for anchors
 export const LEETCODE_RATING_ANCHORS = LEETCODE_SNAPSHOT.anchors;
-export const CODEFORCES_RATING_ANCHORS = CODEFORCES_SNAPSHOT.anchors;
+export const CODEFORCES_RATING_ANCHORS = CODEFORCES_SNAPSHOT?.anchors || Object.freeze([]);
 
 export const CALIBRATION_METADATA = Object.freeze({
-  version: 'v1.1.0',
-  calibrationDate: '2026-10-01',
+  version: 'v1.2.0',
+  calibrationDate: CODEFORCES_SNAPSHOT?.snapshotTimestamp ? CODEFORCES_SNAPSHOT.snapshotTimestamp.slice(0, 10) : '2026-11-25',
   method: 'verified_platform_ranking_and_piecewise_linear_distribution',
   description: 'Platform-calibrated percentiles mapped to bounded 0-100 scale; relative standing within distinct platform populations',
   leetcode: LEETCODE_SNAPSHOT,
@@ -114,7 +227,7 @@ export function isSnapshotFresh(snapshot, evalDate = new Date()) {
   if (!snapshot?.snapshotTimestamp || !snapshot?.freshnessMaxDays) return false;
   const snapTime = new Date(snapshot.snapshotTimestamp).getTime();
   const currTime = (evalDate instanceof Date ? evalDate : new Date(evalDate)).getTime();
-  if (isNaN(snapTime) || isNaN(currTime)) return false;
+  if (Number.isNaN(snapTime) || Number.isNaN(currTime)) return false;
   const ageDays = (currTime - snapTime) / (1000 * 60 * 60 * 24);
   // Stale if evaluation date is more than freshnessMaxDays after snapshot
   if (ageDays > snapshot.freshnessMaxDays) return false;
@@ -126,27 +239,35 @@ export function isSnapshotFresh(snapshot, evalDate = new Date()) {
 /**
  * Piecewise linear interpolation over sorted [rating, percentile] anchors.
  * Clamps to min/max for ratings beyond defined boundaries.
+ * Rejects non-finite numbers and malformed anchor tables cleanly.
  *
  * @param {number} value - Raw rating value
  * @param {ReadonlyArray<[number, number]>} anchors - Array of [rating, percentile] pairs
  * @returns {number|null} Calibrated percentile in [0, 100]
  */
 export function interpolatePercentile(value, anchors) {
-  if (typeof value !== 'number' || isNaN(value)) return null;
-  if (value <= anchors[0][0]) return anchors[0][1];
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  if (!Array.isArray(anchors) || anchors.length < 2) return null;
+
+  const first = anchors[0];
   const last = anchors[anchors.length - 1];
-  if (value >= last[0]) return last[1];
+  if (!Array.isArray(first) || !Array.isArray(last)) return null;
+
+  if (value <= first[0]) return Number(Math.max(0, Math.min(100, first[1])).toFixed(4));
+  if (value >= last[0]) return Number(Math.max(0, Math.min(100, last[1])).toFixed(4));
 
   for (let i = 0; i < anchors.length - 1; i++) {
     const [x0, y0] = anchors[i];
     const [x1, y1] = anchors[i + 1];
     if (value >= x0 && value <= x1) {
-      if (x1 === x0) return y0;
+      if (x1 === x0) return Number(Math.max(0, Math.min(100, y0)).toFixed(4));
       const fraction = (value - x0) / (x1 - x0);
-      return Number((y0 + fraction * (y1 - y0)).toFixed(2));
+      const interpolated = y0 + fraction * (y1 - y0);
+      if (!Number.isFinite(interpolated)) return null;
+      return Number(Math.max(0, Math.min(100, interpolated)).toFixed(4));
     }
   }
-  return last[1];
+  return Number(Math.max(0, Math.min(100, last[1])).toFixed(4));
 }
 
 /**
@@ -231,7 +352,7 @@ export function normalizeLeetcodeRating(
   if (rank !== null && rank !== undefined && totalParts !== null && totalParts !== undefined) {
     const numRank = Number(rank);
     const numParts = Number(totalParts);
-    if (!isNaN(numRank) && !isNaN(numParts) && numRank > 0 && numParts > 0) {
+    if (!isNaN(numRank) && !isNaN(numParts) && numRank > 0 && numParts > 0 && numRank <= numParts) {
       const rankPercentile = Math.max(0, Math.min(100, (1 - (numRank - 1) / numParts) * 100));
       const percentile = Number(rankPercentile.toFixed(2));
       return {
@@ -256,33 +377,22 @@ export function normalizeLeetcodeRating(
     return null;
   }
 
-  // 3. Documented Empirical Fallback (requires attendedContestsCount >= 5 or confirmed rating)
-  if (!isSnapshotFresh(customSnapshot, evalDate)) {
-    return {
-      platform: 'leetcode',
-      rawRating: numRating,
-      normalizedScore: null,
-      status: 'STALE_SNAPSHOT',
-      error: 'LeetCode calibration snapshot expired beyond allowed freshness period',
-    };
-  }
-
-  const percentile = interpolatePercentile(numRating, customSnapshot.anchors);
-  if (percentile === null) return null;
-
+  // 3. Unsupported Fallback Removal (V13 Workstream 1.1)
+  // Per authoritative specification, unverified rating-to-percentile anchor tables
+  // must NOT produce a live score. When native ranking evidence is absent, return
+  // the approved UNAVAILABLE state rather than deriving an unverified heuristic percentile.
   return {
     platform: 'leetcode',
     rawRating: numRating,
-    normalizedScore: Number(percentile.toFixed(2)),
-    percentile: Number(percentile.toFixed(2)),
-    derivation: 'empirical_distribution_fallback',
+    normalizedScore: null,
+    percentile: null,
+    status: 'UNAVAILABLE',
+    derivation: 'unsupported_ranking_unavailable',
     attendedContestsCount: attended != null ? Number(attended) : null,
     isProvisional: false,
     version: customSnapshot.calibrationVersion,
-    source: customSnapshot.source,
-    population: customSnapshot.population,
-    populationSize: customSnapshot.populationSize,
-    snapshotTimestamp: customSnapshot.snapshotTimestamp,
+    source: 'LeetCode (unsupported fallback disabled)',
+    error: 'No verified native ranking evidence available; unverified empirical fallback disabled',
     disclaimer: CALIBRATION_METADATA.disclaimer,
   };
 }
@@ -324,15 +434,30 @@ export function normalizeCodeforcesRating(
 
   if (r === null || r === undefined) return null;
   const numRating = Number(r);
-  if (isNaN(numRating) || numRating <= 0) return null;
+  if (!Number.isFinite(numRating) || numRating === 0 || (numRating < 0 && (!contests || Number(contests) <= 0))) {
+    return null;
+  }
 
   // Confirmed zero contests means unrated
   if (contests !== null && contests !== undefined && Number(contests) === 0) {
     return null;
   }
 
+  // Validate snapshot structure, monotonicity, and distribution integrity when present
+  const validation = validateCalibrationSnapshot(customSnapshot);
+  if (!validation.valid || !validation.normalizedSnapshot) {
+    return {
+      platform: 'codeforces',
+      rawRating: numRating,
+      normalizedScore: null,
+      status: 'MALFORMED_SNAPSHOT',
+      error: `Codeforces calibration snapshot invalid or missing: ${validation.error || 'unknown error'}`,
+    };
+  }
+  const activeSnapshot = validation.normalizedSnapshot;
+
   // Check snapshot freshness
-  if (!isSnapshotFresh(customSnapshot, evalDate)) {
+  if (!isSnapshotFresh(activeSnapshot, evalDate)) {
     return {
       platform: 'codeforces',
       rawRating: numRating,
@@ -342,27 +467,29 @@ export function normalizeCodeforcesRating(
     };
   }
 
-  const currentPercentile = interpolatePercentile(numRating, customSnapshot.anchors);
+  const currentPercentile = interpolatePercentile(numRating, activeSnapshot.anchors);
   if (currentPercentile === null) return null;
 
   // ScholrBoard V13 Audit: Remove unsupported asymmetric peak-rating bonus.
   // Both LeetCode and Codeforces evaluate current verified contest performance symmetrically (peakBonus = 0).
   const numMax = maxR != null ? Number(maxR) : numRating;
-  const boundedScore = Number(currentPercentile.toFixed(2));
+  const boundedScore = Number(currentPercentile.toFixed(4));
 
   return {
     platform: 'codeforces',
     rawRating: numRating,
-    maxRating: isNaN(numMax) ? numRating : numMax,
+    maxRating: Number.isFinite(numMax) ? numMax : numRating,
     normalizedScore: boundedScore,
-    percentile: Number(currentPercentile.toFixed(2)),
+    percentile: boundedScore,
+    rawEmpiricalPercentile: currentPercentile,
     peakBonus: 0,
     derivation: 'documented_distribution',
-    version: customSnapshot.calibrationVersion,
-    source: customSnapshot.source,
-    population: customSnapshot.population,
-    populationSize: customSnapshot.populationSize,
-    snapshotTimestamp: customSnapshot.snapshotTimestamp,
+    version: activeSnapshot.calibrationVersion,
+    source: activeSnapshot.source,
+    population: activeSnapshot.population,
+    populationSize: activeSnapshot.populationSize,
+    snapshotTimestamp: activeSnapshot.snapshotTimestamp,
+    sanitizedDistributionSha256: activeSnapshot.sanitizedDistributionSha256,
     disclaimer: CALIBRATION_METADATA.disclaimer,
   };
 }

@@ -183,7 +183,7 @@ export const uploadActivityProof = async (req, res, next) => {
 /**
  * Detects the real format of a buffer based on binary file signatures (magic bytes).
  * @param {Buffer} buffer
- * @returns {'pdf'|'docx'|'doc'|'executable'|'script'|'unknown'}
+ * @returns {'pdf'|'docx'|'doc'|'jpeg'|'png'|'webp'|'executable'|'script'|'unknown'}
  */
 export function detectBufferFormat(buffer) {
   if (!buffer || !Buffer.isBuffer(buffer) || buffer.length < 4) {
@@ -219,7 +219,20 @@ export function detectBufferFormat(buffer) {
     return 'pdf';
   }
 
-  // 3. Check for OLE2 Compound Document (DOC format):
+  // 3. Check for Image signatures (JPEG / PNG / WebP)
+  if (buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+    return 'jpeg';
+  }
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47) {
+    return 'png';
+  }
+  if (buffer.length >= 12 &&
+      buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+      buffer.subarray(8, 12).toString('ascii') === 'WEBP') {
+    return 'webp';
+  }
+
+  // 4. Check for OLE2 Compound Document (DOC format):
   // Magic bytes: 0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1 (8 bytes)
   if (buffer.length >= 8 &&
       buffer[0] === 0xD0 && buffer[1] === 0xCF && buffer[2] === 0x11 && buffer[3] === 0xE0 &&
@@ -227,7 +240,7 @@ export function detectBufferFormat(buffer) {
     return 'doc';
   }
 
-  // 4. Check for ZIP / OpenXML (DOCX format):
+  // 5. Check for ZIP / OpenXML (DOCX format):
   // Magic bytes: 'PK\x03\x04' (0x50, 0x4B, 0x03, 0x04) or PK\x05\x06 or PK\x07\x08
   if (buffer[0] === 0x50 && buffer[1] === 0x4B &&
       (buffer[2] === 0x03 || buffer[2] === 0x05 || buffer[2] === 0x07) &&
@@ -239,6 +252,39 @@ export function detectBufferFormat(buffer) {
   }
 
   return 'unknown';
+}
+
+/**
+ * Validates an uploaded certificate file (PDF, JPEG, PNG, WebP up to 10MB).
+ */
+export function validateCertificateFile(file) {
+  if (!file) {
+    return { isValid: false, code: 'NO_FILE_PROVIDED', message: 'No certificate file provided.' };
+  }
+  const size = file.size ?? file.buffer?.length ?? 0;
+  if (size <= 0) {
+    return { isValid: false, code: 'EMPTY_FILE', message: 'Uploaded certificate file is empty.' };
+  }
+  if (size > 10 * 1024 * 1024) {
+    return { isValid: false, code: 'FILE_TOO_LARGE', message: 'Certificate exceeds 10MB limit.' };
+  }
+  if (file.buffer && Buffer.isBuffer(file.buffer)) {
+    const detected = detectBufferFormat(file.buffer);
+    if (detected === 'executable') {
+      return { isValid: false, code: 'EXECUTABLE_REJECTED', message: 'Executable files are prohibited.' };
+    }
+    if (detected === 'script') {
+      return { isValid: false, code: 'SCRIPT_REJECTED', message: 'Script/HTML files are prohibited.' };
+    }
+    const allowedFormats = new Set(['pdf', 'jpeg', 'png', 'webp']);
+    if (!allowedFormats.has(detected)) {
+      return { isValid: false, code: 'INVALID_FILE_SIGNATURE', message: 'Certificate must be a valid PDF, JPEG, PNG, or WebP file.' };
+    }
+    if (file.mimetype === 'application/pdf' && detected !== 'pdf') {
+      return { isValid: false, code: 'EXTENSION_MIME_MISMATCH', message: 'MIME type application/pdf does not match binary file signature.' };
+    }
+  }
+  return { isValid: true, code: null, message: null };
 }
 
 /**
@@ -398,13 +444,23 @@ export const uploadAvatarToCloud = async (req, res, next) => {
 export const uploadCertificateToCloud = async (req, res, next) => {
   if (!req.file) return next();
 
+  const validation = validateCertificateFile(req.file);
+  if (!validation.isValid) {
+    return res.status(400).json({
+      success: false,
+      code: validation.code,
+      message: validation.message,
+    });
+  }
+
   try {
     const isPdf = req.file.mimetype === 'application/pdf';
     const result = await storeUpload(
       req,
       `scholrmind/certificates/${req.user._id}`,
       { 
-        resource_type: isPdf ? 'raw' : 'image', 
+        resource_type: isPdf ? 'raw' : 'image',
+        type: 'authenticated', // Private certificates must use authenticated delivery tier
         ...(isPdf && { format: 'pdf' }) 
       }
     );

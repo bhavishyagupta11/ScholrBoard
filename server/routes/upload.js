@@ -20,6 +20,7 @@ import {
   getResumeAnalysis,
   getSignedResumeUrl,
   viewResumeFile,
+  viewCertificateFile,
   proxyPdf,
 } from '../controllers/uploadController.js';
 
@@ -75,6 +76,10 @@ router.get('/resume/signed-url/:id', validateObjectId('id'), getSignedResumeUrl)
 // @route   GET /api/upload/resume/view/:id
 // @desc    Get a specific resume as an inline PDF stream
 router.get('/resume/view/:id', validateObjectId('id'), viewResumeFile);
+
+// @route   GET /api/upload/certificate/view/:certId
+// @desc    Get an authorized certificate file as an inline stream using trusted DB ID
+router.get('/certificate/view/:certId', validateObjectId('certId'), viewCertificateFile);
 
 // @route   GET /api/upload/proxy
 // @desc    Generic PDF proxy to enforce inline viewing (bypassing Cloudinary forced attachment)
