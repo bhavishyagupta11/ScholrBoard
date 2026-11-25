@@ -6,6 +6,7 @@ import Notification from '../models/Notification.js';
 import { evaluatePlacementEligibility } from '../services/eligibilityService.js';
 import { withTransaction } from '../utils/withTransaction.js';
 import { excludeTestUsers } from '../utils/testFilters.js';
+import { evaluateOpportunityDeadline } from '../utils/opportunityDeadline.js';
 
 // ─── ADMIN: Create Opportunity ────────────────────────────────────────────────
 export const createOpportunity = async (req, res) => {
@@ -178,15 +179,28 @@ export const getMatchingOpportunities = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Student profile not found' });
     }
 
-    // Evaluate eligibility for each opportunity
+    const now = new Date();
+
+    // Evaluate eligibility and strict verified deadline status for each opportunity
     const opportunities = openOpportunities.map((op) => {
+      const deadlineEval = evaluateOpportunityDeadline(op, now);
       const evaluation = evaluatePlacementEligibility(req.user, studentProfile, op);
-      
-      // Convert document to plain object to attach transient eligibility flags
+
+      // Convert document to plain object to attach transient eligibility & deadline flags
       const plainOp = op.toObject();
-      plainOp.isEligible = evaluation.eligible;
-      plainOp.ineligibilityReason = evaluation.reason;
-      
+      plainOp.isExpired = deadlineEval.isExpired;
+      plainOp.deadlineStatus = deadlineEval.deadlineStatus;
+      plainOp.isDeadlineVerified = deadlineEval.isDeadlineVerified;
+      plainOp.isOpenForApplication = deadlineEval.isOpenForApplication;
+
+      if (!deadlineEval.isOpenForApplication) {
+        plainOp.isEligible = false;
+        plainOp.ineligibilityReason = deadlineEval.reason || 'Application deadline has passed';
+      } else {
+        plainOp.isEligible = evaluation.eligible;
+        plainOp.ineligibilityReason = evaluation.reason;
+      }
+
       return plainOp;
     });
 
@@ -208,7 +222,18 @@ export const getAllOpportunities = async (req, res) => {
       .sort({ createdAt: -1 })
       .populate('postedBy', 'name email');
 
-    return res.json({ success: true, opportunities: list });
+    const now = new Date();
+    const opportunities = list.map((op) => {
+      const deadlineEval = evaluateOpportunityDeadline(op, now);
+      const plainOp = op.toObject();
+      plainOp.isExpired = deadlineEval.isExpired;
+      plainOp.deadlineStatus = deadlineEval.deadlineStatus;
+      plainOp.isDeadlineVerified = deadlineEval.isDeadlineVerified;
+      plainOp.isOpenForApplication = deadlineEval.isOpenForApplication;
+      return plainOp;
+    });
+
+    return res.json({ success: true, opportunities });
   } catch (error) {
     console.error('getAllOpportunities error:', error);
     return res.status(500).json({ success: false, message: 'Failed to fetch opportunities' });
@@ -225,7 +250,14 @@ export const getOpportunityById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Opportunity not found' });
     }
 
-    return res.json({ success: true, opportunity });
+    const deadlineEval = evaluateOpportunityDeadline(opportunity, new Date());
+    const plainOp = opportunity.toObject();
+    plainOp.isExpired = deadlineEval.isExpired;
+    plainOp.deadlineStatus = deadlineEval.deadlineStatus;
+    plainOp.isDeadlineVerified = deadlineEval.isDeadlineVerified;
+    plainOp.isOpenForApplication = deadlineEval.isOpenForApplication;
+
+    return res.json({ success: true, opportunity: plainOp });
   } catch (error) {
     console.error('getOpportunityById error:', error);
     return res.status(500).json({ success: false, message: 'Failed to fetch opportunity details' });

@@ -31,7 +31,18 @@ import {
 import { recalculateAndSavePlacementScore } from '../services/placementReadinessService.js';
 import { sha256, canonicalJSON } from '../services/scorePersistence.js';
 import { generateSignedCloudinaryUrl } from '../utils/cloudinaryHelper.js';
+import { documentBufferCache } from '../utils/documentBufferCache.js';
+import { resolveValidatedDocumentBuffer, inspectCloudinaryFailure } from '../utils/documentDelivery.js';
 import { createRequire } from 'module';
+
+const sanitizeAiErrorMessage = (msg = '') =>
+  String(msg || 'AI processing failed')
+    .replace(/AIza[0-9A-Za-z_-]{10,}/g, '[REDACTED_KEY]')
+    .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, 'Bearer [REDACTED]')
+    .slice(0, 300);
+
+const canUseModelMethod = (Model, methodName) =>
+  mongoose.connection?.readyState === 1 || Boolean(Model?.[methodName]?.mock);
 
 // CJS interop for packages that don't ship ESM
 const require = createRequire(import.meta.url);
@@ -61,7 +72,23 @@ const extractTextFromPdf = async (buffer) => {
 };
 
 // Initialize Gemini client (fails gracefully if key is missing)
+let _testGeminiClientFactory = null;
+
+/**
+ * Test-only hook to inject a deterministic GoogleGenerativeAI client mock.
+ * Disabled outside NODE_ENV=test.
+ */
+export const setGeminiClientFactoryForTest = (factory) => {
+  if (process.env.NODE_ENV !== 'test') {
+    throw new Error('setGeminiClientFactoryForTest is restricted to NODE_ENV=test');
+  }
+  _testGeminiClientFactory = typeof factory === 'function' ? factory : null;
+};
+
 const getGeminiClient = () => {
+  if (process.env.NODE_ENV === 'test' && _testGeminiClientFactory) {
+    return _testGeminiClientFactory();
+  }
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY is not configured in environment variables');
@@ -132,7 +159,15 @@ export const getFallbackModels = () =>
 export const getGeminiModels = () => {
   const primary = getPrimaryModel();
   const fallbacks = getFallbackModels();
-  return [...new Set([primary, ...fallbacks])].filter(Boolean);
+  const candidates = [...new Set([primary, ...fallbacks])].filter(
+    (m) => Boolean(m) && !DEPRECATED_MODELS.has(m)
+  );
+  if (candidates.length === 0) {
+    const err = new Error(`DEPRECATED_OR_EMPTY_MODELS: Primary model "${primary}" is deprecated and no valid fallbacks are configured.`);
+    err.code = 'AI_MODEL_UNAVAILABLE';
+    throw err;
+  }
+  return candidates;
 };
 
 /**
@@ -177,7 +212,13 @@ export const buildGenerationConfig = (modelName, { json = false, customConfig = 
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export const generateWithModelFallback = async ({ prompt, systemInstruction, json = false, parts = null }) => {
+export const generateWithModelFallback = async ({
+  prompt,
+  systemInstruction,
+  json = false,
+  parts = null,
+  timeoutMs = 20000,
+}) => {
   let genAI;
   try {
     if (process.env.NODE_ENV === 'test' && process.env.MOCK_AI === 'true') {
@@ -185,10 +226,9 @@ export const generateWithModelFallback = async ({ prompt, systemInstruction, jso
     }
     genAI = getGeminiClient();
   } catch (keyErr) {
-    if (process.env.NODE_ENV === 'test') {
+    if (process.env.NODE_ENV === 'test' && process.env.DISABLE_TEST_AI_FALLBACK !== 'true') {
       console.warn('[ai] Gemini API key not configured in test mode, using test mock fallback JSON:', keyErr.message);
-      return {
-        text: JSON.stringify({
+      const mockText = JSON.stringify({
           evidence: {
             sections: {
               hasSummary: true,
@@ -268,8 +308,11 @@ export const generateWithModelFallback = async ({ prompt, systemInstruction, jso
             projects: 'HIGH',
             qualitySignals: 'HIGH',
           },
-        }),
-        modelName: 'mock-model-fallback'
+        });
+      return {
+        text: mockText,
+        parsed: json ? parseJsonResponse(mockText) : undefined,
+        modelName: 'mock-model-fallback',
       };
     }
     // In production and non-test environments, fail explicitly — NEVER fabricate mock data
@@ -278,13 +321,18 @@ export const generateWithModelFallback = async ({ prompt, systemInstruction, jso
     throw err;
   }
   const errors = [];
+  const failureCodes = [];
   const models = getGeminiModels();
+  const isFastTest = process.env.NODE_ENV === 'test';
+  const retryDelayMs = isFastTest ? 10 : 1000;
+  const rateLimitBaseDelayMs = isFastTest ? 15 : 2000;
 
   for (const modelName of models) {
     let attempts = 0;
     const maxAttempts = 3;
 
     while (attempts < maxAttempts) {
+      let timerId = null;
       try {
         const genConfig = buildGenerationConfig(modelName, { json });
         const model = genAI.getGenerativeModel({
@@ -294,22 +342,51 @@ export const generateWithModelFallback = async ({ prompt, systemInstruction, jso
         });
         const result = await Promise.race([
           model.generateContent(parts || prompt),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error(`AI generation timed out after 20s on ${modelName}`)), 20000)
-          ),
+          new Promise((_, reject) => {
+            timerId = setTimeout(() => {
+              const timeoutErr = new Error(`AI generation timed out after ${timeoutMs}ms on ${modelName}`);
+              timeoutErr.code = 'AI_TIMEOUT';
+              reject(timeoutErr);
+            }, timeoutMs);
+          }),
         ]);
+        if (timerId) clearTimeout(timerId);
+
         const text = extractGeminiText(result.response);
         if (!text) {
           errors.push(`${modelName} (attempt ${attempts + 1}): empty or blocked response`);
+          failureCodes.push('MALFORMED_AI_RESPONSE');
           break; // Safety blocked or empty -> next model immediately!
         }
-        return { text, result, modelName };
+
+        let parsed;
+        if (json) {
+          try {
+            parsed = parseJsonResponse(text);
+          } catch (parseErr) {
+            attempts++;
+            errors.push(`${modelName} (attempt ${attempts}): MALFORMED_AI_RESPONSE (${parseErr.message})`);
+            failureCodes.push('MALFORMED_AI_RESPONSE');
+            if (attempts < maxAttempts) {
+              await delay(retryDelayMs);
+              continue;
+            }
+            break;
+          }
+        }
+
+        return { text, parsed, result, modelName };
       } catch (error) {
+        if (timerId) clearTimeout(timerId);
         attempts++;
-        const errMsg = error.message || '';
-        const isNotFound = errMsg.includes('404') || errMsg.includes('not found') || errMsg.includes('INVALID_ARGUMENT');
+        const errMsg = sanitizeAiErrorMessage(error.message || '');
+        const isNotFound = errMsg.includes('404') || errMsg.toLowerCase().includes('not found') || errMsg.includes('INVALID_ARGUMENT');
+        const isTimeout = error.code === 'AI_TIMEOUT' || errMsg.toLowerCase().includes('timed out');
         const isRateLimit = errMsg.includes('429') || errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('resource_exhausted');
         errors.push(`${modelName} (attempt ${attempts}): ${errMsg}`);
+        failureCodes.push(
+          isTimeout ? 'AI_TIMEOUT' : isNotFound ? 'AI_MODEL_UNAVAILABLE' : isRateLimit ? 'AI_RATE_LIMITED' : 'AI_PROVIDER_ERROR'
+        );
 
         if (isNotFound) {
           // Model not found -> skip to next model immediately without retrying
@@ -317,12 +394,12 @@ export const generateWithModelFallback = async ({ prompt, systemInstruction, jso
         }
 
         if (isRateLimit && attempts < maxAttempts) {
-          const waitTime = attempts * 2000;
+          const waitTime = attempts * rateLimitBaseDelayMs;
           console.warn(`[ai] Rate limit hit on ${modelName}. Retrying in ${waitTime}ms...`);
           await delay(waitTime);
         } else if (!isRateLimit && attempts < maxAttempts) {
           // Transient network error or timeout -> retry same model
-          await delay(1000);
+          await delay(retryDelayMs);
         } else {
           break;
         }
@@ -330,8 +407,19 @@ export const generateWithModelFallback = async ({ prompt, systemInstruction, jso
     }
   }
 
-  const failure = new Error(`ALL_MODELS_FAILED: ${errors.join(' | ')}`);
-  failure.code = 'ALL_MODELS_FAILED';
+  const uniqueCodes = [...new Set(failureCodes)];
+  const primaryFailureCode =
+    uniqueCodes.length === 1 && uniqueCodes[0] === 'MALFORMED_AI_RESPONSE'
+      ? 'MALFORMED_AI_RESPONSE'
+      : uniqueCodes.length === 1 && uniqueCodes[0] === 'AI_TIMEOUT'
+        ? 'AI_TIMEOUT'
+        : uniqueCodes.length === 1 && uniqueCodes[0] === 'AI_MODEL_UNAVAILABLE'
+          ? 'AI_MODEL_UNAVAILABLE'
+          : 'ALL_MODELS_FAILED';
+
+  const failure = new Error(`${primaryFailureCode}: ${errors.join(' | ')}`);
+  failure.code = primaryFailureCode;
+  failure.reasonCode = uniqueCodes[uniqueCodes.length - 1] || 'AI_PROVIDER_ERROR';
   throw failure;
 };
 
@@ -907,64 +995,88 @@ export const analyzeResume = async (req, res) => {
 
     const startTime = Date.now();
 
-    // 1. Fetch PDF buffer from Cloudinary using signed URL (10 min expiry)
-    let fileUrlToFetch = analysis.fileUrl;
-    let publicId = null;
-    let signedUrlGenerated = false;
+    // 1. Fetch PDF buffer (check ephemeral cache first, then Cloudinary fallback)
+    let buffer = null;
+    const cached = documentBufferCache.get(req.user._id, analysis.fileUrl) ||
+                   documentBufferCache.get(req.user._id, analysis._id.toString());
+    if (cached && cached.buffer) {
+      buffer = cached.buffer;
+    } else {
+      let fileUrlToFetch = analysis.fileUrl;
+      let publicId = null;
+      let signedUrlGenerated = false;
 
-    if (analysis.fileUrl && (analysis.fileUrl.startsWith('http://') || analysis.fileUrl.startsWith('https://'))) {
-      try {
-        const signed = generateSignedCloudinaryUrl(analysis.fileUrl, { expiresIn: 600 });
-        fileUrlToFetch = signed.signedUrl;
-        publicId = signed.publicId;
-        signedUrlGenerated = true;
-      } catch (cldErr) {
-        console.warn('[aiController] Cloudinary signed URL generation warning:', cldErr.message);
-        // Fallback to manual regex if generateSignedCloudinaryUrl throws on non-standard format
+      if (analysis.fileUrl && (analysis.fileUrl.startsWith('http://') || analysis.fileUrl.startsWith('https://'))) {
         try {
-          const match = analysis.fileUrl.match(/\/(raw|image|video)\/(authenticated|private|upload)\/(?:s--[a-zA-Z0-9_.-]+--\/)?(?:v\d+\/)?(.+)$/);
-          if (match) {
-            const resourceType = match[1] || 'raw';
-            const deliveryType = match[2] || 'authenticated';
-            publicId = decodeURIComponent(match[3]);
-            const ext = publicId.split('.').pop() || '';
-            const { v2: cloudinary } = await import('cloudinary');
-            cloudinary.config({
-              cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-              api_key: process.env.CLOUDINARY_API_KEY,
-              api_secret: process.env.CLOUDINARY_API_SECRET,
-              secure: true,
-            });
-            fileUrlToFetch = cloudinary.utils.private_download_url(publicId, ext, {
-              resource_type: resourceType,
-              type: deliveryType,
-              expires_at: Math.floor(Date.now() / 1000) + 600,
-              secure: true,
-            });
-            signedUrlGenerated = true;
+          const signed = generateSignedCloudinaryUrl(analysis.fileUrl, { expiresIn: 600 });
+          fileUrlToFetch = signed.signedUrl;
+          publicId = signed.publicId;
+          signedUrlGenerated = true;
+        } catch (cldErr) {
+          console.warn('[aiController] Cloudinary signed URL generation warning:', cldErr.message);
+          // Fallback to manual regex if generateSignedCloudinaryUrl throws on non-standard format
+          try {
+            const match = analysis.fileUrl.match(/\/(raw|image|video)\/(authenticated|private|upload)\/(?:s--[a-zA-Z0-9_.-]+--\/)?(?:v\d+\/)?(.+)$/);
+            if (match) {
+              const resourceType = match[1] || 'raw';
+              const deliveryType = match[2] || 'authenticated';
+              publicId = decodeURIComponent(match[3]);
+              const ext = publicId.split('.').pop() || '';
+              const { v2: cloudinary } = await import('cloudinary');
+              cloudinary.config({
+                cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+                api_key: process.env.CLOUDINARY_API_KEY,
+                api_secret: process.env.CLOUDINARY_API_SECRET,
+                secure: true,
+              });
+              fileUrlToFetch = cloudinary.utils.private_download_url(publicId, ext, {
+                resource_type: resourceType,
+                type: deliveryType,
+                expires_at: Math.floor(Date.now() / 1000) + 600,
+                secure: true,
+              });
+              signedUrlGenerated = true;
+            }
+          } catch (manualErr) {
+            console.warn('[aiController] Manual Cloudinary signature fallback warning:', manualErr.message);
           }
-        } catch (manualErr) {
-          console.warn('[aiController] Manual Cloudinary signature fallback warning:', manualErr.message);
         }
       }
-    }
 
-    let pdfResponse;
-    try {
-      pdfResponse = await fetch(fileUrlToFetch, {
-        signal: AbortSignal.timeout(15000), // 15-second bounded retrieval timeout
-      });
-      if (!pdfResponse.ok) {
-        throw new Error(`Storage fetch failed with HTTP ${pdfResponse.status}`);
+      let pdfResponse;
+      try {
+        pdfResponse = await fetch(fileUrlToFetch, {
+          signal: AbortSignal.timeout(15000), // 15-second bounded retrieval timeout
+        });
+      } catch (fetchErr) {
+        const err = new Error(`PDF_RETRIEVAL_FAILED: ${fetchErr.message}`);
+        err.code = 'PDF_RETRIEVAL_FAILED';
+        throw err;
       }
-    } catch (fetchErr) {
-      const err = new Error(`PDF_RETRIEVAL_FAILED: ${fetchErr.message}`);
-      err.code = 'PDF_RETRIEVAL_FAILED';
-      throw err;
-    }
 
-    const arrayBuffer = await pdfResponse.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+      const arrayBuffer = await pdfResponse.arrayBuffer();
+      const fetchedBuffer = Buffer.from(arrayBuffer);
+
+      const cldFailure = inspectCloudinaryFailure({
+        status: pdfResponse.status,
+        headers: pdfResponse.headers,
+        buffer: fetchedBuffer,
+      });
+      if (cldFailure.isProviderError) {
+        const err = new Error(cldFailure.message);
+        err.code = cldFailure.code;
+        throw err;
+      }
+
+      if (!pdfResponse.ok) {
+        const err = new Error(`PDF_RETRIEVAL_FAILED: Storage fetch failed with HTTP ${pdfResponse.status}`);
+        err.code = 'PDF_RETRIEVAL_FAILED';
+        throw err;
+      }
+      buffer = fetchedBuffer;
+      documentBufferCache.set(req.user._id, analysis.fileUrl, buffer, analysis.mimeType || 'application/pdf');
+      documentBufferCache.set(req.user._id, analysis._id.toString(), buffer, analysis.mimeType || 'application/pdf');
+    }
 
     // 2. Parse resume text and enforce scanned PDF check
     let textContent;
@@ -1297,17 +1409,109 @@ You must return VALID JSON ONLY with this exact schema:
 
 // ─── EXTRACT certificate details from uploaded file ──────────────────────────
 export const extractCertificate = async (req, res) => {
+  let activeCertId = req.body?.certificationId || null;
   try {
-    const { fileUrl, mimeType = 'image/jpeg' } = req.body;
-    if (!fileUrl) {
+    const { fileUrl, mimeType = 'image/jpeg' } = req.body || {};
+    if (!fileUrl || typeof fileUrl !== 'string') {
       return res.status(400).json({ success: false, message: 'fileUrl is required' });
     }
 
-    const fileResponse = await fetch(fileUrl);
-    if (!fileResponse.ok) throw new Error('Failed to fetch certificate from storage');
+    // Cross-tenant isolation check when user-partitioned path is present
+    const userMatch = fileUrl.match(/(?:scholrmind|uploads)\/(?:resumes|certificates|activity-proofs)\/([a-f0-9]{24})/i);
+    if (userMatch && userMatch[1].toLowerCase() !== req.user._id.toString().toLowerCase() && !['admin', 'faculty'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Forbidden: You are not authorized to extract another user\'s certificate' });
+    }
 
-    const buffer = Buffer.from(await fileResponse.arrayBuffer());
-    let promptInput;
+    const docResult = await resolveValidatedDocumentBuffer({
+      ownerUserId: req.user._id.toString(),
+      identifierKeys: [fileUrl, activeCertId].filter(Boolean),
+      assetUrl: fileUrl,
+      allowImages: true,
+      preferPrivateDownload: true,
+      preserveHttpStatus: false,
+      timeoutMs: 15000,
+    });
+
+    if (!docResult.ok) {
+      if (docResult.json) {
+        return res.status(docResult.status).json({
+          ...docResult.json,
+          extractionStatus: 'failed',
+        });
+      }
+      const mappedStatus = docResult.status === 400 ? 400 : docResult.status === 504 ? 504 : 502;
+      return res.status(mappedStatus).json({
+        success: false,
+        code: docResult.code || 'CERTIFICATE_RETRIEVAL_FAILED',
+        message: docResult.text || 'Failed to retrieve certificate document from storage',
+        extractionStatus: 'failed',
+      });
+    }
+
+    const buffer = docResult.buffer;
+    const resolvedMime = docResult.contentType || mimeType;
+    if (docResult.source !== 'cache') {
+      documentBufferCache.set(req.user._id, fileUrl, buffer, resolvedMime);
+    }
+
+    // Reuse existing subdocument by certificationId or sourceFileUrl to avoid duplicates on retry,
+    // and transition state explicitly: pending -> processing -> succeeded | failed.
+    if (!activeCertId && canUseModelMethod(Profile, 'findOne')) {
+      try {
+        const existingProfile = await Profile.findOne({
+          userId: req.user._id,
+          'certifications.sourceFileUrl': fileUrl,
+        }).select('certifications');
+        const matched = existingProfile?.certifications?.find((c) => c.sourceFileUrl === fileUrl);
+        if (matched?._id) {
+          activeCertId = matched._id.toString();
+        }
+      } catch (lookupErr) {
+        console.warn('[extractCertificate] Dedupe lookup warning:', lookupErr.message);
+      }
+    }
+
+    if (activeCertId && canUseModelMethod(Profile, 'updateOne')) {
+      try {
+        await Profile.updateOne(
+          { userId: req.user._id, 'certifications._id': activeCertId },
+          {
+            $set: {
+              'certifications.$.extractionStatus': 'processing',
+              'certifications.$.extractionError': null,
+            },
+          }
+        );
+      } catch (markErr) {
+        console.warn('[extractCertificate] Processing state update warning:', markErr.message);
+      }
+    } else if (!activeCertId && canUseModelMethod(Profile, 'findOneAndUpdate')) {
+      try {
+        const createdProfile = await Profile.findOneAndUpdate(
+          { userId: req.user._id },
+          {
+            $push: {
+              certifications: {
+                title: 'Certificate (Processing...)',
+                credentialUrl: fileUrl,
+                sourceFileUrl: fileUrl,
+                status: 'pending',
+                extractionStatus: 'processing',
+                extractionError: null,
+              },
+            },
+          },
+          { new: true, upsert: true }
+        );
+        const createdCert = createdProfile?.certifications?.find((c) => c.sourceFileUrl === fileUrl) ||
+          createdProfile?.certifications?.[createdProfile.certifications.length - 1];
+        if (createdCert?._id) {
+          activeCertId = createdCert._id.toString();
+        }
+      } catch (initErr) {
+        console.warn('[extractCertificate] Initial processing slot creation warning:', initErr.message);
+      }
+    }
 
     const prompt = `
 Extract certificate data from this uploaded certificate.
@@ -1324,62 +1528,194 @@ Return ONLY valid JSON with this exact shape:
   "confidence": 0
 }`;
 
-    if (mimeType === 'application/pdf') {
-      const pdfText = await extractTextFromPdf(buffer);
-      promptInput = `${prompt}\n\nCERTIFICATE TEXT:\n${pdfText.slice(0, 8000)}`;
+    let promptInput;
+    let extractionMode = 'image';
+    const isPdf = docResult.isPdf || mimeType === 'application/pdf' || buffer.subarray(0, 4).toString().startsWith('%PDF');
+
+    if (isPdf) {
+      let pdfText = '';
+      try {
+        pdfText = await extractTextFromPdf(buffer);
+      } catch (pdfErr) {
+        console.warn('[extractCertificate] pdf-parse failed, falling back to multimodal:', pdfErr.message);
+      }
+
+      if (pdfText && pdfText.trim().length >= 50) {
+        extractionMode = 'text';
+        promptInput = `${prompt}\n\nCERTIFICATE TEXT:\n${pdfText.slice(0, 8000)}`;
+      } else {
+        // Scanned or image-based PDF: send inline base64 through Gemini multimodal path
+        extractionMode = 'multimodal';
+        promptInput = [
+          { text: prompt },
+          {
+            inlineData: {
+              data: buffer.toString('base64'),
+              mimeType: 'application/pdf',
+            },
+          },
+        ];
+      }
     } else {
+      extractionMode = 'image';
       promptInput = [
-        prompt,
+        { text: prompt },
         {
           inlineData: {
             data: buffer.toString('base64'),
-            mimeType,
+            mimeType: resolvedMime,
           },
         },
       ];
     }
 
-    const { text: certJson } = await generateWithModelFallback({
+    const { text: certJson, parsed, modelName } = await generateWithModelFallback({
       prompt: typeof promptInput === 'string' ? promptInput : prompt,
       parts: Array.isArray(promptInput) ? promptInput : null,
       json: true,
     });
-    const extracted = parseJsonResponse(certJson);
+    const extracted = parsed || parseJsonResponse(certJson);
+    if (!extracted || typeof extracted !== 'object' || Array.isArray(extracted)) {
+      const schemaErr = new Error('MALFORMED_AI_RESPONSE: Certificate payload is not a JSON object');
+      schemaErr.code = 'MALFORMED_AI_RESPONSE';
+      throw schemaErr;
+    }
+
+    const parseOptionalDate = (val) => {
+      if (!val || typeof val !== 'string') return undefined;
+      const d = new Date(val);
+      return Number.isNaN(d.getTime()) ? undefined : d;
+    };
 
     const cert = {
       title: extracted.title || 'Untitled Certificate',
       issuedBy: extracted.issuedBy || '',
-      issuedDate: extracted.issuedDate ? new Date(extracted.issuedDate) : undefined,
-      expiryDate: extracted.expiryDate ? new Date(extracted.expiryDate) : undefined,
+      issuedDate: parseOptionalDate(extracted.issuedDate),
+      expiryDate: parseOptionalDate(extracted.expiryDate),
       credentialId: extracted.credentialId || '',
       credentialUrl: fileUrl,
       sourceFileUrl: fileUrl,
       skills: Array.isArray(extracted.skills) ? extracted.skills : [],
       technologies: Array.isArray(extracted.technologies) ? extracted.technologies : [],
       extractionConfidence: Number(extracted.confidence || 0),
+      status: 'pending',
+      extractionStatus: 'succeeded',
+      extractionError: null,
     };
 
     const skillsToAdd = [...new Set([...cert.skills, ...cert.technologies].filter(Boolean))].slice(0, 20);
-    const profile = await Profile.findOneAndUpdate(
-      { userId: req.user._id },
-      {
-        $push: { certifications: cert },
-        ...(skillsToAdd.length ? { $addToSet: { skills: { $each: skillsToAdd } } } : {}),
-      },
-      { new: true, upsert: true, runValidators: true }
-    );
+
+    let profile;
+    if (activeCertId && canUseModelMethod(Profile, 'findOneAndUpdate')) {
+      profile = await Profile.findOneAndUpdate(
+        { userId: req.user._id, 'certifications._id': activeCertId },
+        {
+          $set: {
+            'certifications.$.title': cert.title,
+            'certifications.$.issuedBy': cert.issuedBy,
+            'certifications.$.issuedDate': cert.issuedDate,
+            'certifications.$.expiryDate': cert.expiryDate,
+            'certifications.$.credentialId': cert.credentialId,
+            'certifications.$.credentialUrl': cert.credentialUrl,
+            'certifications.$.sourceFileUrl': cert.sourceFileUrl,
+            'certifications.$.skills': cert.skills,
+            'certifications.$.technologies': cert.technologies,
+            'certifications.$.extractionConfidence': cert.extractionConfidence,
+            'certifications.$.status': cert.status,
+            'certifications.$.extractionStatus': 'succeeded',
+            'certifications.$.extractionError': null,
+          },
+          ...(skillsToAdd.length ? { $addToSet: { skills: { $each: skillsToAdd } } } : {}),
+        },
+        { new: true, runValidators: true }
+      );
+    } else if (canUseModelMethod(Profile, 'findOneAndUpdate')) {
+      profile = await Profile.findOneAndUpdate(
+        { userId: req.user._id },
+        {
+          $push: { certifications: cert },
+          ...(skillsToAdd.length ? { $addToSet: { skills: { $each: skillsToAdd } } } : {}),
+        },
+        { new: true, upsert: true, runValidators: true }
+      );
+    }
+
+    const savedCert = activeCertId
+      ? profile?.certifications?.find((c) => c._id?.toString() === activeCertId.toString())
+      : profile?.certifications?.[profile.certifications.length - 1];
 
     return res.json({
       success: true,
       message: 'Certificate extracted and added to profile',
-      certificate: profile.certifications[profile.certifications.length - 1],
+      certificate: savedCert || cert,
       skillsAdded: skillsToAdd,
+      extractionStatus: 'succeeded',
+      extractionMode,
+      modelUsed: modelName,
     });
   } catch (error) {
-    if (error.message.includes('GEMINI_API_KEY')) {
-      return res.status(503).json({ success: false, message: 'AI service not configured' });
+    const rawMsg = error?.message || '';
+    const errCode =
+      error?.code ||
+      (rawMsg.includes('GEMINI_API_KEY')
+        ? 'GEMINI_API_KEY_NOT_CONFIGURED'
+        : rawMsg.includes('timed out')
+          ? 'AI_TIMEOUT'
+          : 'CERTIFICATE_EXTRACTION_FAILED');
+
+    const safeMessageMap = {
+      GEMINI_API_KEY_NOT_CONFIGURED: 'AI service not configured.',
+      MALFORMED_AI_RESPONSE: 'AI model returned malformed certificate data. Please retry or edit details manually.',
+      AI_TIMEOUT: 'Certificate extraction timed out before the model responded. Please retry.',
+      AI_MODEL_UNAVAILABLE: 'Configured AI extraction model is unavailable. Please contact support or retry.',
+      ALL_MODELS_FAILED: 'All configured AI models failed to process this certificate. Please retry shortly.',
+    };
+    const sanitizedUserMsg = safeMessageMap[errCode] || sanitizeAiErrorMessage(rawMsg) || 'Certificate extraction failed';
+
+    console.error('extractCertificate error:', sanitizeAiErrorMessage(rawMsg));
+
+    if (activeCertId && canUseModelMethod(Profile, 'updateOne')) {
+      try {
+        await Profile.updateOne(
+          { userId: req.user._id, 'certifications._id': activeCertId },
+          {
+            $set: {
+              'certifications.$.title': 'Certificate Extraction Failed',
+              'certifications.$.extractionStatus': 'failed',
+              'certifications.$.extractionError': sanitizedUserMsg,
+            },
+          }
+        );
+      } catch (saveErr) {
+        console.warn('[extractCertificate] Failed to update certification error status:', saveErr.message);
+      }
     }
-    console.error('extractCertificate error:', error);
-    return res.status(500).json({ success: false, message: 'Certificate extraction failed', error: error.message });
+
+    if (errCode === 'GEMINI_API_KEY_NOT_CONFIGURED') {
+      return res.status(503).json({
+        success: false,
+        code: errCode,
+        message: safeMessageMap[errCode],
+        extractionStatus: 'failed',
+        ...(activeCertId ? { certificationId: activeCertId } : {}),
+      });
+    }
+
+    const status =
+      errCode === 'AI_TIMEOUT'
+        ? 504
+        : errCode === 'AI_MODEL_UNAVAILABLE' || errCode === 'ALL_MODELS_FAILED'
+          ? 503
+          : errCode === 'MALFORMED_AI_RESPONSE'
+            ? 502
+            : 500;
+
+    return res.status(status).json({
+      success: false,
+      code: errCode,
+      message: sanitizedUserMsg,
+      extractionStatus: 'failed',
+      ...(activeCertId ? { certificationId: activeCertId } : {}),
+    });
   }
 };

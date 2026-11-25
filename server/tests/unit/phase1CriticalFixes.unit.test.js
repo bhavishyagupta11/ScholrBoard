@@ -162,14 +162,21 @@ test('Phase 1.6: upload.js rejects silent local disk fallback in production', as
   }
 });
 
-test('Phase 1.7: Cloudinary signed URL in uploadController specifies 600s (10 min) expiry', async () => {
-  const uploadControllerContent = await import('node:fs').then(fs =>
-    fs.promises.readFile(new URL('../../controllers/uploadController.js', import.meta.url), 'utf8')
+test('Phase 1.7: Cloudinary signed URL helper used by uploadController specifies 600s (10 min) expiry', async () => {
+  const fs = await import('node:fs');
+  const uploadControllerContent = await fs.promises.readFile(
+    new URL('../../controllers/uploadController.js', import.meta.url),
+    'utf8'
+  );
+  const documentDeliveryContent = await fs.promises.readFile(
+    new URL('../../utils/documentDelivery.js', import.meta.url),
+    'utf8'
   );
 
-  // Must include expires_at: Math.floor(Date.now() / 1000) + 600
-  assert.equal(uploadControllerContent.includes('expires_at: Math.floor(Date.now() / 1000) + 600'), true);
-  assert.equal(uploadControllerContent.includes('secure: true'), true);
+  assert.equal(uploadControllerContent.includes('documentDelivery.js'), true);
+  assert.equal(documentDeliveryContent.includes('expiresInSeconds = 600'), true);
+  assert.equal(documentDeliveryContent.includes('expires_at: Math.floor(Date.now() / 1000) + expiresInSeconds'), true);
+  assert.equal(documentDeliveryContent.includes('secure: true'), true);
 });
 
 test('Phase 1.8: aiController mock fallback is gated strictly behind NODE_ENV === "test"', async () => {
