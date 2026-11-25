@@ -144,9 +144,30 @@ export const fetchBlob = async (endpoint, options = {}) => {
   }
 
   if (!response.ok) {
-    const err = new Error(`Failed to fetch secure document`);
+    const contentType = response.headers.get('content-type') || 'Unknown';
+    let serverMessage = 'Failed to fetch secure document';
+    let errorCode = null;
+    let providerCode = null;
+
+    try {
+      const rawText = await response.text();
+      if (contentType.toLowerCase().includes('application/json') || rawText.trim().startsWith('{')) {
+        const parsed = JSON.parse(rawText);
+        serverMessage = parsed.message || parsed.error || serverMessage;
+        errorCode = parsed.code || null;
+        providerCode = parsed.providerCode || null;
+      } else if (rawText && rawText.length < 300) {
+        serverMessage = rawText;
+      }
+    } catch {
+      // Preserve fallback message on unreadable error body
+    }
+
+    const err = new Error(serverMessage);
     err.status = response.status;
-    err.contentType = response.headers.get('content-type') || 'Unknown';
+    err.contentType = contentType;
+    if (errorCode) err.code = errorCode;
+    if (providerCode) err.providerCode = providerCode;
     throw err;
   }
 

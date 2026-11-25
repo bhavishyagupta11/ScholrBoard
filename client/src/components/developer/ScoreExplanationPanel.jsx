@@ -104,7 +104,7 @@ export function ScoreExplanationPanel({ profile, developerScore: propScore, deve
   }
 
   const distinctLanguages = rawMetrics.github?.topLanguages?.length || 0;
-  const breadthScore = Math.min(100, distinctLanguages * 20);
+  const breadthScore = Math.min(100, distinctLanguages * 12);
 
   const qualifiedMergedPRs = rawMetrics.github?.qualifiedMergedPRsCount || 
     rawMetrics.github?.prsAndIssues?.qualifiedMergedPRs || 0;

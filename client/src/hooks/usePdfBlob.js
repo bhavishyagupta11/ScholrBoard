@@ -28,13 +28,35 @@ export function usePdfBlob(endpointUrl) {
           throw new Error('Invalid content type received.');
         }
 
+        // Verify PDF magic header (%PDF-) before rendering/downloading blob so
+        // HTML/JSON provider error payloads can never be treated as PDFs.
+        const headerBytes = new Uint8Array(await blob.slice(0, 5).arrayBuffer());
+        const headerAscii = String.fromCharCode(...headerBytes);
+        if (!headerAscii.startsWith('%PDF')) {
+          let detail = 'Document payload is not a valid PDF binary.';
+          try {
+            const snippet = await blob.slice(0, 512).text();
+            if (snippet.trim().startsWith('{')) {
+              const parsed = JSON.parse(snippet);
+              detail = parsed.message || detail;
+            }
+          } catch {
+            // Keep default detail message
+          }
+          const badErr = new Error(detail);
+          badErr.status = 400;
+          badErr.contentType = contentType || 'Invalid binary payload';
+          throw badErr;
+        }
+
         currentUrl = URL.createObjectURL(blob);
         setBlobUrl(currentUrl);
       } catch (err) {
         if (!isMounted) return;
         const status = err.status ? `Status: ${err.status}` : 'Status: Unknown';
         const type = err.contentType ? `Type: ${err.contentType}` : 'Type: Unknown';
-        setError(`Unable to load PDF preview. ${status} | ${type} | URL: ${endpointUrl}`);
+        const reason = err.message ? `${err.message} ` : '';
+        setError(`${reason}(${status} | ${type} | URL: ${endpointUrl})`);
       } finally {
         if (isMounted) {
           setLoading(false);
