@@ -6,7 +6,7 @@ import Notification from '../models/Notification.js';
 import { evaluatePlacementEligibility } from '../services/eligibilityService.js';
 import { withTransaction } from '../utils/withTransaction.js';
 import { excludeTestUsers } from '../utils/testFilters.js';
-import { evaluateOpportunityDeadline } from '../utils/opportunityDeadline.js';
+import { evaluateOpportunityDeadline, parseOpportunityDeadline } from '../utils/opportunityDeadline.js';
 
 // ─── ADMIN: Create Opportunity ────────────────────────────────────────────────
 export const createOpportunity = async (req, res) => {
@@ -15,6 +15,7 @@ export const createOpportunity = async (req, res) => {
       driveCode,
       title,
       company,
+      location,
       type,
       description,
       requirements,
@@ -27,6 +28,14 @@ export const createOpportunity = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Required fields missing: driveCode, title, company, type, description, deadline',
+      });
+    }
+
+    const parsedDeadline = parseOpportunityDeadline(deadline);
+    if (!parsedDeadline.valid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or unparseable application deadline',
       });
     }
 
@@ -44,12 +53,13 @@ export const createOpportunity = async (req, res) => {
         driveCode: driveCode.trim().toUpperCase(),
         title: title.trim(),
         company: company.trim(),
+        location: location ? String(location).trim() : '',
         type,
         description,
         requirements: requirements || [],
         eligibility: eligibility || {},
         salaryPackage: salaryPackage || 0,
-        deadline: new Date(deadline),
+        deadline: parsedDeadline.date,
         postedBy: req.user._id,
         status: 'Draft',
       }], { session });
@@ -74,6 +84,182 @@ export const createOpportunity = async (req, res) => {
   } catch (error) {
     console.error('createOpportunity error:', error);
     return res.status(500).json({ success: false, message: 'Failed to create opportunity' });
+  }
+};
+
+// ─── ADMIN: Update Opportunity (Draft / Published / Closed safe edit) ─────────
+export const updateOpportunity = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await Opportunity.findById(id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Opportunity not found' });
+    }
+
+    const {
+      driveCode,
+      title,
+      company,
+      location,
+      type,
+      description,
+      requirements,
+      eligibility,
+      salaryPackage,
+      deadline,
+      status: requestedStatus,
+    } = req.body;
+
+    if (requestedStatus !== undefined && requestedStatus !== existing.status) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status transitions are not allowed via edit; use publish or close actions. Closed or expired drives cannot be reopened.',
+      });
+    }
+
+    const nextTitle = title !== undefined ? String(title).trim() : existing.title;
+    const nextCompany = company !== undefined ? String(company).trim() : existing.company;
+    const nextType = type !== undefined ? type : existing.type;
+    const nextDescription = description !== undefined ? String(description).trim() : existing.description;
+
+    if (!nextTitle || !nextCompany || !nextType || !nextDescription) {
+      return res.status(400).json({
+        success: false,
+        message: 'Required fields cannot be empty: title, company, type, description',
+      });
+    }
+
+    if (!['Full-time', 'Internship', 'Part-time'].includes(nextType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid opportunity type. Must be Full-time, Internship, or Part-time',
+      });
+    }
+
+    if (salaryPackage !== undefined && (!Number.isFinite(Number(salaryPackage)) || Number(salaryPackage) < 0)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Salary package must be a non-negative number',
+      });
+    }
+
+    let nextDriveCode = existing.driveCode;
+    if (driveCode !== undefined) {
+      const normalizedCode = String(driveCode).trim().toUpperCase();
+      if (!normalizedCode) {
+        return res.status(400).json({ success: false, message: 'Drive code cannot be empty' });
+      }
+      if (normalizedCode !== existing.driveCode) {
+        const conflict = await Opportunity.findOne({ driveCode: normalizedCode, _id: { $ne: existing._id } });
+        if (conflict) {
+          return res.status(400).json({
+            success: false,
+            message: `Opportunity with drive code "${normalizedCode}" already exists.`,
+          });
+        }
+        nextDriveCode = normalizedCode;
+      }
+    }
+
+    const now = new Date();
+    const existingDeadlineEval = evaluateOpportunityDeadline(existing, now);
+    let nextDeadline = existing.deadline;
+
+    if (deadline !== undefined && deadline !== '') {
+      const parsedDeadline = parseOpportunityDeadline(deadline);
+      if (!parsedDeadline.valid) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid or unparseable application deadline',
+        });
+      }
+
+      const existingMs = existing.deadline instanceof Date ? existing.deadline.getTime() : NaN;
+      const nextMs = parsedDeadline.date.getTime();
+      const deadlineChanged = !Number.isFinite(existingMs) || Math.abs(nextMs - existingMs) > 1000;
+
+      // Never allow an expired or closed drive to be reopened/extended by editing its deadline
+      if (deadlineChanged && (existing.status === 'Closed' || existingDeadlineEval.isExpired)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot extend or reopen the application deadline of an already expired or closed opportunity.',
+        });
+      }
+      nextDeadline = parsedDeadline.date;
+    }
+
+    const updatedOp = await withTransaction(async (session) => {
+      existing.driveCode = nextDriveCode;
+      existing.title = nextTitle;
+      existing.company = nextCompany;
+      if (location !== undefined) existing.location = String(location || '').trim();
+      existing.type = nextType;
+      existing.description = nextDescription;
+      if (requirements !== undefined) {
+        existing.requirements = Array.isArray(requirements)
+          ? requirements.map((r) => String(r).trim()).filter(Boolean)
+          : String(requirements).split(',').map((r) => r.trim()).filter(Boolean);
+      }
+      if (eligibility !== undefined && typeof eligibility === 'object') {
+        const baseElig = existing.eligibility?.toObject ? existing.eligibility.toObject() : (existing.eligibility || {});
+        existing.eligibility = {
+          ...baseElig,
+          ...(eligibility.minCGPA !== undefined && { minCGPA: Number(eligibility.minCGPA) || 0 }),
+          ...(eligibility.maxActiveBacklogs !== undefined && { maxActiveBacklogs: Number(eligibility.maxActiveBacklogs) || 0 }),
+          ...(eligibility.minSemester !== undefined && { minSemester: Number(eligibility.minSemester) || 1 }),
+          ...(eligibility.passingYear !== undefined && { passingYear: Number(eligibility.passingYear) || baseElig.passingYear || 2026 }),
+          ...(eligibility.eligibleDepartments !== undefined && {
+            eligibleDepartments: Array.isArray(eligibility.eligibleDepartments)
+              ? eligibility.eligibleDepartments.map((d) => String(d).trim().toUpperCase()).filter(Boolean)
+              : [],
+          }),
+          ...(eligibility.minPlacementReadinessScore !== undefined && {
+            minPlacementReadinessScore: eligibility.minPlacementReadinessScore === null || eligibility.minPlacementReadinessScore === ''
+              ? null
+              : Number(eligibility.minPlacementReadinessScore),
+          }),
+        };
+      }
+      if (salaryPackage !== undefined) existing.salaryPackage = Number(salaryPackage) || 0;
+      existing.deadline = nextDeadline;
+
+      await existing.save({ session });
+
+      await AuditLog.create([{
+        action: 'update_opportunity',
+        performedBy: req.user._id,
+        role: req.user.role,
+        targetModel: 'Opportunity',
+        targetId: existing._id,
+        details: {
+          driveCode: existing.driveCode,
+          company: existing.company,
+          title: existing.title,
+          status: existing.status,
+        },
+      }], { session });
+
+      return existing;
+    });
+
+    const postEval = evaluateOpportunityDeadline(updatedOp, new Date());
+    const plainOp = updatedOp.toObject ? updatedOp.toObject() : { ...updatedOp };
+    plainOp.isExpired = postEval.isExpired;
+    plainOp.deadlineStatus = postEval.deadlineStatus;
+    plainOp.isDeadlineVerified = postEval.isDeadlineVerified;
+    plainOp.isOpenForApplication = postEval.isOpenForApplication;
+
+    return res.json({
+      success: true,
+      message: 'Placement drive updated successfully',
+      opportunity: plainOp,
+    });
+  } catch (error) {
+    if (error.name === 'ValidationError' || error.name === 'CastError') {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+    console.error('updateOpportunity error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update opportunity' });
   }
 };
 
