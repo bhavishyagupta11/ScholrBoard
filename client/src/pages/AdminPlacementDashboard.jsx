@@ -16,7 +16,22 @@ import { usePdfBlob } from '../hooks/usePdfBlob.js';
 import {
   evaluateFrontendOpportunityDeadline,
   formatOpportunityDeadlineIst,
+  formatDeadlineForDatetimeLocalIst,
 } from '../utils/opportunityDeadline.js';
+
+const formatPackageLpa = (val) => {
+  if (val === null || val === undefined || val === '') return 'Unavailable';
+  const num = Number(val);
+  if (!Number.isFinite(num) || num <= 0) return 'Unavailable';
+  return `₹${num.toLocaleString('en-IN', { maximumFractionDigits: 2 })} LPA`;
+};
+
+const DEFAULT_DRIVE_FORM = {
+  driveCode: '', title: '', company: '', location: '', type: 'Full-time', description: '',
+  requirements: '', minCGPA: '6.0', eligibleDepartments: '', minSemester: '5',
+  passingYear: '2026', maxActiveBacklogs: '0', minPlacementReadinessScore: '75',
+  salaryPackage: '', deadline: ''
+};
 
 export function AdminPlacementDashboard() {
   // Placement Stats State
@@ -29,6 +44,8 @@ export function AdminPlacementDashboard() {
   const [loadingOps, setLoadingOps] = useState(true);
   const [loadingScholarships, setLoadingScholarships] = useState(true);
   const [editingScholarshipId, setEditingScholarshipId] = useState(null);
+  const [editingDriveId, setEditingDriveId] = useState(null);
+  const [editingDriveLockedDeadline, setEditingDriveLockedDeadline] = useState(false);
 
   // Active review lists
   const [selectedOp, setSelectedOp] = useState(null);
@@ -40,12 +57,7 @@ export function AdminPlacementDashboard() {
   const [loadingScholarshipApps, setLoadingScholarshipApps] = useState(false);
 
   // Form states
-  const [driveForm, setDriveForm] = useState({
-    driveCode: '', title: '', company: '', type: 'Full-time', description: '',
-    requirements: '', minCGPA: '6.0', eligibleDepartments: '', minSemester: '5',
-    passingYear: '2026', maxActiveBacklogs: '0', minPlacementReadinessScore: '75',
-    salaryPackage: '', deadline: ''
-  });
+  const [driveForm, setDriveForm] = useState(DEFAULT_DRIVE_FORM);
 
   const [scholarshipForm, setScholarshipForm] = useState({
     title: '', provider: '', amount: '', description: '', minCGPA: '6.0',

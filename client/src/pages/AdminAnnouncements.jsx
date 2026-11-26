@@ -2,7 +2,7 @@
  * AdminAnnouncements.jsx — Admin dashboard for posting announcements and tracking OD requests
  */
 import { useState, useEffect, useCallback } from 'react';
-import { Megaphone, Trash2, Calendar, AlertCircle, CheckCircle2, Search, ChevronLeft, ChevronRight, FileText, Info } from 'lucide-react';
+import { Megaphone, Trash2, Calendar, AlertCircle, CheckCircle2, Edit3, Send } from 'lucide-react';
 import announcementsApi from '../api/announcements.api.js';
 import odApi from '../api/od.api.js';
 import { useScrollAnimation } from '../hooks/useScrollAnimation.js';
@@ -11,8 +11,10 @@ export function AdminAnnouncements() {
   // --- Announcements state ---
   const [anns, setAnns] = useState([]);
   const [loadingAnns, setLoadingAnns] = useState(true);
+  const [noticeStatusTab, setNoticeStatusTab] = useState('Published'); // 'Published' | 'Draft' | 'All'
+  const [editingAnnId, setEditingAnnId] = useState(null);
   
-  // Compose form state
+  // Compose / Edit form state
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('General');
@@ -21,7 +23,7 @@ export function AdminAnnouncements() {
   const [sectionFilter, setSectionFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [submitting, setSubmitting] = useState(false);
-  const [annSuccess, setAnnSuccess] = useState(false);
+  const [annSuccess, setAnnSuccess] = useState('');
   const [annError, setAnnError] = useState(null);
 
   // --- OD Requests Tracker state ---
@@ -41,9 +43,7 @@ export function AdminAnnouncements() {
   const fetchAnnouncements = useCallback(async () => {
     setLoadingAnns(true);
     try {
-      // announcementsApi.getMyAnnouncements returns announcements filtered for current user,
-      // but since admin is logged in, this returns all admin-composed/matching alerts.
-      const res = await announcementsApi.getMyAnnouncements();
+      const res = await announcementsApi.getAll();
       setAnns(res.announcements || []);
     } catch (err) {
       setAnnError(err.message || 'Failed to load announcements');
@@ -80,12 +80,26 @@ export function AdminAnnouncements() {
     }
   }, [activeTab, fetchOds]);
 
-  const handleCreateAnnouncement = async (e) => {
-    e.preventDefault();
-    if (!title.trim() || !content.trim()) return;
+  const resetForm = () => {
+    setEditingAnnId(null);
+    setTitle('');
+    setContent('');
+    setCategory('General');
+    setDeptFilter('');
+    setYearFilter('');
+    setSectionFilter('');
+    setRoleFilter('all');
+  };
+
+  const submitAnnouncementWithStatus = async (targetStatus) => {
+    if (submitting) return;
+    if (!title.trim() || !content.trim()) {
+      setAnnError('Title and Message Content are required.');
+      return;
+    }
 
     setSubmitting(true);
-    setAnnSuccess(false);
+    setAnnSuccess('');
     setAnnError(null);
 
     const filters = {};
@@ -95,29 +109,67 @@ export function AdminAnnouncements() {
     filters.role = roleFilter;
 
     try {
-      await announcementsApi.create({
+      const payload = {
         title: title.trim(),
         content: content.trim(),
         category,
-        filters
-      });
+        filters,
+        status: targetStatus,
+      };
 
-      setAnnSuccess(true);
-      setTitle('');
-      setContent('');
-      setDeptFilter('');
-      setYearFilter('');
-      setSectionFilter('');
-      setRoleFilter('all');
-      
-      // Refresh list
-      fetchAnnouncements();
-      setTimeout(() => setAnnSuccess(false), 3000);
+      if (editingAnnId) {
+        const res = await announcementsApi.update(editingAnnId, payload);
+        setAnnSuccess(res.message || 'Announcement updated successfully!');
+      } else {
+        const res = await announcementsApi.create(payload);
+        setAnnSuccess(
+          res.message ||
+          (targetStatus === 'Published'
+            ? 'Announcement published and notifications sent!'
+            : 'Announcement saved as draft!')
+        );
+      }
+
+      resetForm();
+      setNoticeStatusTab(targetStatus);
+      await fetchAnnouncements();
+      setTimeout(() => setAnnSuccess(''), 3500);
     } catch (err) {
       console.error(err);
-      setAnnError(err.response?.data?.message || err.message || 'Failed to post announcement');
+      setAnnError(err.response?.data?.message || err.message || 'Failed to save announcement');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleCreateAnnouncement = async (e) => {
+    e.preventDefault();
+    await submitAnnouncementWithStatus('Published');
+  };
+
+  const handleStartEdit = (ann) => {
+    setEditingAnnId(ann._id);
+    setTitle(ann.title || '');
+    setContent(ann.content || '');
+    setCategory(ann.category || 'General');
+    setDeptFilter(ann.filters?.department || '');
+    setYearFilter(ann.filters?.year ? String(ann.filters.year) : '');
+    setSectionFilter(ann.filters?.section || '');
+    setRoleFilter(ann.filters?.role || 'all');
+    setAnnError(null);
+    setAnnSuccess('');
+  };
+
+  const handlePublishDraft = async (ann) => {
+    try {
+      setAnnError(null);
+      const res = await announcementsApi.update(ann._id, { status: 'Published' });
+      setAnnSuccess(res.message || 'Draft published successfully!');
+      setNoticeStatusTab('Published');
+      await fetchAnnouncements();
+      setTimeout(() => setAnnSuccess(''), 3500);
+    } catch (err) {
+      setAnnError(err.message || 'Failed to publish draft');
     }
   };
 
@@ -125,11 +177,18 @@ export function AdminAnnouncements() {
     if (!window.confirm('Are you sure you want to remove this announcement? All related notifications will be deleted.')) return;
     try {
       await announcementsApi.delete(id);
+      if (editingAnnId === id) resetForm();
       setAnns(prev => prev.filter(ann => ann._id !== id));
     } catch (err) {
       setAnnError(err.message || 'Failed to delete announcement');
     }
   };
+
+  const publishedAnns = anns.filter(a => (a.status || 'Published') === 'Published');
+  const draftAnns = anns.filter(a => a.status === 'Draft');
+  const displayedAnns =
+    noticeStatusTab === 'Published' ? publishedAnns :
+    noticeStatusTab === 'Draft' ? draftAnns : anns;
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -170,14 +229,27 @@ export function AdminAnnouncements() {
           /* ANNOUNCEMENTS MANAGER                                             */
           /* ================================================================= */
           <div className="grid md:grid-cols-3 gap-6">
-            {/* Compose Form */}
+            {/* Compose / Edit Form */}
             <div className="card p-6 md:col-span-1 h-fit">
-              <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Compose Notice</h2>
+              <div className="flex items-center justify-between gap-2 mb-4">
+                <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  {editingAnnId ? 'Edit Notice' : 'Compose Notice'}
+                </h2>
+                {editingAnnId && (
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="text-xs text-slate-400 hover:underline"
+                  >
+                    Cancel Edit
+                  </button>
+                )}
+              </div>
 
               {annSuccess && (
                 <div data-testid="announcement-success-alert" className="mb-4 flex items-center gap-2 p-3 rounded-lg text-sm bg-green-500/10 text-green-400 border border-green-500/20">
                   <CheckCircle2 size={16} />
-                  <span>Announcement published and notifications sent!</span>
+                  <span>{annSuccess}</span>
                 </div>
               )}
 
@@ -296,21 +368,58 @@ export function AdminAnnouncements() {
                   />
                 </div>
 
-                <button
-                  id="announcement-submit"
-                  data-testid="announcement-submit"
-                  type="submit"
-                  disabled={submitting}
-                  className="btn btn-primary w-full py-2.5 font-semibold"
-                >
-                  {submitting ? 'Publishing...' : 'Publish Announcement'}
-                </button>
+                <div className="space-y-2">
+                  <button
+                    id="announcement-submit"
+                    data-testid="announcement-submit"
+                    type="submit"
+                    disabled={submitting}
+                    className="btn btn-primary w-full py-2.5 font-semibold"
+                  >
+                    {submitting
+                      ? 'Saving...'
+                      : editingAnnId
+                        ? 'Save & Publish Notice'
+                        : 'Publish Announcement'}
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="announcement-save-draft"
+                    disabled={submitting}
+                    onClick={() => submitAnnouncementWithStatus('Draft')}
+                    className="btn btn-outline w-full py-2 text-xs font-semibold"
+                  >
+                    {editingAnnId ? 'Save Changes as Draft' : 'Save as Draft'}
+                  </button>
+                </div>
               </form>
             </div>
 
             {/* List View */}
             <div className="card p-6 md:col-span-2">
-              <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Published Notices</h2>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  {noticeStatusTab === 'Published' ? 'Published Notices' : noticeStatusTab === 'Draft' ? 'Draft Notices' : 'All Notices'}
+                </h2>
+                <div className="flex rounded-lg border p-0.5 text-xs" style={{ background: 'var(--bg-medium)', borderColor: 'var(--border-color)' }}>
+                  {[
+                    { id: 'Published', label: `Published (${publishedAnns.length})` },
+                    { id: 'Draft', label: `Drafts (${draftAnns.length})` },
+                    { id: 'All', label: `All (${anns.length})` },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setNoticeStatusTab(tab.id)}
+                      className={`px-3 py-1 rounded font-semibold transition-colors ${
+                        noticeStatusTab === tab.id ? 'bg-blue-500 text-white' : 'subtle hover:text-white'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {loadingAnns ? (
                 <div className="space-y-4">
@@ -318,24 +427,36 @@ export function AdminAnnouncements() {
                     <div key={i} className="skeleton h-20 w-full rounded-md" />
                   ))}
                 </div>
-              ) : anns.length === 0 ? (
+              ) : displayedAnns.length === 0 ? (
                 <div className="py-12 text-center" style={{ color: 'var(--text-secondary)' }}>
                   <Megaphone size={48} className="mx-auto mb-3 opacity-30" />
-                  <p className="font-medium">No announcements published</p>
+                  <p className="font-medium">
+                    {noticeStatusTab === 'Draft'
+                      ? 'No draft announcements'
+                      : 'No announcements published'}
+                  </p>
                   <p className="text-sm mt-1">Compose and publish a notice to broadcast to targeted campus users.</p>
                 </div>
               ) : (
-                <div className="space-y-4 max-h-[550px] overflow-y-auto pr-1">
-                  {anns.map((ann) => (
+                <div className="space-y-4 max-h-[550px] overflow-y-auto pr-1" data-testid="admin-notices-list">
+                  {displayedAnns.map((ann) => {
+                    const isDraft = ann.status === 'Draft';
+                    return (
                     <div 
                       key={ann._id} 
+                      data-testid={`notice-card-${ann._id}`}
                       className="p-4 rounded-lg border space-y-2 group" 
                       style={{ background: 'var(--bg-medium)', borderColor: 'var(--border-color)' }}
                     >
-                      <div className="flex justify-between items-start">
+                      <div className="flex justify-between items-start gap-2">
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-base">{ann.title}</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded font-semibold uppercase ${
+                              isDraft ? 'bg-yellow-500/20 text-yellow-400' : 'bg-emerald-500/20 text-emerald-400'
+                            }`}>
+                              {isDraft ? 'Draft' : 'Published'}
+                            </span>
                             <span className={`text-[10px] px-2 py-0.5 rounded font-semibold uppercase ${
                               ann.category === 'Placement' ? 'bg-blue-500/20 text-blue-400' :
                               ann.category === 'Scholarship' ? 'bg-green-500/20 text-green-400' :
@@ -354,18 +475,40 @@ export function AdminAnnouncements() {
                           </div>
                         </div>
 
-                        <button 
-                          onClick={() => handleDeleteAnnouncement(ann._id)}
-                          className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-red-400 hover:bg-red-500/10 transition-all"
-                          title="Delete notice"
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {isDraft && (
+                            <button
+                              type="button"
+                              onClick={() => handlePublishDraft(ann)}
+                              className="px-2.5 py-1 rounded text-[11px] font-semibold bg-blue-600 hover:bg-blue-500 text-white inline-flex items-center gap-1"
+                              title="Publish draft notice"
+                            >
+                              <Send size={12} /> Publish
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleStartEdit(ann)}
+                            className="p-1.5 rounded text-blue-400 hover:bg-blue-500/10 transition-colors"
+                            title="Edit notice"
+                          >
+                            <Edit3 size={15} />
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => handleDeleteAnnouncement(ann._id)}
+                            className="p-1.5 rounded text-red-400 hover:bg-red-500/10 transition-colors"
+                            title="Delete notice"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
                       </div>
 
                       <p className="text-xs subtle leading-relaxed whitespace-pre-wrap">{ann.content}</p>
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               )}
             </div>
