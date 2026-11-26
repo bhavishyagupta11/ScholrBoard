@@ -43,6 +43,19 @@ export function StudentEvents() {
     }
   };
 
+  const handleCancelRegistration = async (eventId) => {
+    setError(null);
+    setSuccess(null);
+    try {
+      await eventsApi.cancelRegistration(eventId);
+      setSuccess('Event registration cancelled.');
+      fetchEvents();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err.message || 'Failed to cancel registration');
+    }
+  };
+
   const filteredEvents = events.filter((e) => {
     if (activeTab === 'registered') {
       return e.isRegistered;
@@ -168,6 +181,17 @@ export function StudentEvents() {
                       className="btn btn-primary w-full text-xs py-2 flex items-center justify-center gap-1.5"
                     >
                       <CheckCircle2 size={14} /> Register Now
+                    </button>
+                  </div>
+                )}
+
+                {event.isRegistered && (
+                  <div className="mt-4 pt-3 border-t" style={{ borderColor: 'var(--border-color)' }}>
+                    <button
+                      onClick={() => handleCancelRegistration(event._id)}
+                      className="btn btn-outline w-full text-xs py-2 text-red-400 border-red-500/30 hover:bg-red-500/10"
+                    >
+                      Cancel Registration
                     </button>
                   </div>
                 )}

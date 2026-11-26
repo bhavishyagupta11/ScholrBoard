@@ -11,6 +11,10 @@ import applicationsApi from '../api/applications.api.js';
 import scholarshipsApi from '../api/scholarships.api.js';
 import { useProfile } from '../contexts/ProfileContext.jsx';
 import { useScrollAnimation } from '../hooks/useScrollAnimation.js';
+import {
+  evaluateFrontendOpportunityDeadline,
+  formatOpportunityDeadlineIst,
+} from '../utils/opportunityDeadline.js';
 
 export function StudentPlacementDashboard() {
   const { profile } = useProfile();
@@ -94,13 +98,16 @@ export function StudentPlacementDashboard() {
     e.preventDefault();
     if (!resumeUrl.trim()) return;
 
-    const deadlineMs = applyingOp?.deadline ? new Date(applyingOp.deadline).getTime() : NaN;
-    const isVerified = applyingOp?.isDeadlineVerified !== false && Number.isFinite(deadlineMs);
-    if (!isVerified || applyingOp?.deadlineStatus === 'UNVERIFIED_DEADLINE') {
+    const { isDeadlineVerified, isExpired } = evaluateFrontendOpportunityDeadline(applyingOp);
+    if (!isDeadlineVerified) {
+      setApplyingOp(null);
+      fetchPlacementData();
       setError('Application deadline is unverified; submissions are paused.');
       return;
     }
-    if (applyingOp?.isExpired || deadlineMs <= Date.now()) {
+    if (isExpired) {
+      setApplyingOp(null);
+      fetchPlacementData();
       setError('Application deadline has passed for this placement drive.');
       return;
     }
@@ -293,17 +300,11 @@ export function StudentPlacementDashboard() {
               <div className="space-y-4 pt-2">
                 {matchingOps.map(op => {
                   const applied = myApps.find(a => a.opportunityId?._id === op._id);
-                  const deadlineMs = op.deadline ? new Date(op.deadline).getTime() : NaN;
-                  const isDeadlineVerified =
-                    op.isDeadlineVerified !== false &&
-                    op.deadlineStatus !== 'UNVERIFIED_DEADLINE' &&
-                    Number.isFinite(deadlineMs);
-                  const isExpired = Boolean(
-                    op.isExpired ||
-                    (isDeadlineVerified && deadlineMs <= Date.now()) ||
-                    op.status === 'Closed'
-                  );
-                  const isClosedOrUnverified = isExpired || !isDeadlineVerified || op.isOpenForApplication === false;
+                  const {
+                    isDeadlineVerified,
+                    isExpired,
+                    isClosedOrUnverified,
+                  } = evaluateFrontendOpportunityDeadline(op);
                   return (
                     <div 
                       key={op._id} 
@@ -327,7 +328,7 @@ export function StudentPlacementDashboard() {
                         
                         <div className="text-[11px] flex flex-wrap gap-x-4 gap-y-1 pt-1 subtle">
                           <span className={isClosedOrUnverified ? 'text-red-400 font-semibold' : ''}>
-                            Deadline: {isDeadlineVerified ? new Date(deadlineMs).toLocaleDateString() : 'Unverified'}{' '}
+                            Deadline: {isDeadlineVerified ? formatOpportunityDeadlineIst(op.deadline) : 'Unverified'}{' '}
                             {isExpired ? '(Closed)' : !isDeadlineVerified ? '(Submissions Paused)' : ''}
                           </span>
                           {op.salaryPackage > 0 && (
@@ -338,13 +339,13 @@ export function StudentPlacementDashboard() {
                           )}
                         </div>
 
-                        {!op.isEligible && (
+                        {(!op.isEligible || isClosedOrUnverified) && (
                           <div className="text-[10px] text-red-400 bg-red-500/10 p-1.5 rounded mt-2 border border-red-500/20">
                             {isExpired
                               ? 'Application Closed: Deadline has passed'
                               : !isDeadlineVerified
                                 ? 'Application Paused: Deadline is unverified'
-                                : `Ineligible: ${op.ineligibilityReason}`}
+                                : `Ineligible: ${op.ineligibilityReason || 'Drive is closed'}`}
                           </div>
                         )}
                       </div>

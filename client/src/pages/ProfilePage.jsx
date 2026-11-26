@@ -71,10 +71,10 @@ export function ProfilePage() {
     setForm({
       bio:                       profile?.bio || '',
       phone:                     profile?.phone || '',
-      gpa:                       profile?.gpa || '',
-      attendanceOverall:         profile?.attendanceOverall || '',
+      gpa:                       profile?.gpa ?? '',
+      attendanceOverall:         profile?.attendanceOverall ?? '',
       careerGoal:                profile?.careerGoal || '',
-      learningGoalMinutesPerDay: profile?.learningGoalMinutesPerDay || 30,
+      learningGoalMinutesPerDay: profile?.learningGoalMinutesPerDay ?? 30,
       skills:                    [...(profile?.skills || [])],
       interests:                 [...(profile?.interests || [])],
       targetCompanies:           [...(profile?.targetCompanies || [])],
@@ -104,8 +104,8 @@ export function ProfilePage() {
       await updateProfile({
         bio:                       form.bio,
         ...(form.phone?.trim() ? { phone: form.phone.trim() } : { phone: null }),
-        gpa:                       form.gpa ? parseFloat(form.gpa) : undefined,
-        attendanceOverall:         form.attendanceOverall ? parseFloat(form.attendanceOverall) : undefined,
+        gpa:                       form.gpa === '' ? null : Number(form.gpa),
+        attendanceOverall:         form.attendanceOverall === '' ? null : Number(form.attendanceOverall),
         careerGoal:                form.careerGoal,
         learningGoalMinutesPerDay: parseInt(form.learningGoalMinutesPerDay),
         skills:                    form.skills,
@@ -271,20 +271,20 @@ export function ProfilePage() {
                     <textarea
                       className="input-dark w-full resize-none"
                       rows={3}
-                      value={form[key] || ''}
+                      value={form[key] ?? ''}
                       onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
                     />
                   ) : (
                     <input
                       type={type}
                       className="input-dark w-full"
-                      value={form[key] || ''}
+                      value={form[key] ?? ''}
                       onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
                       {...inputProps}
                     />
                   )
                 ) : (
-                  <div style={{ color: 'var(--text-primary)' }}>{profile?.[key] || <span className="subtle">Not set</span>}</div>
+                  <div style={{ color: 'var(--text-primary)' }}>{profile?.[key] ?? <span className="subtle">Not set</span>}</div>
                 )}
               </div>
             ))}

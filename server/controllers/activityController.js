@@ -193,7 +193,7 @@ export const getPendingActivities = async (req, res) => {
   try {
     const { category, page = 1, limit = 20 } = req.query;
 
-    const query = { status: 'Pending', isArchived: false };
+    const query = { status: 'Pending', isArchived: { $ne: true } };
 
     const isCoordinator = (req.user.role === 'faculty' && req.user.facultyLevel === 'coordinator');
 
