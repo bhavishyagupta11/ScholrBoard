@@ -7,12 +7,17 @@ const SENSITIVE_KEYS = new Set([
   'jwt_secret',
   'apikey',
   'api_key',
-  'refreshToken',
+  'refreshtoken',
+  'newpassword',
+  'confirmpassword',
+  'currentpassword',
+  'accesstoken',
+  'resettoken',
 ]);
 
 const redactValue = (key, value) => {
   if (SENSITIVE_KEYS.has(String(key).toLowerCase())) return '[REDACTED]';
-  if (typeof value === 'string' && value.length > 80 && /^Bearer\s/i.test(value)) {
+  if (typeof value === 'string' && /^Bearer\s/i.test(value)) {
     return '[REDACTED]';
   }
   return value;
@@ -41,7 +46,7 @@ const requestLogger = (req, res, next) => {
     const entry = {
       timestamp: new Date().toISOString(),
       method: req.method,
-      path: req.originalUrl,
+      path: req.originalUrl.split('?')[0],
       status: res.statusCode,
       durationMs,
       ip: req.ip,
