@@ -20,6 +20,11 @@ const opportunitySchema = new mongoose.Schema(
       required: [true, 'Company name is required'],
       trim: true,
     },
+    location: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     type: {
       type: String,
       enum: ['Full-time', 'Internship', 'Part-time'],

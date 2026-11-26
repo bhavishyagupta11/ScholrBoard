@@ -6,6 +6,8 @@ import {
   createEvent,
   getMyEvents,
   registerForEvent,
+  cancelEventRegistration,
+  getEventRegistrations,
   getAllEvents,
   updateEvent,
   deleteEvent,
@@ -22,6 +24,14 @@ router.get('/my', getMyEvents);
 // @route   POST /api/events/:id/register
 // @desc    Register for an event
 router.post('/:id/register', validateObjectId('id'), registerForEvent);
+
+// @route   DELETE /api/events/:id/register
+// @desc    Cancel registration for an event
+router.delete('/:id/register', validateObjectId('id'), cancelEventRegistration);
+
+// @route   GET /api/events/:id/registrations
+// @desc    Admin: get registered students & details for a specific event
+router.get('/:id/registrations', requireRole('admin'), validateObjectId('id'), getEventRegistrations);
 
 // @route   GET /api/events
 // @desc    Admin/Faculty: get all events

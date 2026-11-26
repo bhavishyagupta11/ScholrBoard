@@ -4,6 +4,8 @@ import requireRole from '../middleware/roleAuth.js';
 import validateObjectId from '../middleware/validateObjectId.js';
 import {
   createAnnouncement,
+  getAllAnnouncements,
+  updateAnnouncement,
   getMyAnnouncements,
   deleteAnnouncement
 } from '../controllers/announcementController.js';
@@ -14,7 +16,9 @@ const router = express.Router();
 router.use(auth);
 
 // Admin Endpoints
+router.get('/', requireRole('admin'), getAllAnnouncements);
 router.post('/', requireRole('admin'), createAnnouncement);
+router.put('/:id', requireRole('admin'), validateObjectId('id'), updateAnnouncement);
 router.delete('/:id', requireRole('admin'), validateObjectId('id'), deleteAnnouncement);
 
 // Universal Endpoints

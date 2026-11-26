@@ -42,6 +42,16 @@ const announcementSchema = new mongoose.Schema(
       ref: 'User',
       required: [true, 'Author ID is required'],
     },
+    status: {
+      type: String,
+      enum: ['Draft', 'Published'],
+      default: 'Published',
+      index: true,
+    },
+    publishedAt: {
+      type: Date,
+      default: null,
+    },
     expiresAt: {
       type: Date,
       default: null, // null means never expires
@@ -52,6 +62,7 @@ const announcementSchema = new mongoose.Schema(
   }
 );
 
+announcementSchema.index({ status: 1, createdAt: -1 });
 announcementSchema.index({ 'filters.role': 1, 'filters.department': 1, createdAt: -1 });
 
 const Announcement = mongoose.model('Announcement', announcementSchema);
