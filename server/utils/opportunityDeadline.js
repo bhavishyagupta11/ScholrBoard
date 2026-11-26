@@ -6,13 +6,22 @@
  *    NEVER fabricate a synthetic expiry timestamp. Instead they yield:
  *      isDeadlineVerified: false, isExpired: false, isOpenForApplication: false
  *      reason: 'Application deadline is missing or unverified'
- *  - Date-only strings ('YYYY-MM-DD') represent the end of that UTC calendar day
- *    (23:59:59.999Z) to avoid premature mid-day rejections.
- *  - Explicit ISO/Date timestamps (with timezone or UTC Z) compare against their exact instant.
+ *  - Date-only strings ('YYYY-MM-DD') represent the end of that Asia/Kolkata calendar day
+ *    (23:59:59.999+05:30) to align institutional deadlines unambiguously in IST.
+ *  - Timezone-naive datetime strings (e.g. HTML datetime-local 'YYYY-MM-DDTHH:mm') default to
+ *    Asia/Kolkata (+05:30) rather than drifting by server host timezone.
+ *  - Explicit ISO/Date timestamps (with timezone offset or UTC Z) compare against their exact instant.
  *  - At and past the exact deadline instant (evalTime >= deadlineTime), the drive is closed/expired.
  */
 
+const IST_OFFSET = '+05:30';
 const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const NAIVE_DATETIME_REGEX = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?$/;
+
+const isValidCalendarDate = (datePart) => {
+  const utcCheck = new Date(`${datePart}T00:00:00.000Z`);
+  return !Number.isNaN(utcCheck.getTime()) && utcCheck.toISOString().slice(0, 10) === datePart;
+};
 
 /**
  * Parses raw deadline input safely.
@@ -38,15 +47,26 @@ export function parseOpportunityDeadline(rawDeadline) {
     }
 
     if (DATE_ONLY_REGEX.test(trimmed)) {
-      const parsed = new Date(`${trimmed}T23:59:59.999Z`);
+      if (!isValidCalendarDate(trimmed)) {
+        return { valid: false, date: null, isDateOnly: true, rawType: 'invalid_calendar_date' };
+      }
+      const parsed = new Date(`${trimmed}T23:59:59.999${IST_OFFSET}`);
       if (Number.isNaN(parsed.getTime())) {
         return { valid: false, date: null, isDateOnly: true, rawType: 'invalid_date_only' };
       }
-      // Verify calendar rollover didn't happen (e.g. 2026-02-31)
-      if (parsed.toISOString().slice(0, 10) !== trimmed) {
-        return { valid: false, date: null, isDateOnly: true, rawType: 'invalid_calendar_date' };
-      }
       return { valid: true, date: parsed, isDateOnly: true, rawType: 'date_only' };
+    }
+
+    if (NAIVE_DATETIME_REGEX.test(trimmed)) {
+      const normalized = trimmed.replace(' ', 'T');
+      if (!isValidCalendarDate(normalized.slice(0, 10))) {
+        return { valid: false, date: null, isDateOnly: false, rawType: 'invalid_calendar_date' };
+      }
+      const parsed = new Date(`${normalized}${IST_OFFSET}`);
+      if (Number.isNaN(parsed.getTime())) {
+        return { valid: false, date: null, isDateOnly: false, rawType: 'invalid_naive_datetime' };
+      }
+      return { valid: true, date: parsed, isDateOnly: false, rawType: 'naive_ist_datetime' };
     }
 
     const parsed = new Date(trimmed);

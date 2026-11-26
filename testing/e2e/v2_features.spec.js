@@ -45,7 +45,8 @@ test.describe('V2 Features E2E Tests', () => {
     
     await page.getByRole('button', { name: 'New Ticket' }).click();
     await page.locator('input[placeholder="Brief description of your issue"]').fill('E2E Support Test Ticket');
-    await page.locator('select').nth(1).selectOption('faculty'); // Direct to: My Faculty Advisor
+    await page.getByRole('combobox').filter({ hasText: 'Admin' }).click();
+    await page.getByRole('option', { name: 'My Faculty Advisor' }).click();
     await page.locator('textarea[placeholder="Describe your issue in detail..."]').fill('Detail explanation for E2E ticket.');
     
     await page.getByRole('button', { name: 'Submit Ticket' }).click();
