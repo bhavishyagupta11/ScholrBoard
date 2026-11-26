@@ -4,6 +4,7 @@ import requireRole from '../middleware/roleAuth.js';
 import validateObjectId from '../middleware/validateObjectId.js';
 import {
   createOpportunity,
+  updateOpportunity,
   publishOpportunity,
   closeOpportunity,
   getMatchingOpportunities,
@@ -25,6 +26,7 @@ router.get('/:id', validateObjectId('id'), getOpportunityById);
 
 // Admin-only drive management
 router.post('/', requireRole('admin'), createOpportunity);
+router.put('/:id', requireRole('admin'), validateObjectId('id'), updateOpportunity);
 router.put('/:id/publish', requireRole('admin'), validateObjectId('id'), publishOpportunity);
 router.put('/:id/close', requireRole('admin'), validateObjectId('id'), closeOpportunity);
 

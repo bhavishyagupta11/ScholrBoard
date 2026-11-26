@@ -25,7 +25,7 @@ const ticketCreateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 20,
   message: { success: false, message: 'Ticket creation limit exceeded. Please try again later.' },
-  keyGenerator: (req, res) => req.user?._id?.toString() || ipKeyGenerator(req, res)
+  keyGenerator: (req) => req.user?._id?.toString() || ipKeyGenerator(req.ip)
 });
 
 const router = express.Router();

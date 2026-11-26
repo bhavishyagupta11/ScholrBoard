@@ -43,3 +43,4 @@ playwright-report/
 test-results/
 .cache/
 .test-users.json
+server/*_prod_backup.json

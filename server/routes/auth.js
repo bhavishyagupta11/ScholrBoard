@@ -8,13 +8,12 @@ import {
   resetPassword,
 } from '../controllers/authController.js';
 import auth from '../middleware/auth.js';
-import { rateLimit, ipKeyGenerator } from 'express-rate-limit';
+import { rateLimit } from 'express-rate-limit';
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: { success: false, message: 'Too many requests. Please try again later.' },
-  keyGenerator: (req, res) => ipKeyGenerator(req, res),
 });
 
 const router = express.Router();
