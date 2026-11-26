@@ -4,6 +4,9 @@ export const opportunitiesApi = {
   /** Admin: Create a new draft opportunity */
   create: (data) => api.post('/opportunities', data),
 
+  /** Admin: Update an existing opportunity */
+  update: (id, data) => api.put(`/opportunities/${id}`, data),
+
   /** Admin: Publish a draft opportunity */
   publish: (id) => api.put(`/opportunities/${id}/publish`, {}),
 

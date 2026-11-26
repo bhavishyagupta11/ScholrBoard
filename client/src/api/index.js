@@ -50,11 +50,11 @@ export const apiRequest = async (endpoint, options = {}) => {
     response = await fetch(`${BASE_URL}${endpoint}`, {
       ...options,
       headers,
-      signal: options.signal || controller.signal,
+      signal: options.signal ? AbortSignal.any([options.signal, controller.signal]) : controller.signal,
     });
   } catch (netErr) {
     clearTimeout(timeoutId);
-    if (netErr.name === 'AbortError') {
+    if (controller.signal.aborted && !options.signal?.aborted) {
       throw Object.assign(new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s. Please try again.`), {
         status: 504,
         code: 'REQUEST_TIMEOUT',
@@ -76,8 +76,8 @@ export const apiRequest = async (endpoint, options = {}) => {
   if (!response.ok) {
     const code = data?.code;
 
-    if (response.status === 401 || response.status === 403) {
-      if (response.status === 401 && code === 'TOKEN_EXPIRED') {
+    if (response.status === 401 && token && token === getToken() && endpoint !== '/auth/login') {
+      if (code === 'TOKEN_EXPIRED') {
         const refreshResult = await tryRefreshToken();
         if (refreshResult.success) {
           return apiRequest(endpoint, options);
@@ -129,11 +129,11 @@ export const fetchBlob = async (endpoint, options = {}) => {
     response = await fetch(`${BASE_URL}${endpoint}`, {
       ...options,
       headers,
-      signal: options.signal || controller.signal,
+      signal: options.signal ? AbortSignal.any([options.signal, controller.signal]) : controller.signal,
     });
   } catch (netErr) {
     clearTimeout(timeoutId);
-    if (netErr.name === 'AbortError') {
+    if (controller.signal.aborted && !options.signal?.aborted) {
       const err = new Error(`Document download timed out after ${Math.round(timeoutMs / 1000)}s`);
       err.status = 504;
       throw err;

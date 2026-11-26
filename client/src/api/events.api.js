@@ -10,6 +10,17 @@ export const eventsApi = {
   /** Register for an event */
   register: (id) => api.post(`/events/${id}/register`, {}),
 
+  /** Cancel registration for an event */
+  cancelRegistration: (id) => api.delete(`/events/${id}/register`),
+
+  /** Admin: get registered students list for a specific event */
+  getRegistrations: (id, params = {}) => {
+    const query = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([_, v]) => v !== undefined && v !== ''))
+    ).toString();
+    return api.get(`/events/${id}/registrations${query ? '?' + query : ''}`);
+  },
+
   /** Admin/Faculty: get all events */
   getAll: (params = {}) => {
     const query = new URLSearchParams(params).toString();
