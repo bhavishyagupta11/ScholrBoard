@@ -331,8 +331,15 @@ export function StudentPlacementDashboard() {
                             Deadline: {isDeadlineVerified ? formatOpportunityDeadlineIst(op.deadline) : 'Unverified'}{' '}
                             {isExpired ? '(Closed)' : !isDeadlineVerified ? '(Submissions Paused)' : ''}
                           </span>
+                          {op.location && (
+                            <span className="inline-flex items-center gap-1">
+                              <MapPin size={11} /> {op.location}
+                            </span>
+                          )}
                           {op.salaryPackage > 0 && (
-                            <span className="text-green-400 font-semibold">₹{(op.salaryPackage).toLocaleString()} LPA</span>
+                            <span className="text-green-400 font-semibold">
+                              ₹{(Number(op.salaryPackage) >= 1000 ? Number(op.salaryPackage) / 100000 : Number(op.salaryPackage)).toLocaleString('en-IN', { maximumFractionDigits: 2 })} LPA
+                            </span>
                           )}
                           {op.eligibility?.minPlacementReadinessScore && (
                             <span>Prereq Score: {op.eligibility.minPlacementReadinessScore}%</span>

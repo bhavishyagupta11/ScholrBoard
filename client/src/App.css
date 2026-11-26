@@ -1,1 +1,8 @@
 /* App-wide styling lives in index.css and Tailwind utilities. */
+
+@media print {
+  .app-shell:has(.portfolio-page) :is(aside, header, .portfolio-actions) { display: none !important; }
+  .app-shell:has(.portfolio-page) { display: block; }
+  .portfolio-page .card { break-inside: avoid; }
+  .portfolio-page, .portfolio-page * { opacity: 1 !important; transform: none !important; animation: none !important; }
+}
