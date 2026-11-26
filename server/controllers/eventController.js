@@ -46,19 +46,55 @@ const notifyMatchedUsersForEvent = async (event, session) => {
   }
 };
 
+const ALLOWED_EVENT_FIELDS = [
+  'title',
+  'description',
+  'category',
+  'bannerImage',
+  'startDate',
+  'endDate',
+  'startTime',
+  'venue',
+  'isOnline',
+  'meetingLink',
+  'organizerName',
+  'contactEmail',
+  'targetRoles',
+  'targetDepartments',
+  'targetSemesters',
+  'registrationDeadline',
+  'maxAttendees',
+  'requiresRegistration',
+  'registrationLink',
+  'tags',
+  'isPublished',
+  'isCancelled',
+];
+
+const pickEventPayload = (body = {}) => {
+  const payload = {};
+  for (const key of ALLOWED_EVENT_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(body, key) && body[key] !== undefined) {
+      payload[key] = body[key];
+    }
+  }
+  return payload;
+};
+
 // ─── ADMIN/FACULTY: Create an event ──────────────────────────────────────────
 export const createEvent = async (req, res) => {
   try {
-    const event = await Event.create({ ...req.body, createdBy: req.user._id });
+    const payload = pickEventPayload(req.body);
+    const event = await Event.create({ ...payload, createdBy: req.user._id });
     if (event.isPublished) {
       await notifyMatchedUsersForEvent(event);
     }
     return res.status(201).json({ success: true, message: 'Event created', event });
   } catch (error) {
-    if (error.name === 'ValidationError') {
+    if (error.name === 'ValidationError' || error.name === 'CastError') {
       return res.status(400).json({
         success: false, message: 'Validation failed',
-        errors: Object.values(error.errors).map((e) => e.message),
+        errors: error.errors ? Object.values(error.errors).map((e) => e.message) : [error.message],
       });
     }
     console.error('createEvent error:', error);
@@ -82,13 +118,12 @@ export const getMyEvents = async (req, res) => {
 
     // Department filter
     if (req.user.department) {
-      query.$or.push({});   // already handled above — just use general filter
-      // Add dept match as additional OR condition
+      const deptTrimmed = req.user.department.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$and = [
         {
           $or: [
             { targetDepartments: { $size: 0 } },       // no restriction
-            { targetDepartments: req.user.department }, // or matches user's dept
+            { targetDepartments: new RegExp(`^${deptTrimmed}$`, 'i') }, // or matches user's dept
           ],
         },
       ];
@@ -162,6 +197,140 @@ export const registerForEvent = async (req, res) => {
   }
 };
 
+// ─── STUDENT/USER: Cancel registration for an event ──────────────────────────
+export const cancelEventRegistration = async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) {
+      return res.status(404).json({ success: false, message: 'Event not found' });
+    }
+
+    const beforeCount = Array.isArray(event.attendees) ? event.attendees.length : 0;
+    const isRegistered = event.attendees.some(
+      (a) => a.userId.toString() === req.user._id.toString()
+    );
+    if (!isRegistered) {
+      return res.status(404).json({ success: false, message: 'You are not registered for this event' });
+    }
+
+    await Event.updateOne(
+      { _id: event._id },
+      { $pull: { attendees: { userId: req.user._id } } }
+    );
+
+    return res.json({
+      success: true,
+      message: 'Event registration cancelled successfully',
+      totalRegistrations: Math.max(0, beforeCount - 1),
+    });
+  } catch (error) {
+    console.error('cancelEventRegistration error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to cancel registration' });
+  }
+};
+
+// ─── ADMIN: Get registered students list & details for a specific event ──────
+export const getEventRegistrations = async (req, res) => {
+  try {
+    const { search = '', department = '', status = 'all', page = 1, limit = 50 } = req.query;
+
+    const event = await Event.findById(req.params.id)
+      .populate('attendees.userId', 'name email studentId department semester role isActive')
+      .select('title category startDate endDate startTime venue maxAttendees requiresRegistration isPublished isCancelled attendees');
+
+    if (!event) {
+      return res.status(404).json({ success: false, message: 'Event not found' });
+    }
+
+    const rawAttendees = Array.isArray(event.attendees) ? event.attendees : [];
+    const normalizedSearch = String(search || '').trim().toLowerCase();
+    const normalizedDept = String(department || '').trim().toUpperCase();
+    const normalizedStatus = String(status || 'all').trim().toLowerCase();
+
+    const mapped = rawAttendees
+      .filter((entry) => entry && entry.userId)
+      .map((entry) => {
+        const u = entry.userId;
+        const regStatus =
+          entry.attended === true
+            ? 'Attended'
+            : entry.attended === false
+              ? 'Absent'
+              : 'Registered';
+
+        return {
+          userId: String(u._id),
+          name: u.name || 'Unknown Student',
+          email: u.email || '',
+          studentId: u.studentId || '—',
+          department: u.department || '—',
+          semester: u.semester ?? null,
+          role: u.role || 'student',
+          registeredAt: entry.registeredAt || event.createdAt,
+          attended: entry.attended ?? null,
+          status: regStatus,
+          feedbackScore: entry.feedbackScore ?? null,
+        };
+      })
+      .sort((a, b) => new Date(b.registeredAt).getTime() - new Date(a.registeredAt).getTime());
+
+    const departments = Array.from(
+      new Set(mapped.map((r) => r.department).filter((d) => d && d !== '—'))
+    ).sort();
+
+    const filtered = mapped.filter((r) => {
+      if (normalizedDept && normalizedDept !== 'ALL' && r.department.toUpperCase() !== normalizedDept) {
+        return false;
+      }
+      if (normalizedStatus && normalizedStatus !== 'all' && r.status.toLowerCase() !== normalizedStatus) {
+        return false;
+      }
+      if (normalizedSearch) {
+        const haystack = `${r.name} ${r.email} ${r.studentId} ${r.department}`.toLowerCase();
+        if (!haystack.includes(normalizedSearch)) return false;
+      }
+      return true;
+    });
+
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Math.min(200, Math.max(1, Number(limit) || 50));
+    const startIdx = (pageNum - 1) * limitNum;
+    const paged = filtered.slice(startIdx, startIdx + limitNum);
+
+    return res.json({
+      success: true,
+      event: {
+        _id: event._id,
+        title: event.title,
+        category: event.category,
+        startDate: event.startDate,
+        endDate: event.endDate,
+        startTime: event.startTime,
+        venue: event.venue,
+        maxAttendees: event.maxAttendees,
+        requiresRegistration: event.requiresRegistration,
+        isPublished: event.isPublished,
+        isCancelled: event.isCancelled,
+      },
+      summary: {
+        totalRegistrations: mapped.length,
+        filteredCount: filtered.length,
+        maxAttendees: event.maxAttendees ?? null,
+        departments,
+      },
+      registrations: paged,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: Math.max(1, Math.ceil(filtered.length / limitNum)),
+        totalItems: filtered.length,
+      },
+    });
+  } catch (error) {
+    console.error('getEventRegistrations error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to load event registrations' });
+  }
+};
+
 // ─── ADMIN: Get all events ────────────────────────────────────────────────────
 export const getAllEvents = async (req, res) => {
   try {
@@ -197,9 +366,10 @@ export const updateEvent = async (req, res) => {
     const beforeEvent = await Event.findById(req.params.id);
     if (!beforeEvent) return res.status(404).json({ success: false, message: 'Event not found' });
 
+    const payload = pickEventPayload(req.body);
     const event = await Event.findByIdAndUpdate(
       req.params.id,
-      { $set: req.body },
+      { $set: payload },
       { new: true, runValidators: true }
     );
 

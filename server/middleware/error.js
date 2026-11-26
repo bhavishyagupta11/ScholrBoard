@@ -1,12 +1,13 @@
 import { redactObject } from './requestLogger.js';
 
 const errorHandler = (err, req, res, next) => {
-  const statusCode = err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
+  const uploadStatus = err.name === 'MulterError' ? (err.code === 'LIMIT_FILE_SIZE' ? 413 : 400) : null;
+  const statusCode = uploadStatus || err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
 
   console.error('[error]', JSON.stringify({
     timestamp: new Date().toISOString(),
     message: err.message,
-    path: req.originalUrl,
+    path: req.originalUrl.split('?')[0],
     method: req.method,
     statusCode,
     userId: req.user?._id?.toString() || null,
@@ -23,7 +24,7 @@ const errorHandler = (err, req, res, next) => {
 };
 
 const notFound = (req, res, next) => {
-  const error = new Error(`Not Found - ${req.originalUrl}`);
+  const error = new Error(`Not Found - ${req.originalUrl.split('?')[0]}`);
   res.status(404);
   next(error);
 };
