@@ -3,6 +3,7 @@
  */
 import LearningProgress from '../models/LearningProgress.js';
 import Analytics from '../models/Analytics.js';
+import { withTransaction } from '../utils/withTransaction.js';
 import Activity from '../models/Activity.js';
 import Profile from '../models/Profile.js';
 import mongoose from 'mongoose';
@@ -20,25 +21,26 @@ export const logStudySession = async (req, res) => {
   try {
     const { minutesStudied, topics, moodScore, leetcodeSolvedToday, githubCommitsToday } = req.body;
 
-    if (!minutesStudied || minutesStudied <= 0) {
+    if (!Number.isSafeInteger(Number(minutesStudied)) || Number(minutesStudied) <= 0 || !['number', 'string'].includes(typeof minutesStudied)) {
       return res.status(400).json({ success: false, message: 'minutesStudied must be a positive number' });
     }
 
     const today = toMidnight();
+    const profile = await Profile.findOne({ userId: req.user._id }).select('learningGoalMinutesPerDay').lean();
 
     // Upsert: increment fields if a record for today already exists
     const progress = await LearningProgress.findOneAndUpdate(
       { userId: req.user._id, date: today },
       {
         $inc: {
-          totalMinutesStudied: minutesStudied,
+          totalMinutesStudied: Number(minutesStudied),
           sessionsCount:       1,
           ...(leetcodeSolvedToday && { leetcodeSolvedToday }),
           ...(githubCommitsToday  && { githubCommitsToday }),
         },
         $set: {
           moodScore:          moodScore || null,
-          dailyGoalMinutes:   req.user.learningGoalMinutes || 30,
+          dailyGoalMinutes:   profile?.learningGoalMinutesPerDay ?? 30,
         },
         $push: topics?.length ? { topics: { $each: topics } } : {},
       },
@@ -114,12 +116,14 @@ export const getDashboardAnalytics = async (req, res) => {
   try {
     const userId = req.user._id;
     const userObjectId = new mongoose.Types.ObjectId(userId);
+    const today = toMidnight().getTime();
+    const dayMs = 86400000;
 
     // Run all queries in parallel for speed
     const [
       activityCounts,
       categoryCounts,
-      weeklyProgress,
+      dailyRecords,
       latestAnalytics,
       profile,
     ] = await Promise.all([
@@ -135,11 +139,9 @@ export const getDashboardAnalytics = async (req, res) => {
         { $group: { _id: '$category', count: { $sum: 1 } } },
       ]),
 
-      // Last 7 days study time
-      LearningProgress.find({
-        userId,
-        date: { $gte: toMidnight(new Date(Date.now() - 6 * 86400000)) },
-      }).sort({ date: 1 }).select('date totalMinutesStudied goalAchieved sessionsCount'),
+      // One retained record per student per UTC day.
+      LearningProgress.find({ userId, date: { $lte: new Date(today) } })
+        .sort({ date: 1 }).select('date totalMinutesStudied goalAchieved sessionsCount').lean(),
 
       // Latest pre-computed analytics snapshot
       Analytics.findOne({ userId, period: 'monthly' }).sort({ periodStart: -1 }),
@@ -157,7 +159,18 @@ export const getDashboardAnalytics = async (req, res) => {
       if (_id) activitySummary.byCategory[_id] = count;
     });
 
+    const weeklyProgress = dailyRecords.filter(record => record.date.getTime() >= today - 6 * dayMs);
     const weeklyStudyMinutes = weeklyProgress.reduce((s, r) => s + (r.totalMinutesStudied || 0), 0);
+    let previousDay = null;
+    let run = 0;
+    let longestStreak = latestAnalytics?.longestStreak ?? 0;
+    for (const record of dailyRecords) {
+      if (record.totalMinutesStudied <= 0) continue;
+      const day = record.date.getTime();
+      run = previousDay !== null && day - previousDay === dayMs ? run + 1 : 1;
+      longestStreak = Math.max(longestStreak, run);
+      previousDay = day;
+    }
 
     const responseData = {
       success: true,
@@ -167,10 +180,10 @@ export const getDashboardAnalytics = async (req, res) => {
         weeklyProgress,
         gpa:               profile?.gpa ?? null,
         attendance:        profile?.attendanceOverall ?? latestAnalytics?.overallAttendance ?? null,
-        currentStreak:     latestAnalytics?.currentStreak || 0,
-        longestStreak:     latestAnalytics?.longestStreak || 0,
-        totalPoints:       profile?.achievementPoints || latestAnalytics?.totalPointsEarned || 0,
-        percentileRank:    latestAnalytics?.percentileRank || null,
+        currentStreak:     previousDay === today ? run : 0,
+        longestStreak,
+        totalPoints:       profile?.achievementPoints ?? latestAnalytics?.totalPointsEarned ?? 0,
+        percentileRank:    latestAnalytics?.percentileRank ?? null,
         aiInsight:         latestAnalytics?.aiInsight || null,
         subjectBreakdown:  latestAnalytics?.subjectBreakdown || [],
       },
@@ -197,20 +210,26 @@ export const updateAcademicData = async (req, res) => {
     if (attendance !== undefined) updates.overallAttendance  = attendance;
     if (subjects   !== undefined) updates.subjectBreakdown   = subjects;
 
-    const analytics = await Analytics.findOneAndUpdate(
-      { userId: req.user._id, period: 'monthly', periodStart },
-      { $set: updates },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
-    );
-
-    // Also update profile GPA for quick access
-    if (gpa !== undefined) {
-      const { default: Profile } = await import('../models/Profile.js');
-      await Profile.findOneAndUpdate({ userId: req.user._id }, { $set: { gpa } });
-    }
+    const analytics = await withTransaction(async (session) => {
+      const snapshot = await Analytics.findOneAndUpdate(
+        { userId: req.user._id, period: 'monthly', periodStart },
+        { $set: { ...updates, periodEnd } },
+        { new: true, upsert: true, runValidators: true, session }
+      );
+      const academicFields = {};
+      if (gpa !== undefined) academicFields.gpa = gpa;
+      if (attendance !== undefined) academicFields.attendanceOverall = attendance;
+      if (Object.keys(academicFields).length) {
+        await Profile.updateOne({ userId: req.user._id }, { $set: academicFields }, { session, runValidators: true, upsert: true });
+      }
+      return snapshot;
+    });
 
     return res.json({ success: true, message: 'Academic data updated', analytics });
   } catch (error) {
+    if (error.name === 'ValidationError' || error.name === 'CastError') {
+      return res.status(400).json({ success: false, message: 'Invalid academic data' });
+    }
     console.error('updateAcademicData error:', error);
     return res.status(500).json({ success: false, message: 'Failed to update academic data' });
   }
@@ -237,7 +256,7 @@ export const getSystemAnalytics = async (req, res) => {
         ? User.countDocuments({ role: 'faculty', isActive: true, ...excludeTestUsers() })
         : Promise.resolve(1),
       (async () => {
-        const match = {};
+        const match = { isArchived: { $ne: true } };
         if (req.user.role === 'faculty') {
           const students = await User.find({ role: 'student', advisorId: req.user._id, ...excludeTestUsers() }).select('_id');
           match.userId = { $in: students.map((student) => student._id) };
@@ -251,7 +270,7 @@ export const getSystemAnalytics = async (req, res) => {
         ]);
       })(),
       (async () => {
-        const query = { status: 'Pending' };
+        const query = { status: 'Pending', isArchived: { $ne: true } };
         if (req.user.role === 'faculty') {
           const students = await User.find({ role: 'student', advisorId: req.user._id, ...excludeTestUsers() }).select('_id');
           query.userId = { $in: students.map((student) => student._id) };
@@ -293,96 +312,184 @@ export const getSystemAnalytics = async (req, res) => {
   }
 };
 
+/**
+ * Normalizes a numeric salary value to LPA (Lakhs Per Annum).
+ * - Numbers >= 1000 are stored in INR (e.g. 700000 -> 7 LPA, 1200000 -> 12 LPA).
+ * - Positive numbers < 1000 are already in LPA (e.g. 13 -> 13 LPA, 7.5 -> 7.5 LPA).
+ * - Zero, negative, null, undefined, or non-numeric values return null (missing/unavailable).
+ */
+export const normalizeSalaryPackageLpa = (rawSalary) => {
+  if (rawSalary === null || rawSalary === undefined || rawSalary === '') return null;
+  const num = Number(rawSalary);
+  if (!Number.isFinite(num) || num <= 0) return null;
+  const lpa = num >= 1000 ? num / 100000 : num;
+  return Math.round(lpa * 100) / 100;
+};
+
+/**
+ * Pure placement statistics computation used by getPlacementAnalytics and unit tests.
+ *
+ * Rules:
+ *  - Deduplicate applications per (studentId, opportunityId) to neutralize duplicate records.
+ *  - Only unique active/eligible students present in the denominator are counted once in placed count.
+ *  - Multi-offer rule: each placed student contributes their highest valid (> 0) LPA offer;
+ *    offers missing salary data do not become 0 LPA and are excluded from package averages.
+ *  - Overall and department-wise highest/average packages use this exact same per-student set.
+ */
+export const computePlacementAnalyticsStats = ({ totalStudents = 0, deptStudentCounts = [], selectedApps = [] }) => {
+  const deptMap = {};
+  for (const d of deptStudentCounts) {
+    if (d._id) {
+      const deptKey = String(d._id).trim().toUpperCase();
+      deptMap[deptKey] = {
+        department: deptKey,
+        totalStudents: Number(d.count) || 0,
+        placedStudentMap: new Map(), // studentId -> bestPackageLpa (number | null)
+      };
+    }
+  }
+
+  // Track unique (studentId, opportunityId) rows to prevent duplicate records inflating counts
+  const seenStudentOppPairs = new Set();
+  const placedStudentsMap = new Map(); // studentId -> { department: string | null, bestPackageLpa: number | null }
+
+  for (const app of selectedApps) {
+    const studentObj = app?.studentId;
+    const rawStudentId = studentObj && typeof studentObj === 'object' ? studentObj._id : studentObj;
+    if (!rawStudentId) continue;
+
+    // Exclude deactivated/deleted populated user records if isActive is explicitly false
+    if (studentObj && typeof studentObj === 'object' && studentObj.isActive === false) continue;
+
+    const studentId = String(rawStudentId);
+    const rawOppId = app?.opportunityId && typeof app.opportunityId === 'object'
+      ? app.opportunityId._id
+      : app?.opportunityId;
+    const pairKey = `${studentId}::${rawOppId ? String(rawOppId) : String(app._id || Math.random())}`;
+    if (seenStudentOppPairs.has(pairKey)) continue;
+    seenStudentOppPairs.add(pairKey);
+
+    const deptRaw = studentObj && typeof studentObj === 'object' ? studentObj.department : app?.department;
+    const deptKey = deptRaw && String(deptRaw).trim() ? String(deptRaw).trim().toUpperCase() : null;
+    const lpa = normalizeSalaryPackageLpa(
+      app?.opportunityId && typeof app.opportunityId === 'object'
+        ? app.opportunityId.salaryPackage
+        : app?.salaryPackage
+    );
+
+    const existingStudent = placedStudentsMap.get(studentId);
+    if (!existingStudent) {
+      placedStudentsMap.set(studentId, {
+        department: deptKey,
+        bestPackageLpa: lpa,
+      });
+    } else if (lpa !== null && (existingStudent.bestPackageLpa === null || lpa > existingStudent.bestPackageLpa)) {
+      existingStudent.bestPackageLpa = lpa;
+    }
+
+    if (deptKey) {
+      if (!deptMap[deptKey]) {
+        deptMap[deptKey] = {
+          department: deptKey,
+          totalStudents: 0,
+          placedStudentMap: new Map(),
+        };
+      }
+      const deptEntry = deptMap[deptKey].placedStudentMap;
+      const prevBest = deptEntry.get(studentId);
+      if (prevBest === undefined) {
+        deptEntry.set(studentId, lpa);
+      } else if (lpa !== null && (prevBest === null || lpa > prevBest)) {
+        deptEntry.set(studentId, lpa);
+      }
+    }
+  }
+
+  const totalPlaced = placedStudentsMap.size;
+  const placementPercentage = totalStudents > 0
+    ? Math.round((totalPlaced / totalStudents) * 1000) / 10
+    : 0;
+
+  const overallValidPackages = Array.from(placedStudentsMap.values())
+    .map((entry) => entry.bestPackageLpa)
+    .filter((pkg) => pkg !== null);
+
+  const highestPackage = overallValidPackages.length > 0
+    ? Math.max(...overallValidPackages)
+    : null;
+  const averagePackage = overallValidPackages.length > 0
+    ? Math.round((overallValidPackages.reduce((sum, p) => sum + p, 0) / overallValidPackages.length) * 100) / 100
+    : null;
+
+  const departmentBreakdown = Object.values(deptMap).map((d) => {
+    const placedCount = d.placedStudentMap.size;
+    const validDeptPackages = Array.from(d.placedStudentMap.values()).filter((pkg) => pkg !== null);
+    const highest = validDeptPackages.length > 0 ? Math.max(...validDeptPackages) : null;
+    const average = validDeptPackages.length > 0
+      ? Math.round((validDeptPackages.reduce((sum, p) => sum + p, 0) / validDeptPackages.length) * 100) / 100
+      : null;
+    const percentage = d.totalStudents > 0
+      ? Math.round((placedCount / d.totalStudents) * 1000) / 10
+      : 0;
+
+    return {
+      department: d.department,
+      totalStudents: d.totalStudents,
+      placed: placedCount,
+      percentage,
+      highest,
+      average,
+      validSalaryCount: validDeptPackages.length,
+    };
+  });
+
+  return {
+    totalStudents,
+    totalPlaced,
+    placementPercentage,
+    highestPackage,
+    averagePackage,
+    validSalaryCount: overallValidPackages.length,
+    packageUnit: 'LPA',
+    multiOfferPolicy: 'highest_valid_package_per_student',
+    departmentBreakdown,
+  };
+};
+
 // ─── ADMIN/FACULTY: Placement analytics statistics ───────────────────────────
 export const getPlacementAnalytics = async (req, res) => {
   try {
     const User = mongoose.model('User');
     const Application = mongoose.model('Application');
 
-    // 1. Get total students registered
-    const totalStudents = await User.countDocuments({ role: 'student', isActive: true, ...excludeTestUsers() });
-
-    // Exclude test users from placement counts
-    const testUsers = await User.find({ email: TEST_EMAIL_REGEX }).select('_id');
-    const testUserIds = testUsers.map(u => u._id);
-
-    // 2. Get unique placed student count (Application status is 'Selected')
-    const placedStudentIds = await Application.distinct('studentId', { status: 'Selected', studentId: { $nin: testUserIds } });
-    const totalPlaced = placedStudentIds.length;
-
-    const placementPercentage = totalStudents > 0 ? Math.round((totalPlaced / totalStudents) * 1000) / 10 : 0;
-
-    // 3. Get all selected applications populated with package details
-    const selectedApps = await Application.find({ status: 'Selected', studentId: { $nin: testUserIds } })
-      .populate('studentId', 'department')
-      .populate('opportunityId', 'salaryPackage');
-
-    const packages = selectedApps.map(a => a.opportunityId?.salaryPackage || 0).filter(Boolean);
-    const highestPackage = packages.length > 0 ? Math.max(...packages) : 0;
-    const averagePackage = packages.length > 0 ? Math.round(packages.reduce((sum, p) => sum + p, 0) / packages.length) : 0;
-
-    // 4. Department breakdown
-    const deptStudents = await User.aggregate([
-      { $match: { role: 'student', isActive: true, ...excludeTestUsers() } },
-      { $group: { _id: '$department', count: { $sum: 1 } } }
+    const [totalStudents, testUsers, deptStudentCounts] = await Promise.all([
+      User.countDocuments({ role: 'student', isActive: true, ...excludeTestUsers() }),
+      User.find({ email: TEST_EMAIL_REGEX }).select('_id'),
+      User.aggregate([
+        { $match: { role: 'student', isActive: true, ...excludeTestUsers() } },
+        { $group: { _id: '$department', count: { $sum: 1 } } },
+      ]),
     ]);
 
-    const deptMap = {};
-    deptStudents.forEach(d => {
-      if (d._id) {
-        const deptKey = d._id.toUpperCase();
-        deptMap[deptKey] = {
-          department: deptKey,
-          totalStudents: d.count,
-          placed: 0,
-          highest: 0,
-          packagesSum: 0,
-          average: 0
-        };
-      }
-    });
+    const testUserIds = testUsers.map((u) => u._id);
 
-    selectedApps.forEach(app => {
-      const dept = app.studentId?.department?.toUpperCase();
-      const salary = app.opportunityId?.salaryPackage || 0;
-      if (dept) {
-        if (!deptMap[dept]) {
-          deptMap[dept] = { department: dept, totalStudents: 0, placed: 0, highest: 0, packagesSum: 0, average: 0 };
-        }
-        deptMap[dept].placed += 1;
-        if (salary > deptMap[dept].highest) {
-          deptMap[dept].highest = salary;
-        }
-        if (salary > 0) {
-          deptMap[dept].packagesSum += salary;
-        }
-      }
-    });
+    const selectedApps = await Application.find({ status: 'Selected', studentId: { $nin: testUserIds } })
+      .populate('studentId', 'department isActive role')
+      .populate('opportunityId', 'salaryPackage');
 
-    const departmentBreakdown = Object.values(deptMap).map(d => {
-      const placedCount = d.placed;
-      const avg = placedCount > 0 ? Math.round(d.packagesSum / placedCount) : 0;
-      const pct = d.totalStudents > 0 ? Math.round((placedCount / d.totalStudents) * 1000) / 10 : 0;
-      
-      return {
-        department: d.department,
-        totalStudents: d.totalStudents,
-        placed: placedCount,
-        percentage: pct,
-        highest: d.highest,
-        average: avg
-      };
+    const activeSelectedApps = selectedApps.filter(
+      (app) => app.studentId && app.studentId.isActive !== false && app.studentId.role === 'student'
+    );
+
+    const stats = computePlacementAnalyticsStats({
+      totalStudents,
+      deptStudentCounts,
+      selectedApps: activeSelectedApps,
     });
 
     return res.json({
       success: true,
-      stats: {
-        totalPlaced,
-        placementPercentage,
-        highestPackage,
-        averagePackage,
-        departmentBreakdown
-      }
+      stats,
     });
   } catch (error) {
     console.error('getPlacementAnalytics error:', error);
@@ -400,7 +507,7 @@ export const getFacultyActivityStats = async (req, res) => {
     const studentIds = students.map((s) => s._id);
 
     const activityStats = await Activity.aggregate([
-      { $match: { userId: { $in: studentIds } } },
+      { $match: { userId: { $in: studentIds }, isArchived: { $ne: true } } },
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]);
 

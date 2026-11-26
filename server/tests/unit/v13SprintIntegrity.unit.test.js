@@ -11,6 +11,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
 import {
   normalizeLeetcodeRating,
   normalizeCodeforcesRating,
@@ -32,6 +33,7 @@ import {
 } from '../../scripts/generateCodeforcesCalibration.mjs';
 import { DocumentBufferCache, documentBufferCache } from '../../utils/documentBufferCache.js';
 import {
+  createOpportunity,
   getMatchingOpportunities,
   getAllOpportunities,
 } from '../../controllers/opportunityController.js';
@@ -52,6 +54,7 @@ import {
 import {
   parseReconcileArgs,
   reconcileOpportunityDeadlines,
+  loadReconcileEnv,
 } from '../../scripts/reconcileOpportunityDeadlines.js';
 import Opportunity from '../../models/Opportunity.js';
 import Profile from '../../models/Profile.js';
@@ -602,10 +605,16 @@ test('V13 Sprint: Fixed-Clock Deadlines (Boundary, Date-Only, TZ, Missing/Invali
     const exactBoundary = evaluateOpportunityDeadline({ status: 'Published', deadline: fixedNow }, fixedNow);
     assert.equal(exactBoundary.isExpired, true);
     assert.equal(exactBoundary.isOpenForApplication, false);
-    // Date-only (2026-11-25 -> 23:59:59.999Z -> open at 12:00Z; 2026-11-24 -> expired)
+    // Date-only in Asia/Kolkata (+05:30):
+    // '2026-11-25' ends at 2026-11-25T23:59:59.999+05:30 (= 18:29:59.999Z), so open at 12:00Z and expired at 18:30Z
     assert.equal(evaluateOpportunityDeadline({ status: 'Published', deadline: '2026-11-25' }, fixedNow).isOpenForApplication, true);
+    assert.equal(evaluateOpportunityDeadline({ status: 'Published', deadline: '2026-11-25' }, new Date('2026-11-25T18:30:00.000Z')).isExpired, true);
     assert.equal(evaluateOpportunityDeadline({ status: 'Published', deadline: '2026-11-24' }, fixedNow).isExpired, true);
-    // Timezone offset (+05:30): 17:00+05:30 = 11:30Z (expired), 18:00+05:30 = 12:30Z (open)
+    // Timezone-naive datetime-local string defaults to Asia/Kolkata (+05:30):
+    // 17:29 IST = 11:59Z (expired at 12:00Z), 17:31 IST = 12:01Z (open at 12:00Z)
+    assert.equal(evaluateOpportunityDeadline({ status: 'Published', deadline: '2026-11-25T17:29' }, fixedNow).isExpired, true);
+    assert.equal(evaluateOpportunityDeadline({ status: 'Published', deadline: '2026-11-25T17:31' }, fixedNow).isOpenForApplication, true);
+    // Explicit timezone offset (+05:30): 17:00+05:30 = 11:30Z (expired), 18:00+05:30 = 12:30Z (open)
     assert.equal(evaluateOpportunityDeadline({ status: 'Published', deadline: '2026-11-25T17:00:00+05:30' }, fixedNow).isExpired, true);
     assert.equal(evaluateOpportunityDeadline({ status: 'Published', deadline: '2026-11-25T18:00:00+05:30' }, fixedNow).isOpenForApplication, true);
     // Missing or invalid calendar date (2026-02-30) -> UNVERIFIED_DEADLINE, never silently open
@@ -673,6 +682,44 @@ test('V13 Sprint: Fixed-Clock Deadlines (Boundary, Date-Only, TZ, Missing/Invali
       assert.equal(body.opportunities[0].isOpenForApplication, false);
     } finally {
       Opportunity.find = origFind;
+    }
+  });
+
+  await t.test('createOpportunity rejects unparseable deadline and accepts IST date-only / naive strings', async () => {
+    let statusCode = null;
+    let payload = null;
+    const res = {
+      status(code) { statusCode = code; return this; },
+      json(body) { payload = body; return this; },
+    };
+
+    await createOpportunity({
+      body: {
+        driveCode: 'BAD-DEADLINE-1',
+        title: 'Engineer',
+        company: 'Acme',
+        type: 'Full-time',
+        description: 'Test',
+        deadline: '2026-02-30',
+      },
+      user: { _id: 'admin_1', role: 'admin' },
+    }, res);
+
+    assert.equal(statusCode, 400);
+    assert.equal(payload.success, false);
+    assert.match(payload.message, /Invalid or unparseable application deadline/i);
+  });
+
+  await t.test('reconcileOpportunityDeadlines dry-run never touches DB even when invoked without flags', async () => {
+    assert.equal(typeof loadReconcileEnv, 'function');
+    const origEnv = process.env.MONGODB_URI;
+    try {
+      delete process.env.MONGODB_URI;
+      loadReconcileEnv(path.resolve(process.cwd(), 'nonexistent-env-for-test'));
+      assert.equal(process.env.MONGODB_URI, undefined);
+    } finally {
+      if (origEnv !== undefined) process.env.MONGODB_URI = origEnv;
+      else delete process.env.MONGODB_URI;
     }
   });
 });

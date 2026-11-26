@@ -25,7 +25,7 @@ export const evaluatePlacementEligibility = (studentUser, studentProfile, opport
     return { eligible: false, reason: `GPA of ${cgpa.toFixed(2)} is below the minimum required ${minCGPA.toFixed(2)}` };
   }
 
-  if (eligibleDepartments.length > 0 && department) {
+  if (eligibleDepartments.length > 0) {
     const isDeptMatched = eligibleDepartments.some(
       (dept) => dept.toLowerCase() === department.toLowerCase()
     );
@@ -69,7 +69,7 @@ export const evaluateScholarshipEligibility = (studentUser, studentProfile, scho
     return { eligible: false, reason: `GPA of ${cgpa.toFixed(2)} is below the minimum required ${minCGPA.toFixed(2)}` };
   }
 
-  if (eligibleDepartments.length > 0 && department) {
+  if (eligibleDepartments.length > 0) {
     const isDeptMatched = eligibleDepartments.some(
       (dept) => dept.toLowerCase() === department.toLowerCase()
     );
