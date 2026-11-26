@@ -5,7 +5,7 @@ import { injectAuth, loginViaUI, loadTestUsers } from '../helpers/auth.js';
 import { resetDB } from '../helpers/db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const certFixture = path.join(__dirname, '../fixtures/sample-certificate.txt');
+const certFixture = path.join(__dirname, '../fixtures/valid-pdf.pdf');
 
 test.describe('Student workflows', () => {
   test.beforeEach(async () => {
@@ -24,20 +24,24 @@ test.describe('Student workflows', () => {
 
     const fileInput = page.locator('input[type="file"]').first();
     await fileInput.setInputFiles(certFixture);
-    await expect(page.locator('text=sample-certificate')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('valid-pdf.pdf', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Upload & Extract with AI' }).click();
+    await expect(page.getByText('Certificate extracted successfully!')).toBeVisible({ timeout: 60_000 });
   });
 
   test('submit activity', async ({ page }) => {
     await injectAuth(page, 'student');
     await page.goto('/student/upload');
 
-    await page.locator('input[name="title"]').fill(`E2E Workshop ${Date.now()}`);
+    const title = `E2E Workshop ${Date.now()}`;
+    await page.locator('input[name="title"]').fill(title);
     await page.locator('input[name="activityDate"]').fill('2026-03-01');
-    await page.locator('select[name="category"]').selectOption('Workshops');
+    await page.locator('main').getByRole('combobox').filter({ hasText: 'Technical' }).click();
+    await page.getByRole('option', { name: 'Workshops', exact: true }).click();
     await page.locator('textarea[name="description"]').fill('Automated E2E activity submission test.');
     await page.getByRole('button', { name: 'Submit Activity' }).click();
 
-    await expect(page.getByText(/activity submitted/i)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('row').filter({ hasText: title })).toContainText('Pending');
   });
 
   test('submit OD request', async ({ page }) => {

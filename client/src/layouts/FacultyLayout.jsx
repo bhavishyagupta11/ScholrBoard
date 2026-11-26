@@ -84,7 +84,7 @@ export function FacultyLayout() {
 				</div>
 
 				{/* Nav Links */}
-				<nav className="flex flex-col space-y-1.5 overflow-y-auto flex-grow custom-scrollbar">
+				<nav onClick={(event) => { if (event.target.closest('a')) setIsMobileOpen(false); }} className="flex flex-col space-y-1.5 overflow-y-auto flex-grow custom-scrollbar">
 					<NavLink to={prefix} end className={navLinkClass} title={isCollapsed ? 'Dashboard' : ''}>
 						<BarChart3 size={20} className="flex-shrink-0"/>
 						<span className={isCollapsed ? 'md:hidden' : 'inline-block'}>Dashboard</span>

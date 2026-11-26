@@ -18,7 +18,7 @@ export const authApi = {
    * @param {Object} credentials - { email, password }
    */
   login: async (credentials) => {
-    const response = await api.post('/auth/login', credentials);
+    const response = await api.post('/auth/login', credentials, { timeout: 65000 });
     if (response.token) {
       setToken(response.token);
     }

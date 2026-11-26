@@ -47,7 +47,7 @@ function StatCard({ label, value, sub, color, loading, innerRef }) {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    if (loading || value == null) return;
+    if (loading || typeof value !== 'number') return;
     const numVal = parseFloat(value);
     if (isNaN(numVal)) { setCount(value); return; }
     const duration = 700;
@@ -67,7 +67,7 @@ function StatCard({ label, value, sub, color, loading, innerRef }) {
         <div className="skeleton h-9 w-20 mt-1" />
       ) : (
         <div className="text-3xl font-bold" style={{ color }}>
-          {typeof value === 'string' && isNaN(parseFloat(value)) ? value : count}
+          {value == null ? '–' : typeof value === 'number' ? count : value}
         </div>
       )}
       <div className="text-xs subtle mt-1">{sub}</div>
@@ -81,6 +81,28 @@ export function DashboardPage() {
   const track = user?.trackId;
 
   const [analytics,        setAnalytics]        = useState(null);
+  const [studyMinutes, setStudyMinutes] = useState('');
+  const [savingStudy, setSavingStudy] = useState(false);
+  const [studyMessage, setStudyMessage] = useState('');
+
+  const logStudy = async (event) => {
+    event.preventDefault();
+    if (savingStudy) return;
+    setSavingStudy(true);
+    setStudyMessage('');
+    try {
+      await analyticsApi.logStudySession({ minutesStudied: Number(studyMinutes) });
+      setStudyMinutes('');
+      setStudyMessage('Study session saved.');
+      const [summary, history] = await Promise.all([analyticsApi.getDashboard(), analyticsApi.getProgress(14)]);
+      setAnalytics(summary.analytics);
+      setProgress(history.progress);
+    } catch (error) {
+      setStudyMessage(previous => previous ? 'Session saved. Refresh to update the chart.' : error.message);
+    } finally {
+      setSavingStudy(false);
+    }
+  };
   const [progress,         setProgress]         = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
   const [placements,       setPlacements]       = useState([]);
@@ -118,7 +140,7 @@ export function DashboardPage() {
     if (!progress.length) return [];
     return progress.map((r) => ({
       d: new Date(r.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-      c: Math.min(9, Math.floor((r.totalMinutesStudied || 0) / 10) + (r.goalAchieved ? 2 : 0)),
+      minutes: r.totalMinutesStudied ?? 0,
     }));
   }, [progress]);
 
@@ -251,7 +273,7 @@ export function DashboardPage() {
           <StatCard
             innerRef={setStatRef(2)}
             label="Study This Week" loading={loadingAnalytics}
-            value={analytics ? `${Math.round((analytics.weeklyStudyMinutes || 0) / 60)}h` : null}
+            value={analytics ? `${analytics.weeklyStudyMinutes ?? 0} min` : null}
             sub={`Longest streak: ${analytics?.longestStreak ?? 0} days`}
             color="var(--primary-blue)"
           />
@@ -348,6 +370,14 @@ export function DashboardPage() {
         )}
         {(!track || (track.enableCodingModule && track.enableDeveloperScore)) && (
           <DashboardCard title="Daily Study (last 14 days)" icon={BookOpen}>
+            <form onSubmit={logStudy} className="flex flex-wrap items-end gap-2">
+              <label>Study minutes
+                <input className="input-dark block w-28" type="number" min="1" step="1" required
+                  value={studyMinutes} onChange={event => setStudyMinutes(event.target.value)} />
+              </label>
+              <button className="btn btn-outline" disabled={savingStudy}>Log study session</button>
+              <span role="status">{studyMessage}</span>
+            </form>
             <div className="h-64">
               <Suspense fallback={<ChartSkeleton />}>
                 <ContributionsChart contributions={contributions} />
