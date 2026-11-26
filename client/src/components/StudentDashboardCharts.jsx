@@ -84,7 +84,7 @@ export function AcademicActivityChart({ activities }) {
 export function ContributionsChart({ contributions }) {
   const hasStudyData = useMemo(() => {
     if (!contributions || !Array.isArray(contributions) || contributions.length === 0) return false;
-    return contributions.some((item) => (item.c || 0) > 0);
+    return contributions.some((item) => (item.minutes || 0) > 0);
   }, [contributions]);
 
   if (!hasStudyData) {
@@ -94,8 +94,6 @@ export function ContributionsChart({ contributions }) {
         title="No study history recorded yet"
         explanation="No learning or study sessions logged over the past 14 days."
         recommendation="Log your daily study sessions to track streak trends and subject growth."
-        ctaLabel="Start Learning"
-        ctaTo="/student/coding"
         minHeight="h-full min-h-[220px]"
       />
     );
@@ -114,7 +112,7 @@ export function ContributionsChart({ contributions }) {
             color: 'var(--text-primary)'
           }} 
         />
-        <Bar dataKey="c" fill="var(--primary-blue)" radius={[4, 4, 0, 0]} />
+        <Bar name="Study minutes" dataKey="minutes" fill="var(--primary-blue)" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

@@ -416,21 +416,21 @@ export function AdminPlacementDashboard() {
               <div className="card p-5">
                 <div className="text-sm subtle">Placement Percentage</div>
                 <div className="text-3xl font-bold text-blue-400 mt-2">
-                  {loadingStats ? <div className="skeleton h-8 w-16" /> : `${stats?.placementPercentage}%`}
+                  {loadingStats ? <div className="skeleton h-8 w-16" /> : `${stats?.placementPercentage ?? 0}%`}
                 </div>
-                <div className="text-xs subtle mt-1">From total registered final-years</div>
+                <div className="text-xs subtle mt-1">From total registered students</div>
               </div>
               <div className="card p-5">
                 <div className="text-sm subtle">Highest Package</div>
-                <div className="text-3xl font-bold text-yellow-400 mt-2">
-                  {loadingStats ? <div className="skeleton h-8 w-16" /> : `₹${((stats?.highestPackage || 0)/100000).toFixed(1)} LPA`}
+                <div className="text-3xl font-bold text-yellow-400 mt-2" data-testid="stat-highest-package">
+                  {loadingStats ? <div className="skeleton h-8 w-16" /> : formatPackageLpa(stats?.highestPackage)}
                 </div>
                 <div className="text-xs subtle mt-1">Max package verified</div>
               </div>
               <div className="card p-5">
                 <div className="text-sm subtle">Average Package</div>
-                <div className="text-3xl font-bold text-purple-400 mt-2">
-                  {loadingStats ? <div className="skeleton h-8 w-16" /> : `₹${((stats?.averagePackage || 0)/100000).toFixed(1)} LPA`}
+                <div className="text-3xl font-bold text-purple-400 mt-2" data-testid="stat-average-package">
+                  {loadingStats ? <div className="skeleton h-8 w-16" /> : formatPackageLpa(stats?.averagePackage)}
                 </div>
                 <div className="text-xs subtle mt-1">Average salary package</div>
               </div>
@@ -468,8 +468,8 @@ export function AdminPlacementDashboard() {
                               <div className="bg-blue-500 h-full" style={{ width: `${dept.percentage}%` }}></div>
                             </div>
                           </td>
-                          <td className="p-3 font-semibold text-yellow-400">₹{(dept.highest).toLocaleString()} LPA</td>
-                          <td className="p-3 font-semibold text-purple-400">₹{(dept.average).toLocaleString()} LPA</td>
+                          <td className="p-3 font-semibold text-yellow-400">{formatPackageLpa(dept.highest)}</td>
+                          <td className="p-3 font-semibold text-purple-400">{formatPackageLpa(dept.average)}</td>
                         </tr>
                       ))
                     )}
@@ -480,12 +480,23 @@ export function AdminPlacementDashboard() {
           </div>
         ) : activeTab === 'compose-drive' ? (
           /* ================================================================= */
-          /* COMPOSE DRIVE FORM                                                */
+          /* COMPOSE / EDIT DRIVE FORM                                         */
           /* ================================================================= */
           <form onSubmit={handleCreateDrive} className="card p-6 max-w-4xl mx-auto grid md:grid-cols-2 gap-6">
-            <h2 className="text-xl font-bold md:col-span-2 border-b pb-2" style={{ borderColor: 'var(--border-color)' }}>
-              Compose Placement Drive Draft
-            </h2>
+            <div className="md:col-span-2 flex items-center justify-between border-b pb-2" style={{ borderColor: 'var(--border-color)' }}>
+              <h2 className="text-xl font-bold">
+                {editingDriveId ? 'Edit Placement Drive' : 'Compose Placement Drive Draft'}
+              </h2>
+              {editingDriveId && (
+                <button
+                  type="button"
+                  onClick={() => { resetDriveForm(); setActiveTab('all-lists'); }}
+                  className="btn btn-outline text-xs px-3 py-1"
+                >
+                  Cancel Edit
+                </button>
+              )}
+            </div>
             <div>
               <label htmlFor="drive-code" className="block text-sm subtle mb-1">Drive Code * (e.g. TCS-NQT-2026)</label>
               <input
@@ -523,6 +534,18 @@ export function AdminPlacementDashboard() {
               />
             </div>
             <div>
+              <label htmlFor="drive-location" className="block text-sm subtle mb-1">Job Location (Optional)</label>
+              <input
+                id="drive-location"
+                data-testid="drive-location"
+                type="text"
+                value={driveForm.location}
+                onChange={e => setDriveForm(prev => ({ ...prev, location: e.target.value }))}
+                placeholder="e.g. Bengaluru / Hybrid / Pan-India"
+                className="w-full input-dark py-2 px-3 text-sm"
+              />
+            </div>
+            <div>
               <label htmlFor="drive-type" className="block text-sm subtle mb-1">Offer Type *</label>
               <select
                 id="drive-type"
@@ -537,26 +560,29 @@ export function AdminPlacementDashboard() {
               </select>
             </div>
             <div>
-              <label htmlFor="drive-salary" className="block text-sm subtle mb-1">Salary Package (INR LPA) *</label>
+              <label htmlFor="drive-salary" className="block text-sm subtle mb-1">Salary Package (LPA or INR) *</label>
               <input
                 id="drive-salary"
                 data-testid="drive-salary"
-                type="number" required
+                type="number" required step="0.01" min="0"
                 value={driveForm.salaryPackage}
                 onChange={e => setDriveForm(prev => ({ ...prev, salaryPackage: e.target.value }))}
-                placeholder="e.g. 700000 for 7 LPA"
+                placeholder="e.g. 13 for 13 LPA (or 700000 INR)"
                 className="w-full input-dark py-2 px-3 text-sm"
               />
             </div>
-            <div>
-              <label htmlFor="drive-deadline" className="block text-sm subtle mb-1">Application Deadline *</label>
+            <div className="md:col-span-2">
+              <label htmlFor="drive-deadline" className="block text-sm subtle mb-1">
+                Application Deadline * {editingDriveLockedDeadline && <span className="text-xs text-red-400">(Locked — closed or expired drives cannot be reopened)</span>}
+              </label>
               <input
                 id="drive-deadline"
                 data-testid="drive-deadline"
                 type="datetime-local" required
+                disabled={editingDriveLockedDeadline}
                 value={driveForm.deadline}
                 onChange={e => setDriveForm(prev => ({ ...prev, deadline: e.target.value }))}
-                className="w-full input-dark py-2 px-3 text-sm"
+                className="w-full input-dark py-2 px-3 text-sm disabled:opacity-50"
               />
             </div>
 
@@ -649,9 +675,18 @@ export function AdminPlacementDashboard() {
               />
             </div>
 
-            <div className="md:col-span-2 flex justify-end">
-              <button type="submit" disabled={submitting} className="btn btn-primary px-8 py-2.5">
-                {submitting ? 'Submitting...' : 'Compose Drive Draft'}
+            <div className="md:col-span-2 flex justify-end gap-3">
+              {editingDriveId && (
+                <button
+                  type="button"
+                  onClick={() => { resetDriveForm(); setActiveTab('all-lists'); }}
+                  className="btn btn-outline px-5 py-2.5"
+                >
+                  Cancel
+                </button>
+              )}
+              <button type="submit" disabled={submitting} data-testid="drive-submit-btn" className="btn btn-primary px-8 py-2.5">
+                {submitting ? 'Saving...' : editingDriveId ? 'Save Opportunity Changes' : 'Compose Drive Draft'}
               </button>
             </div>
           </form>
@@ -803,6 +838,7 @@ export function AdminPlacementDashboard() {
                           <div className="font-bold text-sm">{op.company} - {op.title}</div>
                           <div className="text-[10px] uppercase font-semibold text-slate-400 mt-0.5">
                             {op.driveCode} · status: {op.status} · deadline: {isDeadlineVerified ? formatOpportunityDeadlineIst(op.deadline) : 'Unverified'}
+                            {op.location ? ` · ${op.location}` : ''}
                           </div>
                         </div>
 
@@ -821,6 +857,14 @@ export function AdminPlacementDashboard() {
 
                       <div className="flex justify-between items-center pt-2 border-t border-white/5">
                         <div className="flex gap-2">
+                          <button
+                            type="button"
+                            data-testid={`edit-drive-${op._id}`}
+                            onClick={() => handleStartEditDrive(op)}
+                            className="btn btn-outline text-[10px] px-2.5 py-1 font-semibold"
+                          >
+                            Edit
+                          </button>
                           {op.status === 'Draft' && (
                             <button 
                               onClick={() => handlePublishDrive(op._id, op.title)}
