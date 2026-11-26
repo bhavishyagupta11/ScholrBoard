@@ -121,9 +121,18 @@ export const reconcileOpportunityDeadlines = async ({
   };
 };
 
-async function runCli() {
-  dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+export const loadReconcileEnv = (envPathOverride = null) => {
+  if (envPathOverride) {
+    dotenv.config({ path: envPathOverride });
+    return;
+  }
+  // Load server/.env first (consistent with server/config/env.js) before any repo-root fallback
   dotenv.config({ path: path.resolve(__dirname, '../.env') });
+  dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+};
+
+async function runCli() {
+  loadReconcileEnv();
 
   const { apply } = parseReconcileArgs(process.argv.slice(2));
   const mongoUri = process.env.MONGODB_URI;
@@ -132,7 +141,7 @@ async function runCli() {
   }
 
   console.log(`[reconcileOpportunityDeadlines] Target URI: ${redactMongoUriTarget(mongoUri)}`);
-  await mongoose.connect(mongoUri);
+  await mongoose.connect(mongoUri, { autoIndex: apply, autoCreate: apply });
   try {
     await reconcileOpportunityDeadlines({ apply, now: new Date(), OpportunityModel: Opportunity });
   } finally {
