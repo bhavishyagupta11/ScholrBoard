@@ -111,7 +111,7 @@ export function StudentLayout() {
 				</div>
 
 				{/* Nav Links */}
-				<nav className="flex flex-col space-y-1.5 overflow-y-auto flex-grow custom-scrollbar">
+				<nav onClick={(event) => { if (event.target.closest('a')) setIsMobileOpen(false); }} className="flex flex-col space-y-1.5 overflow-y-auto flex-grow custom-scrollbar">
 					{navItems.filter(item => isRouteEnabled(item.to)).map(({ to, label, icon: Icon }) => (
 						<NavLink 
 							key={to} 

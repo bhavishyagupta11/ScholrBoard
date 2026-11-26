@@ -1,9 +1,9 @@
 /**
  * AdminEvents.jsx — Dynamic event management with creation & editing
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import eventsApi from '../api/events.api.js';
-import { AlertCircle, Search, Plus, CalendarDays, Users, Clock, CheckCircle, X } from 'lucide-react';
+import { AlertCircle, Search, Plus, CalendarDays, Users, Clock, CheckCircle, X, RefreshCw } from 'lucide-react';
 
 export function AdminEvents() {
   const [events, setEvents] = useState([]);
@@ -13,6 +13,16 @@ export function AdminEvents() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
+
+  // Registrations Modal state
+  const [regModalEvent, setRegModalEvent] = useState(null);
+  const [registrations, setRegistrations] = useState([]);
+  const [regSummary, setRegSummary] = useState({ totalRegistrations: 0, filteredCount: 0, maxAttendees: null, departments: [] });
+  const [regLoading, setRegLoading] = useState(false);
+  const [regError, setRegError] = useState(null);
+  const [regSearch, setRegSearch] = useState('');
+  const [regDeptFilter, setRegDeptFilter] = useState('All');
+  const [regStatusFilter, setRegStatusFilter] = useState('all');
 
   // Modal & form state
   const [showModal, setShowModal] = useState(false);
@@ -39,6 +49,50 @@ export function AdminEvents() {
   useEffect(() => {
     fetchEvents();
   }, []);
+
+  // Lock background page scroll cleanly while either modal is open
+  useEffect(() => {
+    const isAnyModalOpen = showModal || Boolean(regModalEvent);
+    if (!isAnyModalOpen) return undefined;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [showModal, regModalEvent]);
+
+  const fetchEventRegistrations = useCallback(async (eventId, filters = {}) => {
+    setRegLoading(true);
+    setRegError(null);
+    try {
+      const res = await eventsApi.getRegistrations(eventId, {
+        search: filters.search !== undefined ? filters.search : regSearch,
+        department: filters.department !== undefined ? filters.department : (regDeptFilter === 'All' ? '' : regDeptFilter),
+        status: filters.status !== undefined ? filters.status : regStatusFilter,
+      });
+      setRegistrations(res.registrations || []);
+      setRegSummary(res.summary || { totalRegistrations: 0, filteredCount: 0, maxAttendees: null, departments: [] });
+    } catch (err) {
+      setRegError(err.message || 'Failed to load registered students');
+    } finally {
+      setRegLoading(false);
+    }
+  }, [regSearch, regDeptFilter, regStatusFilter]);
+
+  const handleOpenRegistrations = (event) => {
+    setRegModalEvent(event);
+    setRegistrations([]);
+    setRegError(null);
+    setRegSearch('');
+    setRegDeptFilter('All');
+    setRegStatusFilter('all');
+    fetchEventRegistrations(event._id, { search: '', department: '', status: 'all' });
+  };
+
+  useEffect(() => {
+    if (!regModalEvent) return;
+    fetchEventRegistrations(regModalEvent._id);
+  }, [regModalEvent, regSearch, regDeptFilter, regStatusFilter, fetchEventRegistrations]);
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -302,8 +356,18 @@ export function AdminEvents() {
                       <td className="py-4 px-6">{event.venue || 'TBA'}</td>
                       <td className="py-4 px-6">{event.category}</td>
                       <td className="py-4 px-6 font-medium">
-                        {event.attendees?.length || 0}
-                        {event.maxAttendees ? ` / ${event.maxAttendees}` : ''}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenRegistrations(event)}
+                          className="inline-flex items-center gap-1.5 text-blue-400 hover:text-blue-300 hover:underline font-semibold cursor-pointer"
+                          title="Inspect registered students"
+                        >
+                          <Users size={14} />
+                          <span>
+                            {event.attendees?.length || 0}
+                            {event.maxAttendees ? ` / ${event.maxAttendees}` : ''}
+                          </span>
+                        </button>
                       </td>
                       <td className="py-4 px-6">
                         <span className={`badge ${status === 'Upcoming' ? 'badge-yellow' : 'badge-green'}`}> 
@@ -312,7 +376,16 @@ export function AdminEvents() {
                       </td>
                       <td className="py-4 px-6 text-right">
                         <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            data-testid={`event-registrations-btn-${event._id}`}
+                            onClick={() => handleOpenRegistrations(event)}
+                            className="btn btn-outline px-3 py-1 text-xs inline-flex items-center gap-1"
+                          >
+                            <Users size={13} /> Registrations ({event.attendees?.length || 0})
+                          </button>
                           <button 
+                            type="button"
                             onClick={() => handleOpenEdit(event)}
                             className="btn btn-outline px-3 py-1 text-xs"
                           >
@@ -329,209 +402,397 @@ export function AdminEvents() {
         </div>
       </div>
 
+      {/* EVENT REGISTRATIONS MODAL */}
+      {regModalEvent && (
+        <div
+          data-testid="event-registrations-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-6"
+          onClick={(e) => { if (e.target === e.currentTarget) setRegModalEvent(null); }}
+        >
+          <div
+            className="w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden rounded-xl border shadow-2xl"
+            style={{ background: 'var(--surface-card)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+          >
+            {/* Sticky Header */}
+            <div className="shrink-0 flex justify-between items-start gap-4 px-6 py-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
+              <div>
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Users size={20} className="text-blue-400" />
+                  Registered Students — {regModalEvent.title}
+                </h2>
+                <div className="text-xs subtle mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                  <span>Category: {regModalEvent.category}</span>
+                  <span>Date: {new Date(regModalEvent.startDate).toLocaleDateString()}</span>
+                  {regModalEvent.venue && <span>Venue: {regModalEvent.venue}</span>}
+                  <span className="font-semibold text-blue-400">
+                    Total Registered: {regSummary.totalRegistrations}
+                    {regSummary.maxAttendees ? ` / ${regSummary.maxAttendees}` : ''}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => fetchEventRegistrations(regModalEvent._id)}
+                  className="btn btn-outline px-2.5 py-1.5 text-xs inline-flex items-center gap-1"
+                  title="Refresh registrations"
+                >
+                  <RefreshCw size={13} className={regLoading ? 'animate-spin' : ''} /> Refresh
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRegModalEvent(null)}
+                  className="text-slate-400 hover:text-white p-1.5 rounded-full hover:bg-white/10"
+                  aria-label="Close registrations modal"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Filters Bar */}
+            <div className="shrink-0 px-6 py-3 border-b flex flex-wrap gap-3" style={{ borderColor: 'var(--border-color)', background: 'var(--bg-medium)' }}>
+              <div className="relative flex-1 min-w-[200px]">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  data-testid="reg-search-input"
+                  placeholder="Search by name, email, roll/ID, or department..."
+                  value={regSearch}
+                  onChange={(e) => setRegSearch(e.target.value)}
+                  className="w-full input-dark pl-9 py-1.5 px-3 text-xs"
+                />
+              </div>
+              <select
+                data-testid="reg-dept-filter"
+                value={regDeptFilter}
+                onChange={(e) => setRegDeptFilter(e.target.value)}
+                className="input-dark py-1.5 px-3 text-xs"
+              >
+                <option value="All">All Departments</option>
+                {(regSummary.departments || []).map((dept) => (
+                  <option key={dept} value={dept}>{dept}</option>
+                ))}
+              </select>
+              <select
+                data-testid="reg-status-filter"
+                value={regStatusFilter}
+                onChange={(e) => setRegStatusFilter(e.target.value)}
+                className="input-dark py-1.5 px-3 text-xs"
+              >
+                <option value="all">All Statuses</option>
+                <option value="registered">Registered</option>
+                <option value="attended">Attended</option>
+                <option value="absent">Absent</option>
+              </select>
+            </div>
+
+            {/* Scrollable Body */}
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain p-6 custom-scrollbar">
+              {regError ? (
+                <div className="p-4 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-sm flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle size={16} className="shrink-0" />
+                    <span>{regError}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fetchEventRegistrations(regModalEvent._id)}
+                    className="btn btn-outline text-xs px-3 py-1"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : regLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => <div key={i} className="skeleton h-12 w-full rounded" />)}
+                </div>
+              ) : registrations.length === 0 ? (
+                <div className="py-12 text-center subtle">
+                  <Users size={38} className="mx-auto mb-2 opacity-35" />
+                  <p className="text-sm font-medium">
+                    {regSummary.totalRegistrations === 0
+                      ? 'No students registered for this event yet.'
+                      : 'No registrations match your search or filters.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border rounded-lg" style={{ borderColor: 'var(--border-color)' }}>
+                  <table className="w-full text-xs text-left">
+                    <thead>
+                      <tr className="border-b" style={{ background: 'var(--bg-medium)', borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}>
+                        <th className="py-3 px-4 font-semibold">Student</th>
+                        <th className="py-3 px-4 font-semibold">Email</th>
+                        <th className="py-3 px-4 font-semibold">Enrollment / ID</th>
+                        <th className="py-3 px-4 font-semibold">Department</th>
+                        <th className="py-3 px-4 font-semibold">Registered At</th>
+                        <th className="py-3 px-4 font-semibold">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y" style={{ borderColor: 'var(--border-color)' }}>
+                      {registrations.map((reg) => (
+                        <tr key={reg.userId} className="hover:bg-white/5">
+                          <td className="py-3 px-4 font-semibold">{reg.name}</td>
+                          <td className="py-3 px-4 subtle">{reg.email}</td>
+                          <td className="py-3 px-4 font-mono">{reg.studentId}</td>
+                          <td className="py-3 px-4">
+                            {reg.department}{reg.semester ? ` · Sem ${reg.semester}` : ''}
+                          </td>
+                          <td className="py-3 px-4 subtle">
+                            {reg.registeredAt ? new Date(reg.registeredAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) : '—'}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`badge ${
+                              reg.status === 'Attended' ? 'badge-green' :
+                              reg.status === 'Absent' ? 'badge-red' : 'badge-yellow'
+                            }`}>
+                              {reg.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Sticky Footer */}
+            <div className="shrink-0 flex justify-between items-center px-6 py-3 border-t text-xs subtle" style={{ borderColor: 'var(--border-color)' }}>
+              <span>
+                Showing {registrations.length} of {regSummary.filteredCount} matching ({regSummary.totalRegistrations} total)
+              </span>
+              <button
+                type="button"
+                onClick={() => setRegModalEvent(null)}
+                className="btn btn-primary px-4 py-1.5 text-xs"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* EVENT FORM MODAL */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="card w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col p-6 space-y-4" style={{ background: 'var(--surface-card)', borderColor: 'var(--border-color)' }}>
+        <div
+          data-testid="event-form-modal-backdrop"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-6"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
+        >
+          <div
+            data-testid="event-form-modal"
+            className="w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden rounded-xl border shadow-2xl"
+            style={{ background: 'var(--surface-card)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+          >
             
             {/* Modal Header */}
-            <div className="flex justify-between items-center pb-2 border-b" style={{ borderColor: 'var(--border-color)' }}>
+            <div className="shrink-0 flex justify-between items-center px-6 py-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
               <h2 className="text-xl font-bold text-[var(--text-primary)]">
                 {editingEvent ? 'Edit Event Details' : 'Create New Event'}
               </h2>
               <button 
+                type="button"
                 onClick={() => setShowModal(false)}
                 className="text-slate-400 hover:text-white p-1 rounded-full hover:bg-white/10"
+                aria-label="Close event modal"
               >
                 <X size={20} />
               </button>
             </div>
 
-            {formError && (
-              <div className="flex items-center gap-2 p-3 rounded-lg text-sm bg-red-500/10 text-red-400 border border-red-500/20">
-                <AlertCircle size={16} className="shrink-0" />
-                <span>{formError}</span>
-              </div>
-            )}
-
-            {/* Modal Body */}
-            <form onSubmit={handleFormSubmit} className="space-y-4 flex-1">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
-                {/* Title */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm subtle mb-1">Event Title *</label>
-                  <input
-                    type="text"
-                    name="title"
-                    value={formState.title}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="e.g., CodeRush Hackathon 2026"
-                    className="w-full input-dark py-2 px-3 text-sm"
-                  />
-                </div>
-
-                {/* Category */}
-                <div>
-                  <label className="block text-sm subtle mb-1">Category *</label>
-                  <select
-                    name="category"
-                    value={formState.category}
-                    onChange={handleInputChange}
-                    className="w-full input-dark py-2 px-3 text-sm"
-                  >
-                    <option value="Technical">Technical</option>
-                    <option value="Cultural">Cultural</option>
-                    <option value="Sports">Sports</option>
-                    <option value="Workshop">Workshop</option>
-                    <option value="Seminar">Seminar</option>
-                    <option value="Hackathon">Hackathon</option>
-                    <option value="Placement">Placement</option>
-                    <option value="Guest Lecture">Guest Lecture</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-
-                {/* Venue */}
-                <div>
-                  <label className="block text-sm subtle mb-1">Venue (or Link) *</label>
-                  <input
-                    type="text"
-                    name="venue"
-                    value={formState.venue}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="e.g., Auditorium Hall B / Online"
-                    className="w-full input-dark py-2 px-3 text-sm"
-                  />
-                </div>
-
-                {/* Start Date */}
-                <div>
-                  <label className="block text-sm subtle mb-1">Start Date *</label>
-                  <input
-                    type="date"
-                    name="startDate"
-                    value={formState.startDate}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full input-dark py-2 px-3 text-sm"
-                  />
-                </div>
-
-                {/* End Date */}
-                <div>
-                  <label className="block text-sm subtle mb-1">End Date (Optional)</label>
-                  <input
-                    type="date"
-                    name="endDate"
-                    value={formState.endDate}
-                    onChange={handleInputChange}
-                    className="w-full input-dark py-2 px-3 text-sm"
-                  />
-                </div>
-
-                {/* Start Time */}
-                <div>
-                  <label className="block text-sm subtle mb-1">Start Time (Optional)</label>
-                  <input
-                    type="text"
-                    name="startTime"
-                    value={formState.startTime}
-                    onChange={handleInputChange}
-                    placeholder="e.g., 09:30 AM"
-                    className="w-full input-dark py-2 px-3 text-sm"
-                  />
-                </div>
-
-                {/* Max Attendees */}
-                <div>
-                  <label className="block text-sm subtle mb-1">Max Capacity (Optional)</label>
-                  <input
-                    type="number"
-                    name="maxAttendees"
-                    value={formState.maxAttendees}
-                    onChange={handleInputChange}
-                    placeholder="e.g., 100"
-                    className="w-full input-dark py-2 px-3 text-sm"
-                  />
-                </div>
-
-                {/* Target Departments */}
-                <div>
-                  <label className="block text-sm subtle mb-1">Target Departments (Comma-separated)</label>
-                  <input
-                    type="text"
-                    name="targetDepartments"
-                    value={formState.targetDepartments}
-                    onChange={handleInputChange}
-                    placeholder="e.g., CSE, IT (Leave blank for all)"
-                    className="w-full input-dark py-2 px-3 text-sm"
-                  />
-                </div>
-
-                {/* Registration Switch */}
-                <div className="flex items-center gap-2 mt-4">
-                  <input
-                    type="checkbox"
-                    id="requiresRegistration"
-                    name="requiresRegistration"
-                    checked={formState.requiresRegistration}
-                    onChange={handleInputChange}
-                    className="h-4 w-4 bg-slate-800 border-slate-700 rounded text-blue-500 focus:ring-blue-500"
-                  />
-                  <label htmlFor="requiresRegistration" className="text-sm font-medium subtle">Requires Student Registration</label>
-                </div>
-
-                {/* Target Roles */}
-                <div className="md:col-span-2 pt-2">
-                  <span className="block text-sm subtle mb-2">Target Audience Roles</span>
-                  <div className="flex gap-4">
-                    {['student', 'faculty', 'admin'].map(role => (
-                      <label key={role} className="flex items-center gap-1.5 text-sm cursor-pointer uppercase font-semibold">
-                        <input
-                          type="checkbox"
-                          checked={formState.targetRoles.includes(role)}
-                          onChange={() => handleRoleCheckboxChange(role)}
-                          className="h-4 w-4 bg-slate-800 border-slate-700 rounded text-blue-500 focus:ring-blue-500"
-                        />
-                        {role}
-                      </label>
-                    ))}
+            {/* Modal Body & Sticky Footer inside flex column */}
+            <form onSubmit={handleFormSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div
+                data-testid="event-form-scroll-body"
+                className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain px-6 py-4 space-y-4 custom-scrollbar"
+                style={{ WebkitOverflowScrolling: 'touch' }}
+              >
+                {formError && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg text-sm bg-red-500/10 text-red-400 border border-red-500/20">
+                    <AlertCircle size={16} className="shrink-0" />
+                    <span>{formError}</span>
                   </div>
-                </div>
+                )}
 
-                {/* Description */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm subtle mb-1">Description (Optional)</label>
-                  <textarea
-                    name="description"
-                    value={formState.description}
-                    onChange={handleInputChange}
-                    rows="3"
-                    placeholder="Describe the event contents, eligibility, rules..."
-                    className="w-full input-dark py-2 px-3 text-sm"
-                  />
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  
+                  {/* Title */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm subtle mb-1">Event Title *</label>
+                    <input
+                      type="text"
+                      name="title"
+                      value={formState.title}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="e.g., CodeRush Hackathon 2026"
+                      className="w-full input-dark py-2 px-3 text-sm"
+                    />
+                  </div>
 
-                {/* Publish Switch */}
-                <div className="flex items-center gap-2 mt-2 md:col-span-2">
-                  <input
-                    type="checkbox"
-                    id="isPublished"
-                    name="isPublished"
-                    checked={formState.isPublished}
-                    onChange={handleInputChange}
-                    className="h-4 w-4 bg-slate-800 border-slate-700 rounded text-blue-500 focus:ring-blue-500"
-                  />
-                  <label htmlFor="isPublished" className="text-sm font-medium text-blue-400">Publish Event notice immediately (makes visible to students)</label>
-                </div>
+                  {/* Category */}
+                  <div>
+                    <label className="block text-sm subtle mb-1">Category *</label>
+                    <select
+                      name="category"
+                      value={formState.category}
+                      onChange={handleInputChange}
+                      className="w-full input-dark py-2 px-3 text-sm"
+                    >
+                      <option value="Technical">Technical</option>
+                      <option value="Cultural">Cultural</option>
+                      <option value="Sports">Sports</option>
+                      <option value="Workshop">Workshop</option>
+                      <option value="Seminar">Seminar</option>
+                      <option value="Hackathon">Hackathon</option>
+                      <option value="Placement">Placement</option>
+                      <option value="Guest Lecture">Guest Lecture</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
 
+                  {/* Venue */}
+                  <div>
+                    <label className="block text-sm subtle mb-1">Venue (or Link) *</label>
+                    <input
+                      type="text"
+                      name="venue"
+                      value={formState.venue}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="e.g., Auditorium Hall B / Online"
+                      className="w-full input-dark py-2 px-3 text-sm"
+                    />
+                  </div>
+
+                  {/* Start Date */}
+                  <div>
+                    <label className="block text-sm subtle mb-1">Start Date *</label>
+                    <input
+                      type="date"
+                      name="startDate"
+                      value={formState.startDate}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full input-dark py-2 px-3 text-sm"
+                    />
+                  </div>
+
+                  {/* End Date */}
+                  <div>
+                    <label className="block text-sm subtle mb-1">End Date (Optional)</label>
+                    <input
+                      type="date"
+                      name="endDate"
+                      value={formState.endDate}
+                      onChange={handleInputChange}
+                      className="w-full input-dark py-2 px-3 text-sm"
+                    />
+                  </div>
+
+                  {/* Start Time */}
+                  <div>
+                    <label className="block text-sm subtle mb-1">Start Time (Optional)</label>
+                    <input
+                      type="text"
+                      name="startTime"
+                      value={formState.startTime}
+                      onChange={handleInputChange}
+                      placeholder="e.g., 09:30 AM"
+                      className="w-full input-dark py-2 px-3 text-sm"
+                    />
+                  </div>
+
+                  {/* Max Attendees */}
+                  <div>
+                    <label className="block text-sm subtle mb-1">Max Capacity (Optional)</label>
+                    <input
+                      type="number"
+                      name="maxAttendees"
+                      value={formState.maxAttendees}
+                      onChange={handleInputChange}
+                      placeholder="e.g., 100"
+                      className="w-full input-dark py-2 px-3 text-sm"
+                    />
+                  </div>
+
+                  {/* Target Departments */}
+                  <div>
+                    <label className="block text-sm subtle mb-1">Target Departments (Comma-separated)</label>
+                    <input
+                      type="text"
+                      name="targetDepartments"
+                      value={formState.targetDepartments}
+                      onChange={handleInputChange}
+                      placeholder="e.g., CSE, IT (Leave blank for all)"
+                      className="w-full input-dark py-2 px-3 text-sm"
+                    />
+                  </div>
+
+                  {/* Registration Switch */}
+                  <div className="flex items-center gap-2 mt-4">
+                    <input
+                      type="checkbox"
+                      id="requiresRegistration"
+                      name="requiresRegistration"
+                      checked={formState.requiresRegistration}
+                      onChange={handleInputChange}
+                      className="h-4 w-4 bg-slate-800 border-slate-700 rounded text-blue-500 focus:ring-blue-500"
+                    />
+                    <label htmlFor="requiresRegistration" className="text-sm font-medium subtle">Requires Student Registration</label>
+                  </div>
+
+                  {/* Target Roles */}
+                  <div className="md:col-span-2 pt-2">
+                    <span className="block text-sm subtle mb-2">Target Audience Roles</span>
+                    <div className="flex gap-4">
+                      {['student', 'faculty', 'admin'].map(role => (
+                        <label key={role} className="flex items-center gap-1.5 text-sm cursor-pointer uppercase font-semibold">
+                          <input
+                            type="checkbox"
+                            checked={formState.targetRoles.includes(role)}
+                            onChange={() => handleRoleCheckboxChange(role)}
+                            className="h-4 w-4 bg-slate-800 border-slate-700 rounded text-blue-500 focus:ring-blue-500"
+                          />
+                          {role}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm subtle mb-1">Description (Optional)</label>
+                    <textarea
+                      name="description"
+                      value={formState.description}
+                      onChange={handleInputChange}
+                      rows="3"
+                      placeholder="Describe the event contents, eligibility, rules..."
+                      className="w-full input-dark py-2 px-3 text-sm"
+                    />
+                  </div>
+
+                  {/* Publish Switch */}
+                  <div className="flex items-center gap-2 mt-2 md:col-span-2">
+                    <input
+                      type="checkbox"
+                      id="isPublished"
+                      name="isPublished"
+                      checked={formState.isPublished}
+                      onChange={handleInputChange}
+                      className="h-4 w-4 bg-slate-800 border-slate-700 rounded text-blue-500 focus:ring-blue-500"
+                    />
+                    <label htmlFor="isPublished" className="text-sm font-medium text-blue-400">Publish Event notice immediately (makes visible to students)</label>
+                  </div>
+
+                </div>
               </div>
 
-              {/* Modal Footer */}
-              <div className="flex justify-end gap-3 pt-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
+              {/* Sticky Modal Footer */}
+              <div className="shrink-0 flex justify-end gap-3 px-6 py-4 border-t" style={{ borderColor: 'var(--border-color)', background: 'var(--surface-card)' }}>
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}

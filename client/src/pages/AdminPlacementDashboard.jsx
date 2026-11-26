@@ -116,8 +116,46 @@ export function AdminPlacementDashboard() {
     }
   };
 
+  const resetDriveForm = () => {
+    setEditingDriveId(null);
+    setEditingDriveLockedDeadline(false);
+    setDriveForm(DEFAULT_DRIVE_FORM);
+  };
+
+  const handleStartEditDrive = (op) => {
+    const { isExpired } = evaluateFrontendOpportunityDeadline(op);
+    setEditingDriveId(op._id);
+    setEditingDriveLockedDeadline(op.status === 'Closed' || isExpired);
+    setDriveForm({
+      driveCode: op.driveCode || '',
+      title: op.title || '',
+      company: op.company || '',
+      location: op.location || '',
+      type: op.type || 'Full-time',
+      description: op.description || '',
+      requirements: Array.isArray(op.requirements) ? op.requirements.join(', ') : '',
+      minCGPA: op.eligibility?.minCGPA !== undefined ? String(op.eligibility.minCGPA) : '6.0',
+      eligibleDepartments: Array.isArray(op.eligibility?.eligibleDepartments)
+        ? op.eligibility.eligibleDepartments.join(', ')
+        : '',
+      minSemester: op.eligibility?.minSemester !== undefined ? String(op.eligibility.minSemester) : '5',
+      passingYear: op.eligibility?.passingYear !== undefined ? String(op.eligibility.passingYear) : '2026',
+      maxActiveBacklogs: op.eligibility?.maxActiveBacklogs !== undefined ? String(op.eligibility.maxActiveBacklogs) : '0',
+      minPlacementReadinessScore:
+        op.eligibility?.minPlacementReadinessScore !== null && op.eligibility?.minPlacementReadinessScore !== undefined
+          ? String(op.eligibility.minPlacementReadinessScore)
+          : '',
+      salaryPackage: op.salaryPackage !== undefined && op.salaryPackage !== null ? String(op.salaryPackage) : '',
+      deadline: formatDeadlineForDatetimeLocalIst(op.deadline),
+    });
+    setError(null);
+    setSuccess(null);
+    setActiveTab('compose-drive');
+  };
+
   const handleCreateDrive = async (e) => {
     e.preventDefault();
+    if (submitting) return;
     setSubmitting(true);
     setError(null);
     setSuccess(null);
@@ -137,18 +175,23 @@ export function AdminPlacementDashboard() {
     };
 
     try {
-      await opportunitiesApi.create(data);
-      setSuccess('Placement drive draft composed successfully!');
-      setDriveForm({
-        driveCode: '', title: '', company: '', type: 'Full-time', description: '',
-        requirements: '', minCGPA: '6.0', eligibleDepartments: '', minSemester: '5',
-        passingYear: '2026', maxActiveBacklogs: '0', minPlacementReadinessScore: '75',
-        salaryPackage: '', deadline: ''
-      });
-      fetchDrivesAndScholarships();
-      setTimeout(() => setSuccess(null), 3000);
+      if (editingDriveId) {
+        if (editingDriveLockedDeadline) {
+          delete data.deadline;
+        }
+        await opportunitiesApi.update(editingDriveId, data);
+        setSuccess('Placement drive updated successfully!');
+        resetDriveForm();
+        setActiveTab('all-lists');
+      } else {
+        await opportunitiesApi.create(data);
+        setSuccess('Placement drive draft composed successfully!');
+        resetDriveForm();
+      }
+      await Promise.all([fetchDrivesAndScholarships(), fetchStats()]);
+      setTimeout(() => setSuccess(null), 3500);
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to compose placement drive');
+      setError(err.response?.data?.message || err.message || 'Failed to save placement drive');
     } finally {
       setSubmitting(false);
     }

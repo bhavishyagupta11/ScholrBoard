@@ -2,12 +2,15 @@
  * PortfolioPage.jsx — Real dynamic portfolio view
  * Uses data from ProfileContext
  */
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Save, Copy, Link as LinkIcon, Github, Award, Briefcase, AlertCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useProfile } from '../contexts/ProfileContext.jsx';
 import { useScrollAnimation } from '../hooks/useScrollAnimation.js';
 
 export function PortfolioPage() {
+  const [copyMessage, setCopyMessage] = useState('');
   const { profile, isLoading, error } = useProfile();
 
   // Scroll animation hooks
@@ -42,7 +45,7 @@ export function PortfolioPage() {
   ].filter(d => d.solved > 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 portfolio-page">
       <h1 ref={headerRef} className="text-2xl font-semibold gpu-accelerated">My Portfolio</h1>
 
       <div ref={profileRef} className="card p-6 gpu-accelerated hover:scale-[1.01] transition-transform">
@@ -57,11 +60,21 @@ export function PortfolioPage() {
           </div>
           <div>
             <div className="text-sm text-slate-500">GPA</div>
-            <div className="font-semibold text-lg">{profile.gpa || '–'}</div>
+            <div className="font-semibold text-lg">{profile.gpa ?? '–'}</div>
           </div>
-          <div className="flex items-end gap-2 md:justify-end">
-            <button className="btn btn-outline hover:scale-105 transition-transform"><Save size={16}/> Save PDF</button>
-            <button className="btn btn-outline hover:scale-105 transition-transform"><Copy size={16}/> Copy Link</button>
+          <div className="portfolio-actions flex flex-wrap items-end gap-2 md:justify-end">
+            <button type="button" onClick={() => window.print()} className="btn btn-outline"><Save size={16}/> Print / Save PDF</button>
+            {profile.socialLinks?.portfolio ? (
+              <button type="button" className="btn btn-outline" onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(profile.socialLinks.portfolio);
+                  setCopyMessage('Portfolio link copied.');
+                } catch {
+                  setCopyMessage('Copy the portfolio address from the Links section below.');
+                }
+              }}><Copy size={16}/> Copy Link</button>
+            ) : <Link className="btn btn-outline" to="/student/profile">Add portfolio link</Link>}
+            <span role="status">{copyMessage}</span>
           </div>
         </div>
       </div>
