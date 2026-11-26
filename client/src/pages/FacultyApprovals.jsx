@@ -84,9 +84,8 @@ export function FacultyApprovals() {
 
     try {
       await activitiesApi.review(id, { status, rejectionReason, reviewComments });
-      // Remove from list after review
       setPendingList(prev => prev.filter(item => item._id !== id));
-      fetchStats();
+      await Promise.all([fetchStats(), fetchPending()]);
     } catch (err) {
       setError(err.message || 'Failed to review activity');
     }

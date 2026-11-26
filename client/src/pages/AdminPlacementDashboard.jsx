@@ -13,6 +13,10 @@ import scholarshipsApi from '../api/scholarships.api.js';
 import { api } from '../api/index.js';
 import { useScrollAnimation } from '../hooks/useScrollAnimation.js';
 import { usePdfBlob } from '../hooks/usePdfBlob.js';
+import {
+  evaluateFrontendOpportunityDeadline,
+  formatOpportunityDeadlineIst,
+} from '../utils/opportunityDeadline.js';
 
 export function AdminPlacementDashboard() {
   // Placement Stats State
@@ -736,16 +740,14 @@ export function AdminPlacementDashboard() {
               ) : (
                 <div className="space-y-3 pt-2">
                   {ops.map(op => {
-                    const deadlineMs = op.deadline ? new Date(op.deadline).getTime() : NaN;
-                    const isVerified = op.isDeadlineVerified !== false && Number.isFinite(deadlineMs);
-                    const isExpired = Boolean(op.isExpired || (isVerified && deadlineMs <= Date.now()));
+                    const { isDeadlineVerified, isExpired } = evaluateFrontendOpportunityDeadline(op);
                     return (
                     <div key={op._id} className="p-3 rounded border border-white/10 space-y-2 group" style={{ background: 'var(--bg-medium)' }}>
                       <div className="flex justify-between items-start gap-2">
                         <div>
                           <div className="font-bold text-sm">{op.company} - {op.title}</div>
                           <div className="text-[10px] uppercase font-semibold text-slate-400 mt-0.5">
-                            {op.driveCode} · status: {op.status} · deadline: {isVerified ? new Date(deadlineMs).toLocaleDateString() : 'Unverified'}
+                            {op.driveCode} · status: {op.status} · deadline: {isDeadlineVerified ? formatOpportunityDeadlineIst(op.deadline) : 'Unverified'}
                           </div>
                         </div>
 
@@ -753,7 +755,7 @@ export function AdminPlacementDashboard() {
                           {op.status === 'Published' && isExpired && (
                             <span className="badge badge-red">Expired</span>
                           )}
-                          {op.status === 'Published' && !isVerified && (
+                          {op.status === 'Published' && !isDeadlineVerified && (
                             <span className="badge badge-yellow">Deadline Unverified</span>
                           )}
                           <span className={`badge ${
